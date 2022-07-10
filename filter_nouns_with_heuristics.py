@@ -43,12 +43,9 @@ HEURISTIC_WORD_BLACKLIST = True
 # Q7440356 (Seafood; UK band)
 HEURISTIC_FILTER_OUT_MOVIES_ETC = True
 
-# Filter out nouns/ontology entries that describe a singular entity and not an entity type.
-# In Wikidata this is anything that has an "instance of" property (P31)
-# like Q148 (People's Republic of China) for example.
-#
-# This is an even stricter version of HEURISTIC_FILTER_OUT_MOVIES_ETC.
-HEURISTIC_FILTER_OUT_SUBJECTS = True
+# Filter out nouns/ontology entries that describe a singular entity and not an entity type,
+# i.e. only keep Wikidata entries that have a value for the P279 ("subclass of") property.
+HEURISTIC_ONLY_KEEP_CLASSES = True
 
 # Use the nltk library to *try* to generate a natural language parse for the input
 # text and filter out non-nouns that could not be recognized as non-nouns using
@@ -275,22 +272,22 @@ if HEURISTIC_FILTER_OUT_MOVIES_ETC:
         print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
             + " ontology mappings left after having applied movie, TV series, etc. heuristic.")
 
-# Remove subjects (i.e. everything that is an instance of sth., e.g. China).
-# Use the P31 ("instance of") property for that:
-if HEURISTIC_FILTER_OUT_SUBJECTS:
+# Try to remove subjects (e.g. China) by only keeping classes.
+# Use the P279 ("subclass of", i.e. "next higher class or type") property for that:
+if HEURISTIC_ONLY_KEEP_CLASSES:
     successful_dict_matches_with_ontology_links =\
         OrderedDict([(noun,\
         list(\
             filter(\
                 lambda ontology_link:\
-                    "P31" not in wikidata_properties[ontology_link[0]],\
+                    "P279" in wikidata_properties[ontology_link[0]],\
                 ontology_links\
             )\
         ))\
         for noun, ontology_links in successful_dict_matches_with_ontology_links.items()])
     if DEBUG:
         print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
-            + " ontology mappings left after having removed everything that is an instance of sth.")
+            + " ontology mappings left after having removed everything that is not a subclass sth.")
 
 # Filter out ontology mappings that are subclasses of other ontology mappings.
 # Use the P279 ("subclass of", i.e. "next higher class or type") property for that:
