@@ -11,6 +11,15 @@ import statistics
 import math
 
 
+# Only consider the first N results/ontology mappings for each noun.
+# Example for the noun "Credit Cards":
+# Q161380, Q111909098, Q51153743, Q87577755, Q108330485, Q106720623, Q83873
+#   becomes
+# Q161380, Q111909098, Q51153743, Q87577755
+#   for N = 4
+# (Set this to a very big number to disable this feature.)
+HEURISTIC_ONLY_FIRST_N_RESULTS = 4
+
 # When two nouns map to the same ontology entry, assume they are used as
 # synonyms in the text and remove all other mappings. 
 #
@@ -100,7 +109,10 @@ def get_wikidata_properties(entity_id):
     properties = parsed_json["entities"][entity_id]["claims"]
     property_value_pairs =\
         {_property : properties[_property][0]["mainsnak"]["datavalue"]["value"]\
-        for _property in properties.keys()}
+        for _property in properties.keys()\
+        if "mainsnak" in properties[_property][0]\
+        and "datavalue" in properties[_property][0]["mainsnak"]\
+        and "value" in properties[_property][0]["mainsnak"]["datavalue"]}
     # Sometimes the value is a string directly and sometimes one has to get the id attribute:
     property_value_pairs =\
         {_property: value if type(value) is str else value.get("id", "") \
@@ -116,8 +128,11 @@ def inverse_cantor_pairing_function(z):
     x = w - y
     return int(x), int(y)
 
-
 input_text = sys.argv[1]  # the text to filter for nouns
+DEBUG = (len(sys.argv) >= 3 and sys.argv[2] == "--debug")  # whether to activate debug prints
+if DEBUG:
+    print("")  # separator
+    print("Debug prints activated.")
 
 oxford_dictionary_file_path = os.path.expanduser("~/Oxford_English_Dictionary.txt")
 oxford_dictionary_url =\
@@ -169,9 +184,8 @@ for word_length in range(len(words), 0, -1):
 # print("noun_candidates = " + str(noun_candidates))
 
 # Second, try to find all these noun candidates in the dictionary:
-print("")  # print an initial empty line as a separator
 successful_matches = []
-successful_dict_matches_with_ontology_links = [] # ToDo: use dictionary instead
+successful_dict_matches_with_ontology_links = OrderedDict([])
 for noun_candidate in noun_candidates:
     if any(map(lambda sm: noun_candidate in sm, successful_matches)):
         # e.g. "credit" but "credit card" has already been matched before
@@ -189,90 +203,117 @@ for noun_candidate in noun_candidates:
     if dictionary_match != "":  # successful match in dictionary:
         successful_matches.append(noun_candidate)  # e.g. add "credit card" to successful matches
 
+        # Query Wikidata with the noun found to get candidates for
+        #   possible matching ontology entries:
         ontology_links = get_wikidata_entry_candidates(dictionary_match)
-        successful_dict_matches_with_ontology_links.append((dictionary_match, ontology_links));
+        # Heuristic: keep only the first N results:
+        ontology_links = ontology_links[:HEURISTIC_ONLY_FIRST_N_RESULTS] 
+        successful_dict_matches_with_ontology_links[dictionary_match] = ontology_links
+        if DEBUG: print(dictionary_match + ": " + str([_id for _id, label, descr in ontology_links]))
+
+nouns = successful_dict_matches_with_ontology_links.keys()
+
+if DEBUG:
+    print(str(len(nouns)) + " nouns found, with a total of "\
+        + str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
+        + " ontology mappings: " + str(nouns))
 
 # Now apply various **heuristics** to reduce the number of results:
 
 # Remove other mappings for matched nouns that are synonyms:
 # (this should be the first heuristic applied before any nouns are filtered out)
 if HEURISTIC_SYNONYMS:
-    nouns = [noun for noun, ontology_links in successful_dict_matches_with_ontology_links]
     # Consider all pairs of nouns to check if they are synonyms:
     for noun1, noun2 in [(n1, n2) for n1 in nouns for n2 in nouns]:
-        ontology_ids_noun1 = todo
-        ontology_ids_noun2 = todo
+        ontology_ids_noun1 = successful_dict_matches_with_ontology_links[noun1]
+        ontology_ids_noun2 = successful_dict_matches_with_ontology_links[noun2]
         ontology_ids_intersection = [_id for _id in ontology_ids_noun1 if _id in ontology_ids_noun2]
         if ontology_ids_intersection != []: # noun1 and noun2 are synonyms:
             # Remove all other ontology links:
             successful_dict_matches_with_ontology_links[noun1] = ontology_ids_intersection
             successful_dict_matches_with_ontology_links[noun2] = ontology_ids_intersection
-            # ToDo: successful_dict_matches_with_ontology_links is not a dict yet!
+    if DEBUG:
+        print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
+            + " ontology mappings left after having applied synonym heuristic.")
 
 # Remove blacklisted words from the successfully matched nouns:
 # (this is done early because it is fast)
 if HEURISTIC_WORD_BLACKLIST:
     successful_dict_matches_with_ontology_links =\
-        list(\
+        OrderedDict(list(\
             filter(\
                 lambda pair: pair[0] not in WORD_BLACKLIST,\
-                successful_dict_matches_with_ontology_links\
+                successful_dict_matches_with_ontology_links.items()\
             )\
-        )
+        ))
+    if DEBUG:
+        print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
+            + " ontology mappings left after having applied word blacklist heuristic.")
 
 # For the upcoming heuristics, we need the properties of all the Wikidata ontology links:
 all_ontology_ids =\
-    [ontology_id for noun, ontology_links in successful_dict_matches_with_ontology_links\
-    for ontology_id in ontology_links]
+    [ontology_id for noun, ontology_links in successful_dict_matches_with_ontology_links.items()\
+    for ontology_id, ontology_label, ontology_description in ontology_links]
 wikidata_properties =\
     {ontology_id : get_wikidata_properties(ontology_id) for ontology_id in all_ontology_ids}
 
 # Remove ontology mappings to movies, TV series, paintings and bands (musical groups).
+# Use the P31 ("instance of") property for that:
 if HEURISTIC_FILTER_OUT_MOVIES_ETC:
     class_blacklist = ["Q11424", "Q5398426", "Q3305213", "Q215380"]
     successful_dict_matches_with_ontology_links =\
-        [noun,\
+        OrderedDict([(noun,\
         list(\
             filter(\
                 lambda ontology_link:\
-                    wikidata_properties[ontology_link].get("P31", "") not in class_blacklist,\
-                    # P31 = the "instance of" property
+                    wikidata_properties[ontology_link[0]].get("P31", "") not in class_blacklist,\
                 ontology_links\
             )\
-        )\
-        for noun, ontology_links in successful_dict_matches_with_ontology_links]
+        ))\
+        for noun, ontology_links in successful_dict_matches_with_ontology_links.items()])
+    if DEBUG:
+        print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
+            + " ontology mappings left after having applied movie, TV series, etc. heuristic.")
 
-# Remove subjects (i.e. everything that is an instance of sth., e.g. China):
+# Remove subjects (i.e. everything that is an instance of sth., e.g. China).
+# Use the P31 ("instance of") property for that:
 if HEURISTIC_FILTER_OUT_SUBJECTS:
     successful_dict_matches_with_ontology_links =\
-        [noun,\
+        OrderedDict([(noun,\
         list(\
             filter(\
                 lambda ontology_link:\
-                    "P31" not in wikidata_properties[ontology_link],\
-                    # P31 = the "instance of" property
+                    "P31" not in wikidata_properties[ontology_link[0]],\
                 ontology_links\
             )\
-        )\
-        for noun, ontology_links in successful_dict_matches_with_ontology_links]
+        ))\
+        for noun, ontology_links in successful_dict_matches_with_ontology_links.items()])
+    if DEBUG:
+        print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
+            + " ontology mappings left after having removed everything that is an instance of sth.")
 
-# Filter out ontology mappings that are subclasses of other ontology mappings:
+# Filter out ontology mappings that are subclasses of other ontology mappings.
+# Use the P279 ("subclass of", i.e. "next higher class or type") property for that:
 if HEURISTIC_USE_SUPERTYPES_ONLY:
     all_ontology_ids =\
-    [ontology_id for noun, ontology_links in successful_dict_matches_with_ontology_links\
+    [ontology_id for noun, ontology_links in successful_dict_matches_with_ontology_links.items()\
     for ontology_id in ontology_links]
 
     successful_dict_matches_with_ontology_links =\
-        [noun,\
+        OrderedDict([(noun,\
         list(\
             filter(\
                 lambda ontology_link:\
-                    wikidata_properties[ontology_link].get("P279", "") not in all_ontology_ids,\
-                    # P279 = the "subclass of" property ("next higher class or type")
+                    wikidata_properties[ontology_link[0]].get("P279", "") not in all_ontology_ids,\
                 ontology_links\
             )\
-        )\
-        for noun, ontology_links in successful_dict_matches_with_ontology_links]
+        ))\
+        for noun, ontology_links in successful_dict_matches_with_ontology_links.items()])
+
+    if DEBUG:
+        print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
+            + " ontology mappings left after having applied supertype-only heuristic.")
+        print("")  # separator
 
 # Use the nltk library to *try* to generate a natural language parse for the input
 # text and filter out non-nouns that could not be recognized as non-nouns using
@@ -288,9 +329,15 @@ def word_frequency(word):
     return input_text.lower().count(word.lower())
 
 # First, sort the nouns by how often they appear in the input text:
-successful_dict_matches_with_ontology_links.sort(key=lambda pair: word_frequency(pair[0]))
+successful_dict_matches_with_ontology_links =\
+    OrderedDict(\
+        sorted(\
+            successful_dict_matches_with_ontology_links.items(),\
+            key=lambda pair: word_frequency(pair[0])\
+        )\
+    )
 
-# Second, we have to put all ontology links into a 1-dimensional list somehow:
+# Second, we have to put all ontology links Q1, Q2, ... into a 1-dimensional list somehow:
 #
 # Noun1:  Q1  Q2  Q3  Q4  Q5
 # Noun2:  Q6  Q7  Q8  Q9 Q10
@@ -306,15 +353,42 @@ successful_dict_matches_with_ontology_links.sort(key=lambda pair: word_frequency
 # * We will use method (2) when all nouns occur with approximately the same frequency.
 # * We will use method (3) when some nouns are much more common than other nouns.
 
-if todo:
-    # use method (2):
-    pass # todo
-else:
-    # use method (3):
-    pass # todo
+results = [] # output to be printed; triples of (_id, label, description)
+
+word_frequency_of_most_frequent_word =\
+    word_frequency(list(successful_dict_matches_with_ontology_links.keys())[0])
+word_frequency_of_least_frequent_word =\
+    word_frequency(list(successful_dict_matches_with_ontology_links.keys())[-1])
+# If all nouns occur with approximately the same frequency:
+if word_frequency_of_most_frequent_word - word_frequency_of_least_frequent_word <= 1:
+    # Use method (2):
+    # left-to-right:
+    for x in range(0, max(\
+        [len(ontology_links_for_yth_noun) for ontology_links_for_yth_noun\
+        in successful_dict_matches_with_ontology_links.values()]\
+        )):
+        # top-to-bottom:
+        for y in range(0, len(successful_dict_matches_with_ontology_links)):
+            ontology_links_for_yth_noun =\
+                list(successful_dict_matches_with_ontology_links.items())[y][1]
+            if x < len(ontology_links_for_yth_noun):
+                results += [ontology_links_for_yth_noun[x]]
+else: # Some nouns are much more common than other nouns:
+    # Use method (3):
+    total_number_of_ontology_links =\
+        sum(map(\
+            lambda lst: len(lst), successful_dict_matches_with_ontology_links.values()\
+        ))
+    i = 0
+    while len(result) < total_number_of_ontology_links:
+        x, y = inverse_cantor_pairing_function(i)
+        if y < len(successful_dict_matches_with_ontology_links.items())\
+           and x < len(list(successful_dict_matches_with_ontology_links.items())[y][1]):
+            result += list(successful_dict_matches_with_ontology_links.items())[y][1][x]
+        i += 1
 
 # # Method (1) would have looked like this:
-# results = map(lambda pair: pair[1], successful_dict_matches_with_ontology_links)
+# results = successful_dict_matches_with_ontology_links.values()
 # # Now we have a list of lists, so flatten it:
 # results = [x for xs in results for x in xs]
 
@@ -324,7 +398,8 @@ results = list(OrderedDict.fromkeys(results))
 # Third, put additional weights on results with a very high ontology index.
 # (E.g. Q11666766 (restaurant; type of business under Japan’s Food Sanitation Law))
 if HEURISTIC_USE_ONTOLOGY_INDEXES:
-    ontology_indexes = [_id for _id, label, description in results]
+    ontology_indexes = [int(_id[1:]) for _id, label, description in results]
+    # (the [1:] strips the "Q" prefix that each Wikidata entry has)
     average_ontology_index = statistics.mean(ontology_indexes)
     ontology_index_standard_deviation = statistics.stdev(ontology_indexes)
     # Put additional weights on ontology entries with whose index is more than X
