@@ -70,7 +70,8 @@ HEURISTIC_USE_ONTOLOGY_INDEXES = True
 # The word blacklist lists words that occur frequently on websites or next to data
 # and words describing statistical relationships, often occurring next to data
 # (cf. the fixed keyword sets for SQL aggregation functions used by the AggChecker).
-WORD_BLACKLIST = ["filter", "information", "home", "count", "number", "total", "sum", "I"]
+WORD_BLACKLIST =\
+    ["filter", "information", "home", "count", "number", "total", "sum", "I", "are"]
 
 
 def get_wikidata_entry_candidates(search_string):
@@ -287,7 +288,7 @@ if HEURISTIC_ONLY_KEEP_CLASSES:
         for noun, ontology_links in successful_dict_matches_with_ontology_links.items()])
     if DEBUG:
         print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
-            + " ontology mappings left after having removed everything that is not a subclass sth.")
+            + " ontology mappings left after having removed everything that is not a subclass of sth.")
 
 # Filter out ontology mappings that are subclasses of other ontology mappings.
 # Use the P279 ("subclass of", i.e. "next higher class or type") property for that:
@@ -310,7 +311,6 @@ if HEURISTIC_USE_SUPERTYPES_ONLY:
     if DEBUG:
         print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
             + " ontology mappings left after having applied supertype-only heuristic.")
-        print("")  # separator
 
 # Use the nltk library to *try* to generate a natural language parse for the input
 # text and filter out non-nouns that could not be recognized as non-nouns using
@@ -359,6 +359,7 @@ word_frequency_of_least_frequent_word =\
 # If all nouns occur with approximately the same frequency:
 if word_frequency_of_most_frequent_word - word_frequency_of_least_frequent_word <= 1:
     # Use method (2):
+    if DEBUG: print("Nouns occur with approx. the same frequency: list top-to-bottom...")
     # left-to-right:
     for x in range(0, max(\
         [len(ontology_links_for_yth_noun) for ontology_links_for_yth_noun\
@@ -372,6 +373,7 @@ if word_frequency_of_most_frequent_word - word_frequency_of_least_frequent_word 
                 results += [ontology_links_for_yth_noun[x]]
 else: # Some nouns are much more common than other nouns:
     # Use method (3):
+    if DEBUG: print("Some nouns are much more comman than others: list Cantor-like...")
     total_number_of_ontology_links =\
         sum(map(\
             lambda lst: len(lst), successful_dict_matches_with_ontology_links.values()\
@@ -402,6 +404,8 @@ if HEURISTIC_USE_ONTOLOGY_INDEXES:
     # Put additional weights on ontology entries with whose index is more than X
     #   standard deviations away from the mean/average:
     # ToDo
+
+if DEBUG: print("")  # separator
 
 # At last, print the result:
 for _id, label, description in results:
