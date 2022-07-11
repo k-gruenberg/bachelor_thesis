@@ -1,5 +1,5 @@
 import sys
-import os  # ToDo: "Program (brit. Programme)" !!!! (also filter_nouns.py !!!!)
+import os
 from os.path import exists
 from itertools import takewhile
 import urllib.parse
@@ -152,6 +152,7 @@ for line in oxford_dictionary_file:
     if " —n. " in line:  # word has multiple definitions, one of them is a noun:
         noun = " ".join(list(takewhile(lambda w: w not in ["—n.", "—v.", "—adj."], line.split())))
         noun = re.sub(r"\d", "", noun)  # remove digits from noun (e.g. "Date1")
+        noun = re.sub(r"\(.*\)", "", noun).strip()  # e.g. "Program  (brit. Programme)"=>"Program"
         if len(noun) <= 2: continue  # ignore nouns with 1 or 2 letters
         # the noun definition is everything after the first "—n." and before the next "—":
         definition = line.split(" —n. ")[1].split("—")[0].strip()
@@ -160,6 +161,7 @@ for line in oxford_dictionary_file:
     elif " n. " in line:  # word has only one definition, which is a noun:
         noun = line.split(" n. ")[0].strip()
         noun = re.sub(r"\d", "", noun)  # remove digits from noun (e.g. "Date2")
+        noun = re.sub(r"\(.*\)", "", noun).strip()  # e.g. "Program  (brit. Programme)"=>"Program"
         if len(noun) <= 2: continue  # ignore nouns with 1 or 2 letters
         definition = line.split(" n. ")[1].strip()
         nouns_with_definition[noun.lower()] =\
