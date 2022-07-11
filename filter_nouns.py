@@ -29,6 +29,7 @@ def get_wikidata_entry_candidates(search_string):
 
 
 input_text = sys.argv[1]  # the text to filter for nouns
+NO_WIKIDATA = (len(sys.argv) >= 3 and sys.argv[2] == "--no-wikidata")
 
 oxford_dictionary_file_path = os.path.expanduser("~/Oxford_English_Dictionary.txt")
 oxford_dictionary_url =\
@@ -93,14 +94,19 @@ for noun_candidate in noun_candidates:
     if noun_candidate.lower() in nouns_with_definition.keys():
         dictionary_match = noun_candidate.lower()
     # when the noun candidate is a plural, look up the singular in the dictionary:
-    elif noun_candidate.lower()[-1] == "s" and noun_candidate.lower()[:-1] in nouns_with_definition.keys():
+    elif noun_candidate.lower()[-3:] == "ies" and noun_candidate.lower()[:-3] + "y"\
+            in nouns_with_definition.keys():
+        dictionary_match = noun_candidate.lower()[:-3] + "y"
+    elif noun_candidate.lower()[-1] == "s" and noun_candidate.lower()[:-1]\
+            in nouns_with_definition.keys():
         dictionary_match = noun_candidate.lower()[:-1]
 
     if dictionary_match != "":  # successful match in dictionary:
         successful_matches.append(noun_candidate)  # e.g. add "credit card" to successful matches
 
-        ontology_link = get_wikidata_entry_candidates(dictionary_match)
         print(noun_candidate)
         print(nouns_with_definition[dictionary_match])
-        print(ontology_link)
+        if not NO_WIKIDATA:
+            ontology_link = get_wikidata_entry_candidates(dictionary_match)
+            print(ontology_link)
         print("")  # print empty line as separator

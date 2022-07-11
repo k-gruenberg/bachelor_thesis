@@ -1,5 +1,5 @@
 import sys
-import os
+import os  # ToDo: "Program (brit. Programme)" !!!! (also filter_nouns.py !!!!)
 from os.path import exists
 from itertools import takewhile
 import urllib.parse
@@ -64,7 +64,7 @@ HEURISTIC_USE_SUPERTYPES_ONLY = True
 # Example:
 # Q11707 (restaurant; single establishment which prepares and serves food, located in building)
 #   vs.
-# Q11666766 (restaurant; type of business under Japan’s Food Sanitation Law)
+# Q11666766 (restaurant; type of business under Japan's Food Sanitation Law)
 HEURISTIC_USE_ONTOLOGY_INDEXES = True
 
 # The word blacklist lists words that occur frequently on websites or next to data
@@ -94,7 +94,7 @@ def get_wikidata_entry_candidates(search_string):
     )
 
 # Example: get_wikidata_properties(entity_id = "Q42") =
-#          {'P31': 'Q5', 'P21': 'Q6581097', 'P106': 'Q214917', ...}
+#          {'P31': 'Q5', 'P21': 'Q6581097', 'P106': 'Q214917', ...} # ToDo: multiple values => lists!!!
 # Note that only the first (0th) value is returned when a property has multiple values!
 def get_wikidata_properties(entity_id):
     api_url = \
@@ -195,7 +195,11 @@ for noun_candidate in noun_candidates:
     if noun_candidate.lower() in nouns_with_definition.keys():
         dictionary_match = noun_candidate.lower()
     # when the noun candidate is a plural, look up the singular in the dictionary:
-    elif noun_candidate.lower()[-1] == "s" and noun_candidate.lower()[:-1] in nouns_with_definition.keys():
+    elif noun_candidate.lower()[-3:] == "ies" and noun_candidate.lower()[:-3] + "y"\
+            in nouns_with_definition.keys():
+        dictionary_match = noun_candidate.lower()[:-3] + "y"
+    elif noun_candidate.lower()[-1] == "s" and noun_candidate.lower()[:-1]\
+            in nouns_with_definition.keys():
         dictionary_match = noun_candidate.lower()[:-1]
 
     if dictionary_match != "":  # successful match in dictionary:
@@ -288,7 +292,8 @@ if HEURISTIC_ONLY_KEEP_CLASSES:
         for noun, ontology_links in successful_dict_matches_with_ontology_links.items()])
     if DEBUG:
         print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
-            + " ontology mappings left after having removed everything that is not a subclass of sth.")
+            + " ontology mappings left after having"\
+            + " removed everything that is not a subclass of sth.")
 
 # Filter out ontology mappings that are subclasses of other ontology mappings.
 # Use the P279 ("subclass of", i.e. "next higher class or type") property for that:
@@ -395,7 +400,7 @@ else: # Some nouns are much more common than other nouns:
 results = list(OrderedDict.fromkeys(results))
 
 # Third, put additional weights on results with a very high ontology index.
-# (E.g. Q11666766 (restaurant; type of business under Japan’s Food Sanitation Law))
+# (E.g. Q11666766 (restaurant; type of business under Japan's Food Sanitation Law))
 if HEURISTIC_USE_ONTOLOGY_INDEXES:
     ontology_indexes = [int(_id[1:]) for _id, label, description in results]
     # (the [1:] strips the "Q" prefix that each Wikidata entry has)
@@ -403,7 +408,7 @@ if HEURISTIC_USE_ONTOLOGY_INDEXES:
     ontology_index_standard_deviation = statistics.stdev(ontology_indexes)
     # Put additional weights on ontology entries with whose index is more than X
     #   standard deviations away from the mean/average:
-    # ToDo
+    # ToDo => implement/keep/remove/deactivate this feature?!
 
 if DEBUG: print("")  # separator
 
