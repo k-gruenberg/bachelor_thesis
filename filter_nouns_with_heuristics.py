@@ -1,7 +1,9 @@
+from __future__ import annotations
 import sys
 import os
 from os.path import exists
-from itertools import takewhile
+import itertools
+from itertools import takewhile, chain
 import urllib.parse
 import json
 from urllib.request import urlopen
@@ -9,6 +11,7 @@ import re  # regex
 from collections import OrderedDict
 import statistics
 import math
+from typing import List, Tuple
 
 
 # Only consider the first N results/ontology mappings for each noun.
@@ -73,51 +76,105 @@ HEURISTIC_USE_ONTOLOGY_INDEXES = True
 WORD_BLACKLIST =\
     ["filter", "information", "home", "count", "number", "total", "sum", "I", "are"]
 
+# Whether to activate debug info prints:
+DEBUG = True
 
-def get_wikidata_entry_candidates(search_string):
-    api_url = \
+
+class WikidataItem:
+    API_URL_SEARCH_ENTITIES = \
         "https://www.wikidata.org/" \
-        "w/api.php?action=wbsearchentities&format=json&language=en&type=item&continue=0&search="\
-        + urllib.parse.quote_plus(search_string)
-    json_result = urlopen(api_url).read().decode('utf-8')
-    parsed_json = json.loads(json_result)
-
-    # Return a tuple of id, label and description for each search result:
-    return list(
-        map(
-            lambda list_el:
-                (list_el["id"],
-                 list_el.get("label", ""),
-                 list_el.get("description", "")),
-            parsed_json["search"]
-        )
-    )
-
-# Example: get_wikidata_properties(entity_id = "Q42") =
-#          {'P31': 'Q5', 'P21': 'Q6581097', 'P106': 'Q214917', ...} # ToDo: multiple values => lists!!!
-# Note that only the first (0th) value is returned when a property has multiple values!
-def get_wikidata_properties(entity_id):
-    api_url = \
+        "w/api.php?action=wbsearchentities&format=json&language=en&type=item&continue=0&search="
+    API_URL_GET_ENTITIES = \
         "https://www.wikidata.org/" \
         "w/api.php?action=wbgetentities&format=json&languages=en&ids="\
-        + urllib.parse.quote_plus(entity_id)
-    json_result = urlopen(api_url).read().decode('utf-8')
-    parsed_json = json.loads(json_result)
-    #
-    properties = parsed_json["entities"][entity_id]["claims"]
-    property_value_pairs =\
-        {_property : properties[_property][0]["mainsnak"]["datavalue"]["value"]\
-        for _property in properties.keys()\
-        if "mainsnak" in properties[_property][0]\
-        and "datavalue" in properties[_property][0]["mainsnak"]\
-        and "value" in properties[_property][0]["mainsnak"]["datavalue"]}
-    # Sometimes the value is a string directly and sometimes one has to get the id attribute:
-    property_value_pairs =\
-        {_property: value if type(value) is str else value.get("id", "") \
-        for _property, value in property_value_pairs.items()}
-    return property_value_pairs
 
-def inverse_cantor_pairing_function(z):
+    def __init__(self, entity_id: str, label="", description="", properties={}):
+        self.entity_id = entity_id
+        self.label = label
+        self.description = description
+        self.properties = properties
+
+    def get_property(self, _property: str) -> List[str]:
+        """
+        Example:
+        >>> result = WikidataItem.get_items_matching_search_string("China")
+        >>> prc = result[0]
+        >>> prc.get_property("P31")  # P31 = "instance of" property
+        ['Q3624078', 'Q842112', 'Q859563', 'Q1520223', 'Q6256', 'Q465613', 'Q118365', 'Q15634554', 'Q849866']
+        """
+
+        if self.properties == {}:  # Properties have not been fetched from Wikidata yet:
+            api_url = WikidataItem.API_URL_GET_ENTITIES\
+                + urllib.parse.quote_plus(self.entity_id)
+            json_result = urlopen(api_url).read().decode('utf-8')
+            if DEBUG: print("Fetched properties: " + api_url)
+            parsed_json = json.loads(json_result)
+            
+            parsed_properties = parsed_json["entities"][self.entity_id]["claims"]
+            for parsed_property in parsed_properties.keys():
+                self.properties[parsed_property] =\
+                    list(
+                        map(
+                            lambda value:
+                                value if type(value) is str else value.get("id", ""),
+                            map(
+                                lambda list_el:
+                                    list_el["mainsnak"]["datavalue"]["value"],
+                                parsed_properties[parsed_property]
+                            )
+                        )
+                    )
+
+        return self.properties.get(_property, None)
+
+    def get_superclasses(self, levels=1) -> List[str]:  # ToDo: test levels
+        # https://www.wikidata.org/wiki/Property:P279 ("subclass of")
+        if levels == 0:
+            return []
+        superclasses = self.get_property("P279")
+        superclasses = list(itertools.chain.from_iterable(\
+            map(\
+                lambda superclass:\
+                    [superclass] +\
+                    WikidataItem(superclass).get_superclasses(levels=levels-1),\
+                superclasses\
+            )\
+        ))
+        return superclasses
+
+    def is_subclass_of(self, _id: str) -> bool:
+        # https://www.wikidata.org/wiki/Property:P279
+        return self.get_property("P279") is not None\
+            and _id in self.get_property("P279")
+
+    def is_instance_of(self, _id: str) -> bool:
+        # https://www.wikidata.org/wiki/Property:P31 ("instance of")
+        return self.get_property("P31") is not None\
+            and _id in self.get_property("P31")
+
+    @classmethod
+    def get_items_matching_search_string(cls, search_string: str) -> List[WikidataItem]:
+        api_url = cls.API_URL_SEARCH_ENTITIES\
+            + urllib.parse.quote_plus(search_string)
+        json_result = urlopen(api_url).read().decode('utf-8')
+        if DEBUG: print("Fetched entities: " + api_url)
+        parsed_json = json.loads(json_result)
+
+        # Return id, label and description for each search result:
+        return list(
+            map(
+                lambda list_el:
+                    WikidataItem(
+                        entity_id=list_el["id"],
+                        label=list_el.get("label", ""),
+                        description=list_el.get("description", "")
+                     ),
+                parsed_json["search"]
+            )
+        )
+
+
+def inverse_cantor_pairing_function(z: int) -> Tuple[int, int]:
     # Source:
     # https://en.wikipedia.org/wiki/Pairing_function#Inverting_the_Cantor_pairing_function
     w = math.floor( (math.sqrt(8*z + 1) - 1) / 2)
@@ -126,11 +183,21 @@ def inverse_cantor_pairing_function(z):
     x = w - y
     return int(x), int(y)
 
+
+def noun_match(noun1: str, noun2: str) -> bool:
+    return noun1.lower() == noun2.lower()\
+        or noun1.lower()[-3:] == "ies" and noun2 == noun1.lower()[:-3] + "y"\
+        or noun2.lower()[-3:] == "ies" and noun1 == noun2.lower()[:-3] + "y"\
+        or noun1.lower()[-1]  ==   "s" and noun2 == noun1.lower()[:-1]\
+        or noun2.lower()[-1]  ==   "s" and noun1 == noun2.lower()[:-1]\
+
+
 input_text = sys.argv[1]  # the text to filter for nouns
-DEBUG = (len(sys.argv) >= 3 and sys.argv[2] == "--debug")  # whether to activate debug prints
-if DEBUG:
+# Whether to activate verbose prints:
+VERBOSE = (len(sys.argv) >= 3 and sys.argv[2] in ["--verbose", "-v"])
+if VERBOSE:
     print("")  # separator
-    print("Debug prints activated.")
+    print("Verbose prints activated.")
 
 oxford_dictionary_file_path = os.path.expanduser("~/Oxford_English_Dictionary.txt")
 oxford_dictionary_url =\
@@ -184,8 +251,9 @@ for word_length in range(len(words), 0, -1):
 # print("noun_candidates = " + str(noun_candidates))
 
 # Second, try to find all these noun candidates in the dictionary:
-successful_matches = []
-successful_dict_matches_with_ontology_links = OrderedDict([])
+successful_matches: List[str] = []
+successful_dict_matches_with_ontology_links: OrderedDict[str, List[WikidataItem]] =\
+    OrderedDict([])
 for noun_candidate in noun_candidates:
     if any(map(lambda sm: noun_candidate in sm, successful_matches)):
         # e.g. "credit" but "credit card" has already been matched before
@@ -209,15 +277,18 @@ for noun_candidate in noun_candidates:
 
         # Query Wikidata with the noun found to get candidates for
         #   possible matching ontology entries:
-        ontology_links = get_wikidata_entry_candidates(dictionary_match)
+        ontology_links: List[WikidataItem] =\
+            WikidataItem.get_items_matching_search_string(dictionary_match)
         # Heuristic: keep only the first N results:
         ontology_links = ontology_links[:HEURISTIC_ONLY_FIRST_N_RESULTS] 
         successful_dict_matches_with_ontology_links[dictionary_match] = ontology_links
-        if DEBUG: print(dictionary_match + ": " + str([_id for _id, label, descr in ontology_links]))
+        if VERBOSE:
+            print(dictionary_match + ": "\
+                + str([wikidata_item.entity_id for wikidata_item in ontology_links]))
 
 nouns = successful_dict_matches_with_ontology_links.keys()
 
-if DEBUG:
+if VERBOSE:
     print(str(len(nouns)) + " nouns found, with a total of "\
         + str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
         + " ontology mappings: " + str(nouns))
@@ -229,14 +300,25 @@ if DEBUG:
 if HEURISTIC_SYNONYMS:
     # Consider all pairs of nouns to check if they are synonyms:
     for noun1, noun2 in [(n1, n2) for n1 in nouns for n2 in nouns]:
-        ontology_ids_noun1 = successful_dict_matches_with_ontology_links[noun1]
-        ontology_ids_noun2 = successful_dict_matches_with_ontology_links[noun2]
-        ontology_ids_intersection = [_id for _id in ontology_ids_noun1 if _id in ontology_ids_noun2]
+        if noun1 == noun2: continue  # each noun is trivially a synonym for itself
+        ontology_links_noun1 = successful_dict_matches_with_ontology_links[noun1]
+        ontology_ids_noun1 = [item.entity_id for item in ontology_links_noun1]
+        ontology_links_noun2 = successful_dict_matches_with_ontology_links[noun2]
+        ontology_ids_noun2 = [item.entity_id for item in ontology_links_noun2]
+        ontology_ids_intersection =\
+            [_id for _id in ontology_ids_noun1 if _id in ontology_ids_noun2]
         if ontology_ids_intersection != []: # noun1 and noun2 are synonyms:
+            if VERBOSE:
+                print("'" + noun1 + "' and '" + noun2\
+                    + "' are synonyms; only keeping their intersection: "\
+                    + str(ontology_ids_intersection))
             # Remove all other ontology links:
-            successful_dict_matches_with_ontology_links[noun1] = ontology_ids_intersection
-            successful_dict_matches_with_ontology_links[noun2] = ontology_ids_intersection
-    if DEBUG:
+            ontology_links_intersection =\
+                [link for link in ontology_links_noun1\
+                 if link.entity_id in ontology_ids_intersection]
+            successful_dict_matches_with_ontology_links[noun1] = ontology_links_intersection
+            successful_dict_matches_with_ontology_links[noun2] = ontology_links_intersection
+    if VERBOSE:
         print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
             + " ontology mappings left after having applied synonym heuristic.")
 
@@ -250,16 +332,9 @@ if HEURISTIC_WORD_BLACKLIST:
                 successful_dict_matches_with_ontology_links.items()\
             )\
         ))
-    if DEBUG:
+    if VERBOSE:
         print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
             + " ontology mappings left after having applied word blacklist heuristic.")
-
-# For the upcoming heuristics, we need the properties of all the Wikidata ontology links:
-all_ontology_ids =\
-    [ontology_id for noun, ontology_links in successful_dict_matches_with_ontology_links.items()\
-    for ontology_id, ontology_label, ontology_description in ontology_links]
-wikidata_properties =\
-    {ontology_id : get_wikidata_properties(ontology_id) for ontology_id in all_ontology_ids}
 
 # Remove ontology mappings to movies, TV series, paintings and bands (musical groups).
 # Use the P31 ("instance of") property for that:
@@ -270,12 +345,12 @@ if HEURISTIC_FILTER_OUT_MOVIES_ETC:
         list(\
             filter(\
                 lambda ontology_link:\
-                    wikidata_properties[ontology_link[0]].get("P31", "") not in class_blacklist,\
+                    not any(ontology_link.is_instance_of(_class) for _class in class_blacklist),\
                 ontology_links\
             )\
         ))\
         for noun, ontology_links in successful_dict_matches_with_ontology_links.items()])
-    if DEBUG:
+    if VERBOSE:
         print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
             + " ontology mappings left after having applied movie, TV series, etc. heuristic.")
 
@@ -287,12 +362,12 @@ if HEURISTIC_ONLY_KEEP_CLASSES:
         list(\
             filter(\
                 lambda ontology_link:\
-                    "P279" in wikidata_properties[ontology_link[0]],\
+                    ontology_link.get_superclasses() is not None,\
                 ontology_links\
             )\
         ))\
         for noun, ontology_links in successful_dict_matches_with_ontology_links.items()])
-    if DEBUG:
+    if VERBOSE:
         print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
             + " ontology mappings left after having"\
             + " removed everything that is not a subclass of sth.")
@@ -300,30 +375,96 @@ if HEURISTIC_ONLY_KEEP_CLASSES:
 # Filter out ontology mappings that are subclasses of other ontology mappings.
 # Use the P279 ("subclass of", i.e. "next higher class or type") property for that:
 if HEURISTIC_USE_SUPERTYPES_ONLY:
-    all_ontology_ids =\
-    [ontology_id for noun, ontology_links in successful_dict_matches_with_ontology_links.items()\
-    for ontology_id in ontology_links]
+    all_ontology_ids: List[str] =\
+        [ontology_link.entity_id\
+         for noun, ontology_links in successful_dict_matches_with_ontology_links.items()\
+         for ontology_link in ontology_links]
 
     successful_dict_matches_with_ontology_links =\
         OrderedDict([(noun,\
         list(\
             filter(\
                 lambda ontology_link:\
-                    wikidata_properties[ontology_link[0]].get("P279", "") not in all_ontology_ids,\
+                    not any(superclass in all_ontology_ids\
+                        for superclass in ontology_link.get_superclasses()),\
                 ontology_links\
             )\
         ))\
         for noun, ontology_links in successful_dict_matches_with_ontology_links.items()])
 
-    if DEBUG:
+    if VERBOSE:
         print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
             + " ontology mappings left after having applied supertype-only heuristic.")
 
-# Use the nltk library to *try* to generate a natural language parse for the input
+# Use the nltk library to generate a natural language parse tree for the input
 # text and filter out non-nouns that could not be recognized as non-nouns using
-# the naive dictionary approach, e.g. "indicative": 
+# the naive dictionary approach, example:
+#
+# "The table below lists the vehicles in our fleet.
+#  A team of mechanics reviews them every week."
+#
+# The parse tree includes ('vehicles', 'NNS') and ('reviews', 'VBP'),
+#   i.e. recognizes 'vehicles' as a noun and 'reviews' as a verb.
+# Our heuristic now says that the table could contain 'vehicles'
+#   but it probably does not contain 'reviews'.
 if HEURISTIC_FILTER_OUT_NON_NOUNS_USING_NLTK:
-    pass # ToDo
+    # Source: https://stackoverflow.com/questions/15388831/
+    #           what-are-all-possible-pos-tags-of-nltk
+    #         and `nltk.download('tagsets')` command
+    NOUN_TAGS = ["NN",  # = noun, common, singular or mass
+                 "NNP",  # = noun, proper, singular
+                 "NNS",  # = noun, common, plural
+                 "NNPS"] # = noun, proper, plural
+
+    # Source: https://stackoverflow.com/questions/42322902/
+    #           how-to-get-parse-tree-using-python-nltk
+    import nltk
+    nltk.download('punkt')
+    nltk.download('averaged_perceptron_tagger')
+    from nltk import pos_tag, word_tokenize, RegexpParser
+    tagged = pos_tag(word_tokenize(input_text))
+    chunker = RegexpParser("""
+                    NP: {<DT>?<JJ>*<NN>} #To extract Noun Phrases
+                    P: {<IN>}            #To extract Prepositions
+                    V: {<V.*>}           #To extract Verbs
+                    PP: {<p> <NP>}       #To extract Prepositional Phrases
+                    VP: {<V> <NP|PP>*}   #To extract Verb Phrases
+                    """)
+    parse_tree = chunker.parse(tagged)
+    
+    # Now we know for each word in the input text whether it is
+    #   a noun, verb, determiner, preposition/conjunction, etc.
+    # Filter out all "nouns" that never actually occur as a noun in the text,
+    #   according to the parse tree:
+    non_nouns = []
+    for supposed_noun in successful_dict_matches_with_ontology_links.keys():
+        all_nltp_tags_for_supposed_noun =\
+            list(\
+                map(\
+                    lambda leaf: leaf[1],\
+                    filter(\
+                        lambda leaf: noun_match(leaf[0], supposed_noun),\
+                        parse_tree.leaves()\
+                    )\
+                )\
+            )
+        if [] == [tag for tag in all_nltp_tags_for_supposed_noun if tag in NOUN_TAGS]:
+            # Supposed_noun isn't actually a noun in the text!
+            non_nouns += [supposed_noun]
+            if VERBOSE:
+                print(supposed_noun +\
+                    " is not actually used a noun in the input text" +\
+                    " according to its parse tree but rather as " +\
+                    str(all_nltp_tags_for_supposed_noun))
+
+    # After having found all non-nouns, delete them:
+    for non_noun in non_nouns:
+        del successful_dict_matches_with_ontology_links[non_noun]
+
+    if VERBOSE:
+        print(str(sum([len(lst) for lst in successful_dict_matches_with_ontology_links.values()]))\
+            + " ontology mappings left after having applied nouns-only heuristic (parse tree).")
+
 
 # At last, after having applied all heuristics, sort the remaining results and
 # print them.
@@ -357,7 +498,7 @@ successful_dict_matches_with_ontology_links =\
 # * We will use method (2) when all nouns occur with approximately the same frequency.
 # * We will use method (3) when some nouns are much more common than other nouns.
 
-results = [] # output to be printed; triples of (_id, label, description)
+results: List[WikidataItem] = [] # output to be printed
 
 word_frequency_of_most_frequent_word =\
     word_frequency(list(successful_dict_matches_with_ontology_links.keys())[0])
@@ -366,7 +507,7 @@ word_frequency_of_least_frequent_word =\
 # If all nouns occur with approximately the same frequency:
 if word_frequency_of_most_frequent_word - word_frequency_of_least_frequent_word <= 1:
     # Use method (2):
-    if DEBUG: print("Nouns occur with approx. the same frequency: list top-to-bottom...")
+    if VERBOSE: print("Nouns occur with approx. the same frequency: list top-to-bottom...")
     # left-to-right:
     for x in range(0, max(\
         [len(ontology_links_for_yth_noun) for ontology_links_for_yth_noun\
@@ -380,7 +521,7 @@ if word_frequency_of_most_frequent_word - word_frequency_of_least_frequent_word 
                 results += [ontology_links_for_yth_noun[x]]
 else: # Some nouns are much more common than other nouns:
     # Use method (3):
-    if DEBUG: print("Some nouns are much more comman than others: list Cantor-like...")
+    if VERBOSE: print("Some nouns are much more comman than others: list Cantor-like...")
     total_number_of_ontology_links =\
         sum(map(\
             lambda lst: len(lst), successful_dict_matches_with_ontology_links.values()\
@@ -404,7 +545,7 @@ results = list(OrderedDict.fromkeys(results))
 # Third, put additional weights on results with a very high ontology index.
 # (E.g. Q11666766 (restaurant; type of business under Japan's Food Sanitation Law))
 if HEURISTIC_USE_ONTOLOGY_INDEXES:
-    ontology_indexes = [int(_id[1:]) for _id, label, description in results]
+    ontology_indexes = [int(result.entity_id[1:]) for result in results]
     # (the [1:] strips the "Q" prefix that each Wikidata entry has)
     average_ontology_index = statistics.mean(ontology_indexes)
     ontology_index_standard_deviation = statistics.stdev(ontology_indexes)
@@ -412,8 +553,8 @@ if HEURISTIC_USE_ONTOLOGY_INDEXES:
     #   standard deviations away from the mean/average:
     # ToDo => implement/keep/remove/deactivate this feature?!
 
-if DEBUG: print("")  # separator
+if VERBOSE: print("")  # separator
 
 # At last, print the result:
-for _id, label, description in results:
-    print(_id + " (" + label + "; " + description + ")")
+for result in results:
+    print(result.entity_id + " (" + result.label + "; " + result.description + ")")
