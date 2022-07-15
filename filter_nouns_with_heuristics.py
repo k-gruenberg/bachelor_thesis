@@ -62,13 +62,20 @@ HEURISTIC_FILTER_OUT_NON_NOUNS_USING_NLTK = True
 # When we have both of these in our possible mappings, remove the subtype Q1420.
 HEURISTIC_USE_SUPERTYPES_ONLY = True
 
+# When set to 1, only the direct supertypes are considered for the
+#   HEURISTIC_USE_SUPERTYPES_ONLY heuristic.
+# For higher levels, the supertypes of these supertypes are considered as well
+#   in a recusive fashion.
+# DO NOT SET THIS NUMBER TOO HIGH!!
+SUPERTYPES_NUMBER_OF_LEVELS = 1
+
 # Prefer ontology entries with smaller indexes over those with larger indexes.
 #
 # Example:
 # Q11707 (restaurant; single establishment which prepares and serves food, located in building)
 #   vs.
 # Q11666766 (restaurant; type of business under Japan's Food Sanitation Law)
-HEURISTIC_USE_ONTOLOGY_INDEXES = True
+HEURISTIC_USE_ONTOLOGY_INDEXES = False
 
 # The word blacklist lists words that occur frequently on websites or next to data
 # and words describing statistical relationships, often occurring next to data
@@ -77,7 +84,7 @@ WORD_BLACKLIST =\
     ["filter", "information", "home", "count", "number", "total", "sum", "I", "are"]
 
 # Whether to activate debug info prints:
-DEBUG = True
+DEBUG = False
 
 
 class WikidataItem:
@@ -88,11 +95,11 @@ class WikidataItem:
         "https://www.wikidata.org/" \
         "w/api.php?action=wbgetentities&format=json&languages=en&ids="\
 
-    def __init__(self, entity_id: str, label="", description="", properties={}):
+    def __init__(self, entity_id: str, label="", description=""):
         self.entity_id = entity_id
         self.label = label
         self.description = description
-        self.properties = properties
+        self.properties = dict()
 
     def get_property(self, _property: str) -> List[str]:
         """
@@ -100,7 +107,8 @@ class WikidataItem:
         >>> result = WikidataItem.get_items_matching_search_string("China")
         >>> prc = result[0]
         >>> prc.get_property("P31")  # P31 = "instance of" property
-        ['Q3624078', 'Q842112', 'Q859563', 'Q1520223', 'Q6256', 'Q465613', 'Q118365', 'Q15634554', 'Q849866']
+        ['Q3624078', 'Q842112', 'Q859563', 'Q1520223', 'Q6256', 'Q465613',
+         'Q118365', 'Q15634554', 'Q849866']
         """
 
         if self.properties == {}:  # Properties have not been fetched from Wikidata yet:
@@ -112,26 +120,38 @@ class WikidataItem:
             
             parsed_properties = parsed_json["entities"][self.entity_id]["claims"]
             for parsed_property in parsed_properties.keys():
-                self.properties[parsed_property] =\
-                    list(
-                        map(
-                            lambda value:
-                                value if type(value) is str else value.get("id", ""),
+                try:
+                    self.properties[parsed_property] =\
+                        list(
                             map(
-                                lambda list_el:
-                                    list_el["mainsnak"]["datavalue"]["value"],
-                                parsed_properties[parsed_property]
+                                lambda value:
+                                    value if type(value) is str else value.get("id", ""),
+                                map(
+                                    lambda list_el:
+                                        list_el["mainsnak"]["datavalue"]["value"],
+                                    parsed_properties[parsed_property]
+                                )
                             )
                         )
-                    )
+                except KeyError:
+                    if DEBUG:
+                        print("Could not parse property '" + parsed_property\
+                            + "' of entity '" + self.entity_id + "'")
 
+        #if DEBUG:
+        #    print(\
+        #        self.entity_id + ".properties.get(" + _property + ", None) = "\
+        #        + str(self.properties.get(_property, None))
+        #    )
         return self.properties.get(_property, None)
 
-    def get_superclasses(self, levels=1) -> List[str]:  # ToDo: test levels
+    def get_superclasses(self, levels=SUPERTYPES_NUMBER_OF_LEVELS) -> List[str]:
         # https://www.wikidata.org/wiki/Property:P279 ("subclass of")
         if levels == 0:
             return []
         superclasses = self.get_property("P279")
+        if superclasses is None:
+            return []
         superclasses = list(itertools.chain.from_iterable(\
             map(\
                 lambda superclass:\
@@ -195,9 +215,12 @@ def noun_match(noun1: str, noun2: str) -> bool:
 input_text = sys.argv[1]  # the text to filter for nouns
 # Whether to activate verbose prints:
 VERBOSE = (len(sys.argv) >= 3 and sys.argv[2] in ["--verbose", "-v"])
-if VERBOSE:
+if VERBOSE or DEBUG:
     print("")  # separator
+if VERBOSE:
     print("Verbose prints activated.")
+if DEBUG:
+    print("Debug prints activated.")
 
 oxford_dictionary_file_path = os.path.expanduser("~/Oxford_English_Dictionary.txt")
 oxford_dictionary_url =\
@@ -339,7 +362,11 @@ if HEURISTIC_WORD_BLACKLIST:
 # Remove ontology mappings to movies, TV series, paintings and bands (musical groups).
 # Use the P31 ("instance of") property for that:
 if HEURISTIC_FILTER_OUT_MOVIES_ETC:
-    class_blacklist = ["Q11424", "Q5398426", "Q3305213", "Q215380"]
+    class_blacklist = ["Q11424",  # "film"
+                       "Q5398426",  # "television series"
+                       "Q3305213",  # "painting"
+                       "Q215380",  # "musical group"
+                       "Q7725634"]  # "literary work" 
     successful_dict_matches_with_ontology_links =\
         OrderedDict([(noun,\
         list(\
@@ -362,7 +389,7 @@ if HEURISTIC_ONLY_KEEP_CLASSES:
         list(\
             filter(\
                 lambda ontology_link:\
-                    ontology_link.get_superclasses() is not None,\
+                    ontology_link.get_superclasses() != [],\
                 ontology_links\
             )\
         ))\
@@ -419,8 +446,8 @@ if HEURISTIC_FILTER_OUT_NON_NOUNS_USING_NLTK:
     # Source: https://stackoverflow.com/questions/42322902/
     #           how-to-get-parse-tree-using-python-nltk
     import nltk
-    nltk.download('punkt')
-    nltk.download('averaged_perceptron_tagger')
+    nltk.download('punkt', quiet=True)
+    nltk.download('averaged_perceptron_tagger', quiet=True)
     from nltk import pos_tag, word_tokenize, RegexpParser
     tagged = pos_tag(word_tokenize(input_text))
     chunker = RegexpParser("""
@@ -448,6 +475,13 @@ if HEURISTIC_FILTER_OUT_NON_NOUNS_USING_NLTK:
                     )\
                 )\
             )
+        if all_nltp_tags_for_supposed_noun == []:
+            # supposed_noun not found in the parse tree so this heuristic cannot
+            #   be applied to supposed_noun -> skip it.
+            # This occurs for nouns consisting of multiple words, e.g.
+            #   "credit card" or "happy hour" when they are separated into their
+            #   individual words by the parse tree.
+            continue
         if [] == [tag for tag in all_nltp_tags_for_supposed_noun if tag in NOUN_TAGS]:
             # Supposed_noun isn't actually a noun in the text!
             non_nouns += [supposed_noun]
@@ -551,7 +585,8 @@ if HEURISTIC_USE_ONTOLOGY_INDEXES:
     ontology_index_standard_deviation = statistics.stdev(ontology_indexes)
     # Put additional weights on ontology entries with whose index is more than X
     #   standard deviations away from the mean/average:
-    # ToDo => implement/keep/remove/deactivate this feature?!
+    # ----- this feature/heuristic is not implemented because it does not appear
+    #       to make much sense -----
 
 if VERBOSE: print("")  # separator
 
