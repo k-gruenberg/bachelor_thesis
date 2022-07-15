@@ -504,17 +504,33 @@ if HEURISTIC_FILTER_OUT_NON_NOUNS_USING_NLTK:
 # print them.
 # Word frequency, original result order and ontology index are used for sorting.
 
-def word_frequency(word):
-    return input_text.lower().count(word.lower())
+def word_frequency(word: str) -> int:
+    frequency = input_text.lower().count(word.lower())
+    if word.lower()[-1] == 'y':
+        frequency += input_text.lower().count((word[:-1] + "ies").lower())
+        # Example: when word == "country" we also have to add the count of
+        #   "countries" on top of the count of "country"
+    if DEBUG:
+        print("word_frequency(" + word + ") = " + str(frequency))
+    return frequency
+
+if DEBUG:
+    print("Nouns before sorting them by word frequency: " +\
+        str(successful_dict_matches_with_ontology_links.keys()))
 
 # First, sort the nouns by how often they appear in the input text:
 successful_dict_matches_with_ontology_links =\
     OrderedDict(\
         sorted(\
             successful_dict_matches_with_ontology_links.items(),\
-            key=lambda pair: word_frequency(pair[0])\
+            key=lambda pair: word_frequency(pair[0]),\
+            reverse=True\
         )\
     )
+
+if DEBUG:
+    print("Nouns after sorting them by word frequency: " +\
+        str(successful_dict_matches_with_ontology_links.keys()))
 
 # Second, we have to put all ontology links Q1, Q2, ... into a 1-dimensional list somehow:
 #
@@ -532,7 +548,7 @@ successful_dict_matches_with_ontology_links =\
 # * We will use method (2) when all nouns occur with approximately the same frequency.
 # * We will use method (3) when some nouns are much more common than other nouns.
 
-results: List[WikidataItem] = [] # output to be printed
+results: List[WikidataItem] = []  # output to be printed
 
 word_frequency_of_most_frequent_word =\
     word_frequency(list(successful_dict_matches_with_ontology_links.keys())[0])
@@ -561,11 +577,11 @@ else: # Some nouns are much more common than other nouns:
             lambda lst: len(lst), successful_dict_matches_with_ontology_links.values()\
         ))
     i = 0
-    while len(result) < total_number_of_ontology_links:
+    while len(results) < total_number_of_ontology_links:
         x, y = inverse_cantor_pairing_function(i)
         if y < len(successful_dict_matches_with_ontology_links.items())\
            and x < len(list(successful_dict_matches_with_ontology_links.items())[y][1]):
-            result += list(successful_dict_matches_with_ontology_links.items())[y][1][x]
+            results += [list(successful_dict_matches_with_ontology_links.items())[y][1][x]]
         i += 1
 
 # # Method (1) would have looked like this:

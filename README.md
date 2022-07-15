@@ -17,3 +17,16 @@ Players
 Teams
 [...]
 ```
+
+```
+$ python3 filter_nouns_with_heuristics.py "2008 2009 2010 2011 2012 2013 2014 2013 Tulsa Golden Hurricane Receiving through 01/06/2014 Players Teams Conferences National Home @SportSourceA Contact Us Advertise? Receiving > Tulsa > 2013 Teams > Home You are here:"
+Q327245 (team; group linked in a common purpose)
+Q58197759 (hurricane; group of tropical storms of the Atlantic and east Pacific basins with sustained wind speeds > 64 kt. Classified by Saffir–Simpson scale)
+Q4197743 (player; person who plays a game)
+Q625994 (convention; meeting of a group of individuals and/or companies in a certain field)
+Q23797 (contact lens; very thin plastic lens worn directly on the eye to correct visual defects)
+Q8418 (handball; team sport played with a thrown ball and goals)
+Q194251 (Hawker Hurricane; 1935 fighter aircraft family by Hawker)
+Q2992826 (athletic conference; collection of sports teams, playing competitively against each other, sometimes subdivided into divisions)
+Q394001 (electrical contact; part of a component that reversibly forms an electrical connection)
+```
