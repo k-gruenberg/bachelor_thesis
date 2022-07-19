@@ -45,5 +45,5 @@ $ python3 attr_names_to_ontology_class.py "Name" "Status" "County" "Population C
 0.5298701298701298 River
 0.512280701754386 Species
 0.4907407407407407 School
-
+[...]
 ```
