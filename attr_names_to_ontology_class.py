@@ -231,6 +231,7 @@ for dbpediaClass in dbpediaProperties.keys():
 	#   1.2580645161290323 Place
 	#   1.2285714285714286 Person
 	#   0.804040404040404 Settlement
+	#   0.6666666666666666 Openswarm
 	#   ...
 	#
 	######
