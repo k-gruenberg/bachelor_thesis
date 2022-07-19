@@ -138,19 +138,109 @@ def similarity(attrName1: str, attrName2: str) -> float:
 dbpediaClassesWithMatchScore: Dict[str, float] = {}
 for dbpediaClass in dbpediaProperties.keys():
 	ontologyAttrNames = dbpediaProperties[dbpediaClass]
+	
+	# Score/Metric #1:
+	# S(A_onto, A_data) = SIGMA(a in A_onto) max(a' in A_data) Jaccard(a, a')
+	#
+	# Results:
+	# * "mpg" "cylinders" "displacement" "horsepower" "weight" "acceleration"
+	#   "model year" "origin" "car name"
+	#   14.416038295039662 Person
+	#   10.235548695262871 PopulatedPlace
+	#   9.896932262979936 Place
+	#   4.7204906204906205 Engine (! plausible)
+	#   3.987794052147431 MeanOfTransportation (!!! #5)
+	#   3.685712972403385 Settlement
+	#   3.6221840251252013 AutomobileEngine
+	#   2.915719109216215 Athlete
+	#   2.872721988679722 Island
+	#   2.7356473145391575 SpaceMission
+	#   1.8786159384355638 Organisation
+	#   ...
+	# * "horsepower" "model year"
+	#   1.866265146388985 Place
+	#   1.8491635286446604 PopulatedPlace
+	#   1.810006350718425 MeanOfTransportation (!!! #3)
+	#   1.4348966265832603 Person
+	#   0.8267651236584727 ArchitecturalStructure
+	#   ...
+	# * "Name" "Status" "County" "Population Census 1990-04-01"
+	#   "Population Census 2000-04-01" "Population Census 2010-04-01":
+	#   11.145873174239679 PopulatedPlace (!!! #1)
+	#   8.184887886689442 Person
+	#   4.900212710648301 Place
+	#   2.5578531403004576 Settlement
+	#   1.9056646056646054 Island
+	#   ...
+	# * "Name" "Status" "County" "Population Census 1990-04-01"
+	#   11.145873174239679 PopulatedPlace (!!! #1)
+	#   8.184887886689442 Person
+	#   4.900212710648301 Place
+	#   2.5578531403004576 Settlement
+	#   1.9056646056646054 Island
+	#   ...
+	#
+	######
+	#
+	#dbpediaClassesWithMatchScore[dbpediaClass] =\
+	#	sum(\
+	#		[max([similarity(ontologyAttrName, inputAttrName)\
+	#			for inputAttrName in inputAttrNames])\
+	#		for ontologyAttrName in ontologyAttrNames]\
+	#	)
+
+	# Score/Metric #2:
+	# S(A_onto, A_data) = SIGMA(a in A_data) max(a' in A_onto) Jaccard(a, a')
+	#
+	# Advantage:
+	# The amount of summands now depends on |A_data| instead of |A_onto|
+	# and is therefore constant for all S(A_onto, A_data).
+	#
+	# Results:
+	# * "mpg" "cylinders" "displacement" "horsepower" "weight" "acceleration"
+	#   "model year" "origin" "car name"
+	#   3.85064935064935 Engine (!! very plausible)
+	#   2.712121212121212 AutomobileEngine
+	#   2.4840857671740024 Person
+	#   2.10226322590453 MeanOfTransportation (!!! #4)
+	#   1.3764152514152512 Place
+	#   1.2612146307798482 PopulatedPlace
+	#   1.223245885969671 Athlete
+	#   1.1267768780926675 School
+	#   ...
+	# * "horsepower" "model year"
+	#   0.6923076923076923 MeanOfTransportation (!!! #1)
+	#   0.4583333333333333 FictionalCharacter
+	#   0.375 Sales
+	#   0.34285714285714286 Place
+	#   0.26785714285714285 PopulatedPlace
+	#   0.2426470588235294 Athlete
+	#   0.23333333333333334 School
+	#   0.2222222222222222 SoccerPlayer
+	#   ...
+	# * "Name" "Status" "County" "Population Census 1990-04-01"
+	#   "Population Census 2000-04-01" "Population Census 2010-04-01":
+	#   2.223076923076923 PopulatedPlace (!!! #1)
+	#   1.7741935483870968 Place
+	#   1.5142857142857142 Person
+	#   1.2484848484848485 Settlement
+	#   0.96875 GeopoliticalOrganisation
+	#   ...
+	# * "Name" "Status" "County" "Population Census 1990-04-01"
+	#   1.6076923076923078 PopulatedPlace (!!! #1)
+	#   1.2580645161290323 Place
+	#   1.2285714285714286 Person
+	#   0.804040404040404 Settlement
+	#   ...
+	#
+	######
+	#
 	dbpediaClassesWithMatchScore[dbpediaClass] =\
 		sum(\
 			[max([similarity(ontologyAttrName, inputAttrName)\
-				for inputAttrName in inputAttrNames])\
-			for ontologyAttrName in ontologyAttrNames]\
+				for ontologyAttrName in ontologyAttrNames])\
+			for inputAttrName in inputAttrNames]\
 		)
-	# Example:
-	# The match score for the DBpedia class "Automobile" and
-	#   the (user-)input attribute names 
-	#   "mpg" "cylinders" "displacement" "horsepower" "weight" "acceleration"
-	#   "model year" "origin" "car name"
-	#   is computed as follows:
-	# ToDo
 
 
 # Now that we have a match score for each DBpedia class, we can print out all
