@@ -30,3 +30,20 @@ Q194251 (Hawker Hurricane; 1935 fighter aircraft family by Hawker)
 Q2992826 (athletic conference; collection of sports teams, playing competitively against each other, sometimes subdivided into divisions)
 Q394001 (electrical contact; part of a component that reversibly forms an electrical connection)
 ```
+
+```
+$ python3 attr_names_to_ontology_class.py "Name" "Status" "County" "Population Census 1990-04-01"
+1.6076923076923078 PopulatedPlace
+1.2580645161290323 Place
+1.2285714285714286 Person
+0.804040404040404 Settlement
+0.6666666666666666 Openswarm
+0.6573426573426574 Island
+0.6527777777777778 Work
+0.5865465803546299 Athlete
+0.5712121212121213 CelestialBody
+0.5298701298701298 River
+0.512280701754386 Species
+0.4907407407407407 School
+
+```
