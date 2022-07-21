@@ -55,7 +55,7 @@ import xml.etree.ElementTree as ET
 
 # ****** Parameters: ******
 USE_BETTER_SUM_FORMULA: bool = True
-USE_SBERT_INSTEAD_OF_JACCARD: bool = False
+USE_SBERT_INSTEAD_OF_JACCARD: bool = True
 VERBOSE = True
 
 # Each DBpedia class mapped to its properties:
@@ -135,12 +135,13 @@ inputAttrNames: List[str] = sys.argv[1:]
 #     as proposed by Pham et al.
 #     in "Semantic Labeling: A Domain-Independent Approach" (ISWC 2016)
 # (b) SBERT('s cosine similarity)
-#     Links: Installation:
+#     Links: * Installation:
 #              https://www.sbert.net/
-#            Comparing Sentence Similarities:
+#            * Comparing Sentence Similarities:
 #              https://www.sbert.net/docs/quickstart.html
 
 model = None
+sbert_encodings = {}  # each attribute name mapped to a vector (by SBERT)
 if USE_SBERT_INSTEAD_OF_JACCARD:
 	# *** For code below cf. https://www.sbert.net/docs/quickstart.html ***
 	if VERBOSE: print("[INFO] Preparing SBERT...")
@@ -166,8 +167,12 @@ def similarity(attrName1: str, attrName2: str) -> float:
 	else:  # Use SBERT('s cosine similarity) instead of Jaccard similarity:
 		# *** For code below cf. https://www.sbert.net/docs/quickstart.html ***	
 		# Sentences are encoded by calling model.encode():
-		emb1 = model.encode(attrName1)
-		emb2 = model.encode(attrName2)
+		emb1 = sbert_encodings[attrName1]\
+			if attrName1 in sbert_encodings\
+			else sbert_encodings.setdefault(attrName1, model.encode(attrName1))
+		emb2 = sbert_encodings[attrName2]\
+			if attrName2 in sbert_encodings\
+			else sbert_encodings.setdefault(attrName2, model.encode(attrName2))
 		# Compute Cosine-Similarity:
 		cos_sim = util.cos_sim(emb1, emb2)
 		return float(cos_sim)
@@ -176,8 +181,8 @@ def similarity(attrName1: str, attrName2: str) -> float:
 #   fit the `inputAttrNames`:
 dbpediaClassesWithMatchScore: Dict[str, float] = {}
 
-print("[PROGRESS] " + str(len(dbpediaProperties)) +\
-	  " classes to score: ", end="", flush=True)
+if VERBOSE: print("[PROGRESS] " + str(len(dbpediaProperties)) +\
+	              " classes to score: ", end="", flush=True)
 for dbpediaClass in dbpediaProperties.keys():
 	ontologyAttrNames = dbpediaProperties[dbpediaClass]
 	
