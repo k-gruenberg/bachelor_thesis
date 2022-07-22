@@ -47,3 +47,9 @@ $ python3 attr_names_to_ontology_class.py "Name" "Status" "County" "Population C
 0.4907407407407407 School
 [...]
 ```
+
+```
+$ python3 attr_extension_to_ontology_class.py "chevrolet chevelle malibu" "buick skylark 320" "plymouth satellite" "amc rebel sst" "ford torino" "ford galaxie 500"
+(5) Q3231690 (automobile model)
+(1) Q1361017 (Ford Torino)
+```
