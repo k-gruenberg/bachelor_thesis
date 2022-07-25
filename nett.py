@@ -299,13 +299,13 @@ class Table:
 		return combinedResult
 
 	def classifyUsingTextualSurroundings(self) -> Dict[WikidataItem, float]:
-		pass  # ToDo
+		pass  # ToDo: filter_nouns_with_heuristics.py
 
 	def classifyUsingAttrNames(self) -> Dict[WikidataItem, float]:
-		pass  # ToDo
+		pass  # ToDo: attr_names_to_ontology_class.py
 
 	def classifyUsingAttrExtensions(self) -> Dict[WikidataItem, float]:
-		pass  # ToDo
+		pass  # ToDo: attr_extension_to_ontology_class.py
 
 	@classmethod
 	def parseCSV(csv: str) -> Table:
@@ -333,10 +333,11 @@ dbpediaPropertiesMappedToSBERTvector: Dict[str, Any] =\
 	# ToDo: generate using another script
 	}
 
-# A small default table corpus to be used when no table corpus is supplied.
+# A small default table corpus (consisting of the 7 tables also used as
+#   examples throughout my paper) to be used when no table corpus is supplied.
 # Useful for testing.
 defaultTableCorpusWithCorrectMappings: List[Tuple[Table, WikidataItem]] =\
-	[ # ToDo
+	[ # ToDo: surrounding texts and Wikidata mappings
 	(
 		Table(
 			surroundingText=\
@@ -353,8 +354,8 @@ defaultTableCorpusWithCorrectMappings: List[Tuple[Table, WikidataItem]] =\
 			["70", "70", "70"],\
 			["1", "1", "1"],\
 			["\"chevrolet chevelle malibu\"", "\"buick skylark 320\"",\
-			"\"plymouth satellite\""]
-			]
+			"\"plymouth satellite\""]\
+			]\
 		),
 		WikidataItem(
 			entity_id="Q3231690",
@@ -367,11 +368,51 @@ defaultTableCorpusWithCorrectMappings: List[Tuple[Table, WikidataItem]] =\
 	(
 		Table(
 			surroundingText="",
-			headerRow=["", ""],
-			columns=[["", ""],["", ""]]
+			headerRow=["Country", "Project Name", "Types of Assistance",\
+			"Approval Number/s", "Status", "Approval Date"],
+			columns=[\
+			["Nepal", "Pakistan", "India", "India"],\
+			["30232-013 Decentralized Rural Infrastructure and Livelihoods",\
+			"""38135-013 Multisector Rehabilitation Project for Azad Jammu &
+			Kashmir""",
+			"35335-013 National Highway Sector II",
+			"""38136-013 Multi-sector Project for Infrastructure Rehabilitation
+			in Jammu and Kashmir"""],\
+			["Loan", "Loan", "Loan", "Loan"],
+			["2092", "2153", "2154", "2151"],
+			["Closed / Terminated", "Closed / Terminated",\
+			"Closed / Terminated", "Closed / Terminated"],
+			["23 Dec 2004", "21 Dec 2004", "21 Dec 2004", "21 Dec 2004"]\
+			]\
 		),
 		WikidataItem(
-			entity_id="",
+			entity_id="Q170584",
+			label="project",
+			description="""collaborative enterprise, frequently involving
+			research or design, that is carefully planned to achieve a
+			particular aim"""
+		)
+	),
+	(
+		Table(
+			surroundingText="",
+			headerRow=["Name", "Yr", "Pos", "G", "Rec.", "Yards", "Avg.",\
+			"TD", "Rec./G", "Yards/G"],
+			columns=[\
+			["Jordan James", "Keevan Lucas", "Trey Watts", "Thomas Roberson"],\
+			["SR", "FR", "SR", "JR"],\
+			["WR", "WR", "RB", "WR"],\
+			["11", "12", "12", "8"],\
+			["39", "32", "46", "27"],\
+			["471", "442", "395", "363"],\
+			["12.08", "13.81", "8.59", "13.44"],\
+			["2", "1", "1", "4"],\
+			["3.5", "2.7", "3.8", "3.4"],\
+			["42.8", "36.8", "32.9", "45.4"]\
+			]\
+		),
+		WikidataItem(
+			entity_id="",  # ToDo: "player" or ... ?!
 			label="",
 			description=""
 		)
@@ -379,11 +420,45 @@ defaultTableCorpusWithCorrectMappings: List[Tuple[Table, WikidataItem]] =\
 	(
 		Table(
 			surroundingText="",
-			headerRow=["", ""],
-			columns=[["", ""],["", ""]]
+			headerRow=["Restaurant Name", "Rating", "Price", "Reviews"],
+			columns=[\
+			["""1Aquarius2459 N Pulaski Rd |
+			At W Altgeld St Order From This Restaurant""",\
+			"""2BIG & little’s1034 W Belmont Ave |
+			At N Kenmore Ave Order From This Restaurant""",\
+			"""3Brown Bag Seafood Co.340 E Randolph St |
+			Btwn N Columbus & N Lake Shore Dr""",\
+			"""4Captain Hook’s Fish & Chicken8550 S Cottage Grove Ave |
+			Btwn E 85th & 86th St"""],\
+			["", "", "", ""],\
+			["$$", "$", "$$", "$"],\
+			["0", "0", "0", "14"]
+			]\
 		),
 		WikidataItem(
-			entity_id="",
+			entity_id="Q11707",
+			label="restaurant",
+			description="""single establishment which prepares and serves food,
+			located in building"""
+		)
+	),
+	(
+		Table(
+			surroundingText="",
+			headerRow=["Name", "Status", "County",\
+			"Population Census 1990-04-01", "Population Census 2000-04-01",\
+			"Population Census 2010-04-01"],
+			columns=[\
+			["Mound Station", "Mount Sterling", "Ripley", "Versailles"],\
+			["Village", "City", "Village", "Village"],\
+			["Brown", "Brown", "Brown", "Brown"],\
+			["147", "1,994", "75", "480"],\
+			["124", "2,085", "105", "569"],\
+			["122", "2,025", "86", "478"]
+			]
+		),
+		WikidataItem(
+			entity_id="",  # ToDo: "location" or ... ?!
 			label="",
 			description=""
 		)
@@ -391,11 +466,20 @@ defaultTableCorpusWithCorrectMappings: List[Tuple[Table, WikidataItem]] =\
 	(
 		Table(
 			surroundingText="",
-			headerRow=["", ""],
-			columns=[["", ""],["", ""]]
+			headerRow=["Song Title", "Year Released *", "Song Rank"],
+			columns=[\
+			["The Stroke", "LONELY IS THE NIGHT", "Everybody Wants You",\
+			"My Kinda Lover", "In The Dark", "TOO DAZE GONE",\
+			"THE BIG BEAT", "Rock Me Tonite", "Emotions In Motion",\
+			"Don’t Say You Love Me"],\
+			["1905", "1905", "1905", "1905", "1905",\
+			"1905", "1905", "1905", "1905", "1905"],\
+			["17,063", "32,018", "46,267", "54,751", "67,138",\
+			"69,396", "171,132", "106,024", "158,701", "179,474"]\
+			]\
 		),
 		WikidataItem(
-			entity_id="",
+			entity_id="",  # ToDo: "song" or "musical work" ?!
 			label="",
 			description=""
 		)
@@ -403,37 +487,23 @@ defaultTableCorpusWithCorrectMappings: List[Tuple[Table, WikidataItem]] =\
 	(
 		Table(
 			surroundingText="",
-			headerRow=["", ""],
-			columns=[["", ""],["", ""]]
+			headerRow=["Name", "School", "Year", "Descendants"],
+			columns=[\
+			["Richard Battin", "David Benney",\
+			"Peter Chiarulli", "Alfred Clark"],\
+			["Massachusetts Institute of Technology",\
+			"Massachusetts Institute of Technology",\
+			"Brown University",\
+			"Massachusetts Institute of Technology"],\
+			["1951", "1959", "1949", "1963"],\
+			["", "158", "", ""]\
+			]\
 		),
 		WikidataItem(
-			entity_id="",
-			label="",
-			description=""
-		)
-	),
-	(
-		Table(
-			surroundingText="",
-			headerRow=["", ""],
-			columns=[["", ""],["", ""]]
-		),
-		WikidataItem(
-			entity_id="",
-			label="",
-			description=""
-		)
-	),
-	(
-		Table(
-			surroundingText="",
-			headerRow=["", ""],
-			columns=[["", ""],["", ""]]
-		),
-		WikidataItem(
-			entity_id="",
-			label="",
-			description=""
+			entity_id="Q48282",
+			label="student",
+			description="""learner, or someone who attends an educational
+			institution"""
 		)
 	)
 	]
@@ -556,9 +626,9 @@ def main():
 
 	args = parser.parse_args()
 
-	corpus = args.corpus
-	stats = args.stats
-	entityTypes = args.entityTypes
+	corpus: str = args.corpus
+	stats: bool = args.stats
+	entityTypes: List[str] = args.entityTypes
 
 	if corpus == "" and stats and entityTypes == []:
 		# Give statistics for the default corpus without looking for any
