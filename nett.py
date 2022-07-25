@@ -73,40 +73,70 @@ def combine3(dct1: Dict[WikidataItem, float], weight1: float,\
 	return result
 
 class Table:
-	TEXTUAL_SURROUNDINGS_WEIGHTING: float = 1.0  # ToDo: as user parameters?!
-	ATTR_NAMES_WEIGHTING: float = 1.0
-	ATTR_EXTENSIONS_WEIGHTING: float = 1.0
-	
-	# Whether to normalize the rankings of classifyUsingTextualSurroundings(),
-	#   classifyUsingAttrNames(), classifyUsingAttrExtensions() into the same
-	#   range, i.e. the interval [0,1].
-	#
-	# When NORMALIZE == False, the final ranking of classify() is computed as:
-	#   classify() =
-	#       TEXTUAL_SURROUNDINGS_WEIGHTING * classifyUsingTextualSurroundings()
-	#     + ATTR_NAMES_WEIGHTING * classifyUsingAttrNames()
-	#     + ATTR_EXTENSIONS_WEIGHTING * classifyUsingAttrExtensions()
-	#
-	# When NORMALIZE == True, the final ranking of classify() is computed as:
-	#   classify() =
-	#       TXT_SURR_WGHT * normalize(classifyUsingTextualSurroundings())
-	#     + ATTR_NAMES_WEIGHTING * normalize(classifyUsingAttrNames())
-	#     + ATTR_EXTENSIONS_WEIGHTING * normalize(classifyUsingAttrExtensions())
-	# => Advantage:
-	#      The weightings truly reflect the contribution of each approach.
-	# => Disadvantage:
-	#      The information that one approach might be more confident than
-	#      another approach is lost.
-	NORMALIZE: bool = False  # ToDo: as user parameter?!
-
 	def __init__(self, surroundingText="", headerRow: List[str],\
 				 columns: List[List[str]]):
+		"""
+		Initalize a new Table that has already been parsed.
+		"""
+
 		self.surroundingText = surroundingText  # (1) Using Textual Surroundings
 		self.headerRow = headerRow  # (2) Using Attribute Names
 		self.columns = columns  # (3) Using Attribute Extensions
 
-	def classify(self, useTextualSurroundings=True, useAttrNames=True,\
-				 useAttrExtensions=True) -> List[Tuple[float, WikidataItem]]:
+	def classify(self,\
+				 useTextualSurroundings=True, textualSurroundingsWeighting=1.0,\
+				 useAttrNames=True, attrNamesWeighting=1.0,\
+				 useAttrExtensions=True, attrExtensionsWeighting=1.0,\
+				 normalizeApproaches=False)\
+				-> List[Tuple[float, WikidataItem]]:
+		"""
+		Classify this table semantically.
+		Returns an ordered list of WikidataItems that might represent the entity
+		type of the tuples of this table, each with a floating-point score
+		indicating how well it fits the table.
+		
+    	Keyword arguments:
+    	useTextualSurroundings -- whether to use approach #1 if possible
+    	                          (default True)
+    	textualSurroundingsWeighting -- how to weight approach #1
+    	                                (default 0.0)
+    	useAttrNames -- whether to use approach #2 if possible
+    	                (default True)
+    	attrNamesWeighting -- how to weight approach #1
+                              (default 0.0)
+    	useAttrExtensions -- whether to use approach #3 if possible
+    	                     (default True)
+    	attrExtensionsWeighting -- how to weight approach #1
+    	                           (default 0.0)
+    	normalizeApproaches -- whether to normalize the result of each of the 3
+    	                       approaches into the [0,1] range
+    	                       (default False)
+
+		More about `normalizeApproaches`:
+
+    	Whether to normalize the rankings of classifyUsingTextualSurroundings(),
+	    classifyUsingAttrNames(), classifyUsingAttrExtensions() into the same
+	    range, i.e. the interval [0,1].
+	 
+	    When normalizeApproaches == False, the final ranking of classify()
+	    is computed as:
+	    classify() =
+	        TEXTUAL_SURROUNDINGS_WEIGHTING * classifyUsingTextualSurroundings()
+	      + ATTR_NAMES_WEIGHTING * classifyUsingAttrNames()
+	      + ATTR_EXTENSIONS_WEIGHTING * classifyUsingAttrExtensions()
+	 
+	    When normalizeApproaches == True, the final ranking of classify()
+	    is computed as:
+	    classify() =
+	        TXT_SURR_WGHT * normalize(classifyUsingTextualSurroundings())
+	      + ATTR_NAMES_WEIGHTING * normalize(classifyUsingAttrNames())
+	      + ATTR_EXTENSIONS_WEIGHTING * normalize(classifyUsingAttrExtensions())
+	    => Advantage:
+	       The weightings truly reflect the contribution of each approach.
+	    => Disadvantage:
+	       The information that one approach might be more confident than
+	       another approach is lost.
+    	"""
 
 		resultUsingTextualSurroundings: Dict[WikidataItem, float] = {}
 		if useTextualSurroundings and self.surroundingText != "":
@@ -121,7 +151,7 @@ class Table:
 		if useAttrExtensions and self.columns != []:
 			resultUsingAttrExtensions = self.classifyUsingAttrExtensions()
 
-		if NORMALIZE:
+		if normalizeApproaches:
 			resultUsingTextualSurroundings =\
 				normalize(resultUsingTextualSurroundings)
 			resultUsingAttrNames = normalize(resultUsingAttrNames)
@@ -131,11 +161,11 @@ class Table:
 
 		combinedResult = combine3(\
 			dct1=resultUsingTextualSurroundings,\
-			weight1=TEXTUAL_SURROUNDINGS_WEIGHTING,\
+			weight1=textualSurroundingsWeighting,\
 			dct2=resultUsingAttrNames,\
-			weight2=ATTR_NAMES_WEIGHTING,\
+			weight2=attrNamesWeighting,\
 			dct3=resultUsingAttrExtensions,\
-			weight3=ATTR_EXTENSIONS_WEIGHTING,\
+			weight3=attrExtensionsWeighting,\
 		)
 
 		return combinedResult
