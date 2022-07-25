@@ -336,8 +336,106 @@ dbpediaPropertiesMappedToSBERTvector: Dict[str, Any] =\
 # A small default table corpus to be used when no table corpus is supplied.
 # Useful for testing.
 defaultTableCorpusWithCorrectMappings: List[Tuple[Table, WikidataItem]] =\
-	[
-	# ToDo
+	[ # ToDo
+	(
+		Table(
+			surroundingText=\
+			"Properties of different car models, from 1970 to 1982.",
+			headerRow=["mpg", "cylinders", "displacement", "horsepower",\
+			"weight", "acceleration", "model year", "origin", "car name"],
+			columns=[\
+			["18.0", "15.0", "18.0"],\
+			["8", "8", "8"],\
+			["307.0", "350.0", "318.0"],\
+			["130.0", "165.0", "150.0"],\
+			["3504.", "3693.", "3436."],\
+			["12.0", "11.5", "11.0"],\
+			["70", "70", "70"],\
+			["1", "1", "1"],\
+			["\"chevrolet chevelle malibu\"", "\"buick skylark 320\"",\
+			"\"plymouth satellite\""]
+			]
+		),
+		WikidataItem(
+			entity_id="Q3231690",
+			label="automobile model",
+			description="""industrial automobile model associated with a brand,
+			defined usually from an engineering point of view by a combination
+			of chassis/bodywork"""
+		)
+	),
+	(
+		Table(
+			surroundingText="",
+			headerRow=["", ""],
+			columns=[["", ""],["", ""]]
+		),
+		WikidataItem(
+			entity_id="",
+			label="",
+			description=""
+		)
+	),
+	(
+		Table(
+			surroundingText="",
+			headerRow=["", ""],
+			columns=[["", ""],["", ""]]
+		),
+		WikidataItem(
+			entity_id="",
+			label="",
+			description=""
+		)
+	),
+	(
+		Table(
+			surroundingText="",
+			headerRow=["", ""],
+			columns=[["", ""],["", ""]]
+		),
+		WikidataItem(
+			entity_id="",
+			label="",
+			description=""
+		)
+	),
+	(
+		Table(
+			surroundingText="",
+			headerRow=["", ""],
+			columns=[["", ""],["", ""]]
+		),
+		WikidataItem(
+			entity_id="",
+			label="",
+			description=""
+		)
+	),
+	(
+		Table(
+			surroundingText="",
+			headerRow=["", ""],
+			columns=[["", ""],["", ""]]
+		),
+		WikidataItem(
+			entity_id="",
+			label="",
+			description=""
+		)
+	),
+	(
+		Table(
+			surroundingText="",
+			headerRow=["", ""],
+			columns=[["", ""],["", ""]]
+		),
+		WikidataItem(
+			entity_id="",
+			label="",
+			description=""
+		)
+	)
 	]
 
 def main():
@@ -458,7 +556,44 @@ def main():
 
 	args = parser.parse_args()
 
-	# ToDo: program
+	corpus = args.corpus
+	stats = args.stats
+	entityTypes = args.entityTypes
+
+	if corpus == "" and stats and entityTypes == []:
+		# Give statistics for the default corpus without looking for any
+		#   specific entity types:
+		print("This combination of parameters is not yet implemented.")  # ToDo
+	elif corpus == "" and stats and entityTypes != []:
+		# Give statistics for the default corpus, in general and also specific
+		#  to the entity types mentioned:
+		print("This combination of parameters is not yet implemented.")  # ToDo
+	elif corpus == "" and not stats and entityTypes == []:
+		# Return a ranked list of entity candidates for every table in the
+		#   default corpus:
+		print("This combination of parameters is not yet implemented.")  # ToDo
+	elif corpus == "" and not stats and entityTypes != []:
+		# Return all the tables from the default corpus believed to represent
+		#   one of the given entity types (of course even though we already
+		#   know the correct mappings for the default corpus): 
+		print("This combination of parameters is not yet implemented.")  # ToDo
+	elif corpus != "" and stats and entityTypes == []:
+		# Invalid parameter combination:
+		print("""Invalid parameter combination:
+			Cannot supply statistics for a non-default corpus
+			when the correct entity type mappings are not supplied!""")
+	elif corpus != "" and stats and entityTypes != []:
+		# Give statistics for a given corpus, the correct entity type mappings
+		#   are supplied (in alphabetical order).
+		print("This combination of parameters is not yet implemented.")  # ToDo
+	elif corpus != "" and not stats and entityTypes == []:
+		# Map all tables of the given corpus to the top-k entities:
+		print("This combination of parameters is not yet implemented.")  # ToDo
+	elif corpus != "" and not stats and entityTypes != []:
+		# Main Feature: Search the corpus for tables whose tuples represent one
+		#   of the given entity types:
+		print("This combination of parameters is not yet implemented.")  # ToDo
+
 
 if __name__ == "__main__":
 	main()
