@@ -211,6 +211,69 @@ class Table:
 		self.headerRow = headerRow  # (2) Using Attribute Names
 		self.columns = columns  # (3) Using Attribute Extensions
 
+	def pretty_print(self, maxNumberOfTuples=6, maxColWidth=25) -> str:  # ToDo
+		"""
+		A pretty printable version of this Table, e.g.:
+
+		Restaurant Name       | Rating | Price | Reviews
+		------------------------------------------------
+		Aquarius              |        | $$    | 0
+		BIG & little’s        |        | $     | 0
+		Brown Bag Seafood Co. |        | $$    | 0
+		...                   | ...    | ...   | ...
+
+		(in this example, maxNumberOfTuples=3)
+		"""
+
+        # The width (number of characters) of each column, only regarding
+        #   the first `maxNumberOfTuples` rows each:
+		columnWidths: List[int] = list(map(\
+			lambda column: max(map(\
+				lambda cell: len(cell),\
+				column[0:maxNumberOfTuples]\
+			)),\
+			self.columns\
+			))
+		# If a header name is longer than corresponding column width, it
+		#   has to be increased further:
+		columnWidths = list(\
+			map(\
+				lambda tuple: max(tuple[0], tuple[1]),\
+				zip(columnWidths, map(lambda header: len(header),\
+					self.headerRow))\
+				)\
+			)
+		# Every column shall have a width of at least 3:
+		columnWidths = [max(3, cw) for cw in columnWidths]
+		# Every column shall have a width of at most `maxColWidth`:
+		columnWidths = [min(maxColWidth, cw) for cw in columnWidths]
+
+		def print_row(cells: List[str], widths: List[int]) -> str:
+			res: str = ""
+			for i in range(0, len(cells)):
+				width = widths[i]
+				res += cells[i][:width] + " " * (width-len(cells[i]))
+				if i != len(cells)-1: res += " | "
+			res += "\n"
+			return res
+
+		result: str = ""
+
+		result += print_row(self.headerRow, columnWidths)
+
+		totalWidth = sum(columnWidths) + 3*(len(columnWidths)-1)
+		result += "-" * totalWidth + "\n" # "-----------------------------"
+
+		for y in range(0, min(maxNumberOfTuples, len(self.columns[0]))):
+			result += print_row(\
+				[self.columns[x][y] for x in range(0, len(self.columns))],\
+				 columnWidths)
+
+		if maxNumberOfTuples < len(self.columns[0]):  # print "... | ..." row:
+			result += print_row(["..."] * len(columnWidths), columnWidths)
+
+		return result
+
 	def classify(self,\
 				 useTextualSurroundings=True, textualSurroundingsWeighting=1.0,\
 				 useAttrNames=True, attrNamesWeighting=1.0,\
@@ -534,7 +597,11 @@ def main():
 		The tables in the corpus are still classfied but based on the given
 		correct mappings, statistics are returned instead.
 		Statistics include mean reciprocal rank (MRR), top-k coverage
-		and recall.""")
+		and recall.
+		When no entity types a supplied and another corpus than the small
+		default one is being used, the user will be asked interactively for
+		the correct mapping for every table! This is very useful for evaluating
+		this tool!""")
 
 	parser.add_argument('-k',
     	type=int,
@@ -590,6 +657,9 @@ def main():
     	default=1.0,
     	help='How to weight the attribute extensions approach.',
     	metavar='WEIGHTING')
+
+	# (Advanced) ToDo: if all weights are set to 0.0 try out ("learn") which
+	#   weights lead to the best results!
 
 	parser.add_argument('--corpus',
     	type=str,
@@ -648,10 +718,13 @@ def main():
 		#   know the correct mappings for the default corpus): 
 		print("This combination of parameters is not yet implemented.")  # ToDo
 	elif corpus != "" and stats and entityTypes == []:
-		# Invalid parameter combination:
-		print("""Invalid parameter combination:
-			Cannot supply statistics for a non-default corpus
-			when the correct entity type mappings are not supplied!""")
+		# Main Feature #1:
+		#   Non-default corpus without correct entity type mappings supplied as
+		#     parameters, program has to ask user for every table which mapping
+		#     is correct:
+		print("This combination of parameters is not yet implemented.")  # ToDo!
+		# -> use pretty_print() as ask user for correct mapping for each table
+		# -> the user enters "1", "2", "3", ..., "X", "N/A", or "finish"
 	elif corpus != "" and stats and entityTypes != []:
 		# Give statistics for a given corpus, the correct entity type mappings
 		#   are supplied (in alphabetical order).
@@ -660,9 +733,10 @@ def main():
 		# Map all tables of the given corpus to the top-k entities:
 		print("This combination of parameters is not yet implemented.")  # ToDo
 	elif corpus != "" and not stats and entityTypes != []:
-		# Main Feature: Search the corpus for tables whose tuples represent one
-		#   of the given entity types:
-		print("This combination of parameters is not yet implemented.")  # ToDo
+		# Main Feature #2:
+		#   Search the corpus for tables whose tuples represent one
+		#     of the given entity types:
+		print("This combination of parameters is not yet implemented.")  # ToDo!
 
 
 if __name__ == "__main__":
