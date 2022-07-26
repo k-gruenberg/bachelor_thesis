@@ -211,7 +211,7 @@ class Table:
 		self.headerRow = headerRow  # (2) Using Attribute Names
 		self.columns = columns  # (3) Using Attribute Extensions
 
-	def pretty_print(self, maxNumberOfTuples=6, maxColWidth=25) -> str:  # ToDo
+	def pretty_print(self, maxNumberOfTuples=6, maxColWidth=25) -> str:
 		"""
 		A pretty printable version of this Table, e.g.:
 
