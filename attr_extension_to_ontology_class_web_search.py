@@ -21,6 +21,7 @@ import base64
 import os
 
 import time
+import sys
 
 # See https://github.com/Azure-Samples/cognitive-services-REST-api-samples/
 #   blob/master/python/Search/BingWebSearchv7.py:
