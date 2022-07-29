@@ -265,8 +265,8 @@ def noun_match(noun1: str, noun2: str) -> bool:
     return noun1 == noun2\
         or noun1[-3:] == "ies" and noun2 == noun1[:-3] + "y"\
         or noun2[-3:] == "ies" and noun1 == noun2[:-3] + "y"\
-        or noun1[-1]  ==   "s" and noun2 == noun1[:-1]\
-        or noun2[-1]  ==   "s" and noun1 == noun2[:-1]\
+        or noun1[-1:] ==   "s" and noun2 == noun1[:-1]\
+        or noun2[-1:] ==   "s" and noun1 == noun2[:-1]\
 
 SEARCH_ENGINE_TO_USE: SearchEngine = SearchEngine.BING
 
@@ -305,6 +305,18 @@ def main():
             )
             for noun in nouns_in_snippet:
                 nouns_to_snippet_count[noun] += 1
+
+    # Merge singular and plural form of the same noun, e.g. "car" and "cars":
+    nouns: List[str] = list(nouns_to_snippet_count.keys())
+    for noun1 in nouns:
+        for noun2 in nouns:
+            if noun1 != noun2 and noun_match(noun1, noun2):
+                singular = noun1 if len(noun1) <= len(noun2) else noun2
+                plural   = noun2 if len(noun1) <= len(noun2) else noun1
+                nouns_to_snippet_count[singular] +=\
+                    nouns_to_snippet_count[plural]
+                del nouns_to_snippet_count[plural]
+
 
     # Return the nouns ordered by the number of snippets they occur in:
     for noun, count in sorted(nouns_to_snippet_count.items(),\
