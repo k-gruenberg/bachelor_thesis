@@ -19,11 +19,14 @@ from urllib.request import urlopen
 
 import base64
 import os
+from os.path import exists
 
 import time
 import sys
 
 from collections import defaultdict
+import re  # regex
+from itertools import takewhile
 
 # See https://github.com/Azure-Samples/cognitive-services-REST-api-samples/
 #   blob/master/python/Search/BingWebSearchv7.py:
@@ -128,6 +131,10 @@ def bing_search_results_snippets(search_string: str) -> List[str]:
                   "You can find it on portal.azure.com")
             exit()
 
+        # The free version of the Bing web search API is limited to
+        #   3 queries per second:
+        time.sleep(0.34)
+
         # Code below adapted from https://github.com/Azure-Samples/
         #   cognitive-services-REST-api-samples/blob/master/python/Search/
         #   BingWebSearchv7.py:
@@ -195,10 +202,63 @@ def bing_search_results_snippets(search_string: str) -> List[str]:
         print("Bing search for '" + search_string + "' yielded no results!")
         return []
 
-def is_noun(word: str) -> bool:
-    return None  # ToDo
+nouns_with_definition: Dict[str, str] = {}
 
-# cf. filter_nouns_with_heuristics.py:  # ToDo: update there & test again !!!!
+def is_noun(word: str) -> bool:  # ToDo: shorten lines!!!!!
+    # Code below is adapted from filter_nouns_with_heuristics.py:
+
+    if nouns_with_definition == {}:
+        oxford_dictionary_file_path = os.path.expanduser("~/Oxford_English_Dictionary.txt")
+        oxford_dictionary_url =\
+            "https://raw.githubusercontent.com/sujithps/Dictionary/master/Oxford%20English%20Dictionary.txt"
+
+        # Download the Oxford English Dictionary to a file (if not already) and open that file:
+        if not exists(oxford_dictionary_file_path):
+            print("Downloading Oxford English Dictionary to " + oxford_dictionary_file_path + "...")
+            os.system("wget " + oxford_dictionary_url + " -O " + oxford_dictionary_file_path)
+            print("Download complete.")
+        oxford_dictionary_file = open(oxford_dictionary_file_path)
+
+        # Filter out only the nouns (and their definitions) from the dictionary file:
+        for line in oxford_dictionary_file:
+            line = line.strip()  # trim
+            if len(line) <= 1:
+                continue  # skip empty lines and lines containing only one character ("A", "B", "C", ...)
+            if " —n. " in line:  # word has multiple definitions, one of them is a noun:
+                noun = " ".join(list(takewhile(lambda w: w not in ["—n.", "—v.", "—adj."], line.split())))
+                noun = re.sub(r"\d", "", noun)  # remove digits from noun (e.g. "Date1")
+                noun = re.sub(r"\(.*\)", "", noun).strip()  # e.g. "Program  (brit. Programme)"=>"Program"
+                if len(noun) <= 2: continue  # ignore nouns with 1 or 2 letters
+                # the noun definition is everything after the first "—n." and before the next "—":
+                definition = line.split(" —n. ")[1].split("—")[0].strip()
+                nouns_with_definition[noun.lower()] =\
+                    nouns_with_definition.get(noun.lower(), "") + definition
+            elif " n. " in line:  # word has only one definition, which is a noun:
+                noun = line.split(" n. ")[0].strip()
+                noun = re.sub(r"\d", "", noun)  # remove digits from noun (e.g. "Date2")
+                noun = re.sub(r"\(.*\)", "", noun).strip()  # e.g. "Program  (brit. Programme)"=>"Program"
+                if len(noun) <= 2: continue  # ignore nouns with 1 or 2 letters
+                definition = line.split(" n. ")[1].strip()
+                nouns_with_definition[noun.lower()] =\
+                    nouns_with_definition.get(noun.lower(), "") + definition
+            # skip all words / dictionary entries that are not nouns
+    
+    if word.strip() == "":
+        return False   # ToDo: also fix in filter_nouns_with_heuristics.py !!!!!
+    elif word.lower() in nouns_with_definition:  # ToDo: remove .keys() in filter_nouns_with_heuristics.py !!!!!
+        return True
+    # when the noun candidate is a plural, look up the singular in the dictionary:
+    elif word.lower()[-3:] == "ies" and word.lower()[:-3] + "y"\
+            in nouns_with_definition:
+        return True
+    elif word.lower()[-1:] == "s" and word.lower()[:-1]\
+            in nouns_with_definition:  # ToDo: also fix [-1:] in filter_nouns_with_heuristics.py !!!!!
+        return True
+    else:
+        return False
+
+
+# cf. filter_nouns_with_heuristics.py:  # ToDo: correct there & test again !!!!
 def noun_match(noun1: str, noun2: str) -> bool:
     noun1 = noun1.lower()
     noun2 = noun2.lower()
@@ -228,10 +288,6 @@ def main():
             print("Google Search via serpapi.com is not implemented!")
             exit()
 
-        # The free version of the Bing web search API is limited to
-        #   3 queries per second:
-        time.sleep(0.34)
-
     # Instead of using a text classifier on the snippets as Quercini & Reynaud
     #   do in their paper "Entity Discovery and Annotation in Tables",
     #   we (...ToDo...)
@@ -251,7 +307,9 @@ def main():
                 nouns_to_snippet_count[noun] += 1
 
     # Return the nouns ordered by the number of snippets they occur in:
-    # (...ToDo...)
+    for noun, count in sorted(nouns_to_snippet_count.items(),\
+        key=lambda tuple: tuple[1], reverse=True):
+        print("(" + str(count) + ") " + noun)
 
 
 if __name__ == "__main__":
