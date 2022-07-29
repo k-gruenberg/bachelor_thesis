@@ -313,6 +313,7 @@ def main():
 
     # ToDo: Now map these nouns to ontology entries as in approach #1.
     #       This should also get rid of nouns that don't describe types again.
+    # ToDo: maybe also get rid of nouns occurring in the parameter strings
 
 
 if __name__ == "__main__":
