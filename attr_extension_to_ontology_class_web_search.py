@@ -184,10 +184,14 @@ def bing_search_results_snippets(search_string: str) -> List[str]:
     # pprint(json_response)
 
     # Parse `json_response` into List:
-    result_list: List[str] = []
-    for search_result in json_response["webPages"]["value"]:
-        result_list.append(search_result["snippet"])
-    return result_list
+    try:
+        result_list: List[str] = []
+        for search_result in json_response["webPages"]["value"]:
+            result_list.append(search_result["snippet"])
+        return result_list
+    except KeyError:
+        print("Bing search for '" + search_string + "' yielded no results!")
+        return []
 
 SEARCH_ENGINE_TO_USE: SearchEngine = SearchEngine.BING
 
