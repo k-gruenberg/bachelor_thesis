@@ -292,7 +292,7 @@ def main():
     #   do in their paper "Entity Discovery and Annotation in Tables",
     #   we (...ToDo...)
 
-    # Each noun mapped to the number of snippets it occurs in:
+    # Each noun mapped to the number of snippets it occurs in:  # ToDo: deal with plurals ("car", "cars")
     nouns_to_snippet_count: Dict[str, int] = defaultdict(int)
     for cell_label in cell_labels:
         for snippet in web_search_snippets[cell_label]:
@@ -310,6 +310,9 @@ def main():
     for noun, count in sorted(nouns_to_snippet_count.items(),\
         key=lambda tuple: tuple[1], reverse=True):
         print("(" + str(count) + ") " + noun)
+
+    # ToDo: Now map these nouns to ontology entries as in approach #1.
+    #       This should also get rid of nouns that don't describe types again.
 
 
 if __name__ == "__main__":
