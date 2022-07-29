@@ -9,7 +9,7 @@ web search engine.
 """
 
 from __future__ import annotations
-from typing import List, Dict
+from typing import List, Dict, Set
 
 from enum import Enum
 
@@ -22,6 +22,8 @@ import os
 
 import time
 import sys
+
+from collections import defaultdict
 
 # See https://github.com/Azure-Samples/cognitive-services-REST-api-samples/
 #   blob/master/python/Search/BingWebSearchv7.py:
@@ -130,8 +132,8 @@ def bing_search_results_snippets(search_string: str) -> List[str]:
         #   cognitive-services-REST-api-samples/blob/master/python/Search/
         #   BingWebSearchv7.py:
 
-        # Add your Bing Search V7 subscription key and endpoint to your environment
-        #   variables.
+        # Add your Bing Search V7 subscription key and endpoint to your
+        #   environment variables.
         subscription_key = os.environ['BING_SEARCH_V7_SUBSCRIPTION_KEY']
         endpoint = os.environ['BING_SEARCH_V7_ENDPOINT'].rstrip("/") +\
             "/v7.0/search"
@@ -193,6 +195,19 @@ def bing_search_results_snippets(search_string: str) -> List[str]:
         print("Bing search for '" + search_string + "' yielded no results!")
         return []
 
+def is_noun(word: str) -> bool:
+    return None  # ToDo
+
+# cf. filter_nouns_with_heuristics.py:  # ToDo: update there & test again !!!!
+def noun_match(noun1: str, noun2: str) -> bool:
+    noun1 = noun1.lower()
+    noun2 = noun2.lower()
+    return noun1 == noun2\
+        or noun1[-3:] == "ies" and noun2 == noun1[:-3] + "y"\
+        or noun2[-3:] == "ies" and noun1 == noun2[:-3] + "y"\
+        or noun1[-1]  ==   "s" and noun2 == noun1[:-1]\
+        or noun2[-1]  ==   "s" and noun1 == noun2[:-1]\
+
 SEARCH_ENGINE_TO_USE: SearchEngine = SearchEngine.BING
 
 def main():
@@ -221,7 +236,23 @@ def main():
     #   do in their paper "Entity Discovery and Annotation in Tables",
     #   we (...ToDo...)
 
+    # Each noun mapped to the number of snippets it occurs in:
+    nouns_to_snippet_count: Dict[str, int] = defaultdict(int)
+    for cell_label in cell_labels:
+        for snippet in web_search_snippets[cell_label]:
+            nouns_in_snippet: Set[str] = set(\
+                filter(lambda word: is_noun(word),\
+                    map(lambda word: re.sub(r"\W", "", word).lower(),\
+                        snippet.split()\
+                    )\
+                )\
+            )
+            for noun in nouns_in_snippet:
+                nouns_to_snippet_count[noun] += 1
+
+    # Return the nouns ordered by the number of snippets they occur in:
     # (...ToDo...)
+
 
 if __name__ == "__main__":
     main()
