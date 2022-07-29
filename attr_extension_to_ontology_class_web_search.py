@@ -271,8 +271,12 @@ def noun_match(noun1: str, noun2: str) -> bool:
 SEARCH_ENGINE_TO_USE: SearchEngine = SearchEngine.BING
 
 def main():
+    concatenated_output: bool = "--concat" in sys.argv[1:]
+
     # Input values = cell labels, cf. attr_extension_to_ontology_class.py:
-    cell_labels: List[str] = sys.argv[1:]
+    cell_labels: List[str] =\
+        list(filter(lambda arg: arg != "--concat", sys.argv[1:]))\
+        if concatenated_output else sys.argv[1:]
 
     # Perform a web search for each of these cell labels and store
     #   the result snippets in a list: 
@@ -317,14 +321,19 @@ def main():
                     nouns_to_snippet_count[plural]
                 del nouns_to_snippet_count[plural]
 
+    if not concatenated_output:  # Default: Readable output:
+        # Return the nouns ordered by the number of snippets they occur in:
+        for noun, count in sorted(nouns_to_snippet_count.items(),\
+            key=lambda tuple: tuple[1], reverse=True):
+            print("(" + str(count) + ") " + noun)
+    else:  # Concatenated output:
+        for noun, count in sorted(nouns_to_snippet_count.items(),\
+            key=lambda tuple: tuple[1], reverse=True):
+            print((noun + " ") * count, end="")
+        # This output can be used in approach #1
+        #   (filter_nouns_with_heuristics.py).
+        # This should also get rid of nouns that don't describe types again.
 
-    # Return the nouns ordered by the number of snippets they occur in:
-    for noun, count in sorted(nouns_to_snippet_count.items(),\
-        key=lambda tuple: tuple[1], reverse=True):
-        print("(" + str(count) + ") " + noun)
-
-    # ToDo: Now map these nouns to ontology entries as in approach #1.
-    #       This should also get rid of nouns that don't describe types again.
     # ToDo: maybe also get rid of nouns occurring in the parameter strings
 
 
