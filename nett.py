@@ -362,13 +362,13 @@ class Table:
 		return combinedResult
 
 	def classifyUsingTextualSurroundings(self) -> Dict[WikidataItem, float]:
-		pass  # ToDo: filter_nouns_with_heuristics.py
+		pass  # ToDo: filter_nouns_with_heuristics.py (refactor)
 
 	def classifyUsingAttrNames(self) -> Dict[WikidataItem, float]:
-		pass  # ToDo: attr_names_to_ontology_class.py
+		pass  # ToDo: attr_names_to_ontology_class.py (refactor)
 
 	def classifyUsingAttrExtensions(self) -> Dict[WikidataItem, float]:
-		pass  # ToDo: attr_extension_to_ontology_class.py
+		pass  # ToDo: attr_extension_to_ontology_class.py (refactor)
 
 	@classmethod
 	def parseCSV(csv: str) -> Table:

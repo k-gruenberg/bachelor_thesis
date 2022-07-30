@@ -253,7 +253,7 @@ def filter_nouns_with_heuristics(input_text: str, VERBOSE: bool)\
 
     # Filter out only the nouns (and their definitions)
     #   from the dictionary file:
-    nouns_with_definition = dict()
+    nouns_with_definition: Dict[str, str] = dict()
     for line in oxford_dictionary_file:
         line = line.strip()  # trim
         if len(line) <= 1:
