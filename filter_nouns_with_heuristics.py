@@ -218,11 +218,13 @@ def inverse_cantor_pairing_function(z: int) -> Tuple[int, int]:
 
 
 def noun_match(noun1: str, noun2: str) -> bool:
-    return noun1.lower() == noun2.lower()\
-        or noun1.lower()[-3:] == "ies" and noun2 == noun1.lower()[:-3] + "y"\
-        or noun2.lower()[-3:] == "ies" and noun1 == noun2.lower()[:-3] + "y"\
-        or noun1.lower()[-1]  ==   "s" and noun2 == noun1.lower()[:-1]\
-        or noun2.lower()[-1]  ==   "s" and noun1 == noun2.lower()[:-1]\
+    noun1 = noun1.lower()
+    noun2 = noun2.lower()
+    return noun1 == noun2\
+        or noun1[-3:] == "ies" and noun2 == noun1[:-3] + "y"\
+        or noun2[-3:] == "ies" and noun1 == noun2[:-3] + "y"\
+        or noun1[-1:] ==   "s" and noun2 == noun1[:-1]\
+        or noun2[-1:] ==   "s" and noun1 == noun2[:-1]\
 
 
 def filter_nouns_with_heuristics(input_text: str, VERBOSE: bool)\
@@ -315,7 +317,9 @@ def filter_nouns_with_heuristics(input_text: str, VERBOSE: bool)\
             #   contains an "i"
 
         dictionary_match = ""
-        if noun_candidate.lower() in nouns_with_definition.keys():
+        if noun_candidate.strip() == "":
+            dictionary_match = ""
+        elif noun_candidate.lower() in nouns_with_definition:
             dictionary_match = noun_candidate.lower()
         # When the noun candidate is a plural,
         #   look up the singular in the dictionary:
@@ -323,7 +327,7 @@ def filter_nouns_with_heuristics(input_text: str, VERBOSE: bool)\
                 and noun_candidate.lower()[:-3] + "y"\
                 in nouns_with_definition.keys():
             dictionary_match = noun_candidate.lower()[:-3] + "y"
-        elif noun_candidate.lower()[-1] == "s"\
+        elif noun_candidate.lower()[-1:] == "s"\
                 and noun_candidate.lower()[:-1]\
                 in nouns_with_definition.keys():
             dictionary_match = noun_candidate.lower()[:-1]

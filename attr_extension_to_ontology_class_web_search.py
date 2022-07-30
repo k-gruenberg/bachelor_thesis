@@ -36,6 +36,7 @@ import requests
 import argparse
 
 from filter_nouns_with_heuristics import filter_nouns_with_heuristics
+from filter_nouns_with_heuristics import noun_match # ToDo: test again !!!!
 
 class SearchEngine(Enum):
     """
@@ -254,29 +255,18 @@ def is_noun(word: str) -> bool:  # ToDo: shorten lines!!!!! & maybe avoid code d
             # skip all words / dictionary entries that are not nouns
     
     if word.strip() == "":
-        return False   # ToDo: also fix in filter_nouns_with_heuristics.py !!!!!
-    elif word.lower() in nouns_with_definition:  # ToDo: remove .keys() in filter_nouns_with_heuristics.py !!!!!
+        return False
+    elif word.lower() in nouns_with_definition:
         return True
     # when the noun candidate is a plural, look up the singular in the dictionary:
     elif word.lower()[-3:] == "ies" and word.lower()[:-3] + "y"\
             in nouns_with_definition:
         return True
     elif word.lower()[-1:] == "s" and word.lower()[:-1]\
-            in nouns_with_definition:  # ToDo: also fix [-1:] in filter_nouns_with_heuristics.py !!!!!
+            in nouns_with_definition:
         return True
     else:
         return False
-
-
-# cf. filter_nouns_with_heuristics.py:  # ToDo: correct there & test again !!!!
-def noun_match(noun1: str, noun2: str) -> bool:
-    noun1 = noun1.lower()
-    noun2 = noun2.lower()
-    return noun1 == noun2\
-        or noun1[-3:] == "ies" and noun2 == noun1[:-3] + "y"\
-        or noun2[-3:] == "ies" and noun1 == noun2[:-3] + "y"\
-        or noun1[-1:] ==   "s" and noun2 == noun1[:-1]\
-        or noun2[-1:] ==   "s" and noun1 == noun2[:-1]\
 
 
 def main():
@@ -368,7 +358,7 @@ def main():
                         snippet.split()\
                     )\
                 )\
-            )  # ToDo: maybe(!) multi-word nouns (also has disadvantages)
+            )  # ToDo: maybe(!) multi-word nouns (also has disadvantages) => ToDo: mention this in bachelor thesis !!!!
             for noun in nouns_in_snippet:
                 nouns_to_snippet_count[noun] += 1
 
