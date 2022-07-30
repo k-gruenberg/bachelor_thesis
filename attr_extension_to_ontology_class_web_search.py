@@ -368,7 +368,7 @@ def main():
                         snippet.split()\
                     )\
                 )\
-            )  # ToDo: multi-word nouns !!!!!
+            )  # ToDo: maybe(!) multi-word nouns (also has disadvantages)
             for noun in nouns_in_snippet:
                 nouns_to_snippet_count[noun] += 1
 
