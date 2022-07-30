@@ -214,7 +214,7 @@ def bing_search_results_snippets(search_string: str) -> List[str]:
 
 nouns_with_definition: Dict[str, str] = {}
 
-def is_noun(word: str) -> bool:  # ToDo: shorten lines!!!!!
+def is_noun(word: str) -> bool:  # ToDo: shorten lines!!!!! & maybe avoid code duplication!
     # Code below is adapted from filter_nouns_with_heuristics.py:
 
     if nouns_with_definition == {}:
