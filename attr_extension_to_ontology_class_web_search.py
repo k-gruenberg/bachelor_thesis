@@ -337,7 +337,7 @@ def main():
     # ToDo: maybe also get rid of nouns occurring in the parameter strings
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # ToDo: refactor, i.e. use argparse!!!!!
     main()
 
 # ToDo: include results in paper !!!!!

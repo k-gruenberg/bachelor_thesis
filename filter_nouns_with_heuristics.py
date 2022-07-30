@@ -196,7 +196,8 @@ class WikidataItem:
 
 def inverse_cantor_pairing_function(z: int) -> Tuple[int, int]:
     # Source:
-    # https://en.wikipedia.org/wiki/Pairing_function#Inverting_the_Cantor_pairing_function
+    # https://en.wikipedia.org/wiki/Pairing_function
+    #   #Inverting_the_Cantor_pairing_function
     w = math.floor( (math.sqrt(8*z + 1) - 1) / 2)
     t = (w*w + w)/2
     y = z - t
@@ -212,7 +213,7 @@ def noun_match(noun1: str, noun2: str) -> bool:
         or noun2.lower()[-1]  ==   "s" and noun1 == noun2.lower()[:-1]\
 
 
-input_text = sys.argv[1]  # the text to filter for nouns
+input_text = sys.argv[1]  # the text to filter for nouns  # ToDo: refactor into a function that can be called by other Python scripts!!!!!
 # Whether to activate verbose prints:
 VERBOSE = (len(sys.argv) >= 3 and sys.argv[2] in ["--verbose", "-v"])
 if VERBOSE or DEBUG:
