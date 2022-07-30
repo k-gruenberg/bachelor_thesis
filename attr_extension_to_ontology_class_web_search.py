@@ -306,7 +306,7 @@ def main():
                         snippet.split()\
                     )\
                 )\
-            )
+            )  # ToDo: multi-word nouns !!!!!
             for noun in nouns_in_snippet:
                 nouns_to_snippet_count[noun] += 1
 
@@ -329,7 +329,7 @@ def main():
     else:  # Concatenated output:
         for noun, count in sorted(nouns_to_snippet_count.items(),\
             key=lambda tuple: tuple[1], reverse=True):
-            print((noun + " ") * count, end="")
+            print((noun + " ") * count + "xxxxx ", end="")
         # This output can be used in approach #1
         #   (filter_nouns_with_heuristics.py).
         # This should also get rid of nouns that don't describe types again.
