@@ -358,7 +358,7 @@ def main():
     # When the user specified the `--list-onto` we also map these nouns to the
     #   Wikidata ontology again.
 
-    # Each noun mapped to the number of snippets it occurs in:  # ToDo: deal with plurals ("car", "cars")
+    # Each noun mapped to the number of snippets it occurs in:
     nouns_to_snippet_count: Dict[str, int] = defaultdict(int)
     for cell_label in args.cell_labels:
         for snippet in web_search_snippets[cell_label]:
