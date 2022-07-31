@@ -36,7 +36,7 @@ import requests
 import argparse
 
 from filter_nouns_with_heuristics import filter_nouns_with_heuristics
-from filter_nouns_with_heuristics import noun_match # ToDo: test again !!!!
+from filter_nouns_with_heuristics import noun_match
 
 class SearchEngine(Enum):
     """
