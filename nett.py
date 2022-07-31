@@ -575,8 +575,13 @@ def main():
 	group = parser.add_mutually_exclusive_group()
 	group.add_argument('--jaccard', action='store_true',
 		help="Use Jaccard index for word similarity of column/attribute names.")
-	group.add_argument('--sbert', action='store_true', default=True,
-		help="Use SBERT for word similarity of column/attribute names.")
+	group.add_argument('--sbert', action='store_true',
+		help="""
+		Use SBERT for word similarity of column/attribute names.
+		This is currently slower than using the Jaccard index.
+		For this to work you need to run `pip install -U sentence-transformers`
+		or `python3 -m pip install -U sentence-transformers` first!
+		""")
 
 	args = parser.parse_args()
 
