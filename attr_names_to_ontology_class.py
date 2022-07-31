@@ -2,8 +2,6 @@
 # an ordered list of class candidates from the DBpedia ontology that have
 # similarly named attributes.
 
-# ToDo: shorten lines!
-
 # The DBpedia ontology is contained in the `ontology--DEV_type=orig.owl` file
 #   (which was downloaded from
 #    https://databus.dbpedia.org/ontologies/dbpedia.org/ontology--DEV).
@@ -17,7 +15,8 @@
 #     <rdfs:subClassOf rdf:resource="http://schema.org/Product"/>
 #     <prov:wasDerivedFrom
 #         rdf:resource=
-#             "http://mappings.dbpedia.org/index.php/OntologyClass:Automobile"/>
+#             "http://mappings.dbpedia.org/
+#					index.php/OntologyClass:Automobile"/>
 # </owl:Class>
 # [...]
 # <owl:DatatypeProperty rdf:about="http://dbpedia.org/ontology/enginePower">
@@ -30,7 +29,8 @@
 #         rdf:resource="http://www.w3.org/2001/XMLSchema#positiveInteger"/>
 #     <prov:wasDerivedFrom
 #         rdf:resource=
-#             "http://mappings.dbpedia.org/index.php/OntologyProperty:enginePower"/>
+#             "http://mappings.dbpedia.org/
+#					index.php/OntologyProperty:enginePower"/>
 # </owl:DatatypeProperty>
 # [...]
 # <owl:ObjectProperty rdf:about="http://dbpedia.org/ontology/ceremonialCounty">
@@ -41,10 +41,12 @@
 #     <rdfs:range rdf:resource="http://dbpedia.org/ontology/PopulatedPlace"/>
 #     <rdfs:subPropertyOf
 #         rdf:resource=
-#             "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#sameSettingAs"/>
+#             "http://www.ontologydesignpatterns.org/
+#					ont/dul/DUL.owl#sameSettingAs"/>
 #     <prov:wasDerivedFrom
 #         rdf:resource
-#             ="http://mappings.dbpedia.org/index.php/OntologyProperty:ceremonialCounty"/>
+#             ="http://mappings.dbpedia.org/index.php/
+#						OntologyProperty:ceremonialCounty"/>
 #     </owl:ObjectProperty>
 # [...]
 #
@@ -107,7 +109,7 @@ for child in root:
 		if len(domain) > 1:
 			print("alert: "\
 				+ propertyName + " has multiple domains: " + str(domain))
-		if len(domain) == 0: continue # a property that does not belong anywhere
+		if len(domain) == 0: continue # a property that doesn't belong anywhere
 		domain: str = domain[0]
 		if not domain.isascii(): continue  # some names are in arabic
 		if domain in dbpediaProperties:
@@ -192,11 +194,12 @@ for dbpediaClass in dbpediaProperties.keys():
 	
 	if not USE_BETTER_SUM_FORMULA:
 		# Score/Metric #1:
-		# S(A_onto, A_data) = SIGMA(a in A_onto) max(a' in A_data) Jaccard(a, a')
+		# S(A_onto, A_data)
+		#   = SIGMA(a in A_onto) max(a' in A_data) Jaccard(a, a')
 		#
 		# Results (when using Jaccard and not SBERT):
-		# * "mpg" "cylinders" "displacement" "horsepower" "weight" "acceleration"
-		#   "model year" "origin" "car name"
+		# * "mpg" "cylinders" "displacement" "horsepower" "weight"
+		#   "acceleration" "model year" "origin" "car name"
 		#   14.416038295039662 Person
 		#   10.235548695262871 PopulatedPlace
 		#   9.896932262979936 Place
@@ -239,15 +242,16 @@ for dbpediaClass in dbpediaProperties.keys():
 			)
 	else:  # (Do use better sum formula:)
 		# Score/Metric #2:
-		# S(A_onto, A_data) = SIGMA(a in A_data) max(a' in A_onto) Jaccard(a, a')
+		# S(A_onto, A_data)
+		#   = SIGMA(a in A_data) max(a' in A_onto) Jaccard(a, a')
 		#
 		# Advantage:
 		# The amount of summands now depends on |A_data| instead of |A_onto|
 		# and is therefore constant for all S(A_onto, A_data).
 		#
 		# Results (when using Jaccard and not SBERT):
-		# * "mpg" "cylinders" "displacement" "horsepower" "weight" "acceleration"
-		#   "model year" "origin" "car name"
+		# * "mpg" "cylinders" "displacement" "horsepower" "weight"
+		#   "acceleration" "model year" "origin" "car name"
 		#   3.85064935064935 Engine (!! very plausible)
 		#   2.712121212121212 AutomobileEngine
 		#   2.4840857671740024 Person
