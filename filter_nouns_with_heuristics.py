@@ -592,7 +592,7 @@ def filter_nouns_with_heuristics(input_text: str, VERBOSE: bool)\
     return results
 
 
-if __name__ == "__main__":
+def main():  # ToDo: argparse
     # Whether to activate verbose prints:
     VERBOSE = (len(sys.argv) >= 3 and sys.argv[2] in ["--verbose", "-v"])
 
@@ -603,3 +603,6 @@ if __name__ == "__main__":
     for result in results:
         print(result.entity_id + " (" + result.label + "; " +\
             result.description + ")")
+
+if __name__ == "__main__":
+    main()
