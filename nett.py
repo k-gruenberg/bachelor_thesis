@@ -551,6 +551,16 @@ def main():
 		how well they score. Beware that lazy output is lost which means that
 		this flag should not be used together with a very big corpus!""")
 
+	parser.add_argument('--bing',
+		action='store_true',
+		help="""
+		Use the Bing web search and Wikidata for inferring the semantics of
+		attribute extensions instead of just Wikidata.
+		For this to work, the BING_SEARCH_V7_SUBSCRIPTION_KEY and
+		BING_SEARCH_V7_ENDPOINT variables need to be set. You can find
+		their values on portal.azure.com
+		""")
+
 	parser.add_argument('--verbose', '-v',
 		action='store_true',
 		help='Print verbose info prints to stderr.')

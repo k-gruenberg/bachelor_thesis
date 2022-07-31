@@ -2,6 +2,8 @@
 # an ordered list of class candidates from the DBpedia ontology that have
 # similarly named attributes.
 
+# ToDo: shorten lines!
+
 # The DBpedia ontology is contained in the `ontology--DEV_type=orig.owl` file
 #   (which was downloaded from
 #    https://databus.dbpedia.org/ontologies/dbpedia.org/ontology--DEV).
@@ -124,8 +126,10 @@ if VERBOSE:
 		str(sum(map(lambda lst: len(lst), dbpediaSuperclasses.values()))) +\
 		" superclasses")
 
-# Now that we have the DBpedia ontology, we can to the matching between
+# Now that we have the DBpedia ontology, we can do the matching between
 #   the `dbpediaProperties` and the input attribute names:
+
+# ToDo: put code below into an attr_names_to_ontology_class() function !!!
 
 inputAttrNames: List[str] = sys.argv[1:]
 
