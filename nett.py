@@ -249,6 +249,31 @@ class Table:
 		pass  # ToDo
 
 	@classmethod
+	def parseXLSX(xlsxPath: str) -> Table:
+		# Use openpyxl to parse Microsoft Excel files,
+		# cf. https://www.geeksforgeeks.org/
+		#   working-with-excel-spreadsheets-in-python/
+
+		import openpyxl
+		wb_obj = openpyxl.load_workbook(xlsxPath)
+		sheet_obj = wb_obj.active
+
+		# # Example from www.geeksforgeeks.org :
+		# cell_obj = sheet_obj.cell(row = 1, column = 1)
+		# print(cell_obj.value)
+
+		# # Works but does not consider a possible header row:
+		# columns = [list(map(lambda cell_obj: str(cell_obj.value), column))\
+		# 	for column in sheet_obj.iter_cols()]
+
+		rows = [list(map(lambda cell_obj: str(cell_obj.value), row))\
+			for row in sheet_obj.iter_rows()]
+
+		csv = "\n".join([", ".join(row) for row in rows])
+
+		return parseCSV(csv)
+
+	@classmethod
 	def parseJSON(json: str) -> Table:
 		pass  # ToDo
 
@@ -542,7 +567,11 @@ def main():
     	Or path to a single TAR file containing tables as CSV/JSON files.
     	If not specified, a small default corpus is being used.
     	Note that all tables smaller than 3x3 are rigorously filtered out.
-    	Folders are parsed in alphabetical order.""",
+    	Folders are parsed in alphabetical order.
+    	Excel files instead of CSV files are supported too when the
+    	`openpyxl` Python module is installed:
+    	`pip install openpyxl` or
+    	`python3 -m pip install openpyxl`""",
     	metavar='PATH')
 
 	parser.add_argument('--ordered',
