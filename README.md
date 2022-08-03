@@ -53,3 +53,18 @@ $ python3 attr_extension_to_ontology_class.py "chevrolet chevelle malibu" "buick
 (5) Q3231690 (automobile model)
 (1) Q1361017 (Ford Torino)
 ```
+
+```
+$ python3 attr_extension_to_ontology_class_web_search.py "Manuel Neuer" "Joshua Kimmich" "Kai Havertz" "Marco Reus" "Timo Werner" "Serge Gnabry" "Antonio Rüdiger"
+(20) club
+(14) german
+(12) professional
+(12) team
+(12) player
+(11) play
+(10) national
+(10) date
+(10) league
+(10) height
+[...]
+```
