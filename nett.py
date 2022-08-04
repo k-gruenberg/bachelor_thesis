@@ -663,6 +663,16 @@ def main():
 		their values on portal.azure.com
 		""")
 
+	parser.add_argument('--webisadb',
+		action='store_true',
+		help="""
+		Use the WebIsA Database from webdatacommons.org/isadb and Wikidata for
+		inferring the semantics of attribute extensions instead of just
+		Wikidata (cf. the --bing flag which contradicts this flag).
+		For this to work, the corresponding MongoDB has to be running
+		on localhost.
+		""")
+
 	parser.add_argument('--verbose', '-v',
 		action='store_true',
 		help='Print verbose info prints to stderr.')
