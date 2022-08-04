@@ -49,6 +49,30 @@ $ python3 attr_names_to_ontology_class.py "Name" "Status" "County" "Population C
 ```
 
 ```
+$ python3 attr_extension_to_ontology_class.py "Jordan James" "Keevan Lucas" "Trey Watts" "Thomas Roberson"
+
+##### Finished Step 1 - Cell entity annotation: #####
+Jordan James: ['Q109638024 (Jordan James)', 'Q6276642 (Jordan James)', 'Q16220972 (Jordan James)', 'Q133760 (Jordan Spence)', 'Q3183695 (Jordan Gavaris)', 'Q26265164 (Jordy Ranft)', 'Q1037339 (Jordan Schafer)']
+Keevan Lucas: ['Q108051662 (Keevan Lucas)']
+Trey Watts: ['Q7839622 (Trey Watts)']
+Thomas Roberson: []
+
+##### Finished Step 2 - Entity-type resolution: #####
+Jordan James: Q109638024: ['Q5']
+Jordan James: Q6276642: ['Q5']
+Jordan James: Q16220972: ['Q5']
+Jordan James: Q133760: ['Q5']
+Jordan James: Q3183695: ['Q5']
+Jordan James: Q26265164: ['Q5']
+Jordan James: Q1037339: ['Q5']
+Keevan Lucas: Q108051662: ['Q5']
+Trey Watts: Q7839622: ['Q5']
+
+##### Finished Step 3 - Type aggregation: #####
+(9) Q5 (human)
+```
+
+```
 $ python3 attr_extension_to_ontology_class.py "chevrolet chevelle malibu" "buick skylark 320" "plymouth satellite" "amc rebel sst" "ford torino" "ford galaxie 500"
 (5) Q3231690 (automobile model)
 (1) Q1361017 (Ford Torino)

@@ -46,6 +46,7 @@ from __future__ import annotations
 from typing import List, Dict, Any, Iterator
 import json
 import argparse
+import re
 
 from WikidataItem import WikidataItem
 
@@ -147,6 +148,78 @@ class Table:
 			result += print_row(["..."] * len(columnWidths), columnWidths)
 
 		return result
+
+	# Correctly regex-matching URLs and email addresses is actually much
+	# harder than one might think, read:
+	#
+	# Email addresses:
+	# * https://stackoverflow.com/questions/9238640/
+	#     how-long-can-a-tld-possibly-be
+	# * https://stackoverflow.com/questions/201323/
+	#     how-can-i-validate-an-email-address-using-a-regular-expression
+	# * http://www.ex-parrot.com/~pdw/Mail-RFC822-Address.html
+	# * https://en.wikipedia.org/wiki/Email_address#Local-part
+	# * http://emailregex.com/
+	#
+	# URLs:
+	# * https://stackoverflow.com/questions/3809401/
+	#     what-is-a-good-regular-expression-to-match-a-url
+	# * https://mathiasbynens.be/demo/url-regex:
+
+	PHONE_NUMBER_REGEX = r"\+?\d[\d -]+\d"
+	URL_REGEX = r"^(https:|http:|www\.)\S*"  # https://regex101.com/r/S2CbwM/1
+	EMAIL_REGEX = r".+@.+"
+	#EMAIL_REGEX = r".+@.+\..+"
+	# -> problem: "jsmith@[IPv6:2001:db8::1]" is a valid email without any dots!
+	#EMAIL_REGEX = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
+	# -> source: emailregex.com
+	# -> problem: !#$%&'*+-/=?^_`{|}~ are allowed characters in emails too!
+	NUMERIC_REGEX = r"[\+\-]?[\d., _]+"  # r"[\d.,]+"
+	GEO_REGEX = r"""[\+\-\d.,;'" NESW]+"""
+	LONG_REGEX = r".{50,}"
+
+	BLACKLISTED_REGEXES: List[str] = [\
+		PHONE_NUMBER_REGEX,  # matches phone numbers
+		URL_REGEX,  # matches URLs
+		EMAIL_REGEX,  # matches email addresses
+		NUMERIC_REGEX,  # matches numeric values
+		GEO_REGEX,  # matches geographic coordinates
+		LONG_REGEX  # matches "long values, such as verbose descriptions"
+	]  # => cf. Quercini & Reynaud "Entity Discovery and Annotation in Tables"
+
+	BLACKLISTED_COMPILED_REGEXES =\
+		[re.compile(regex_string) for regex_string in BLACKLISTED_REGEXES]
+
+	def get_identifying_column(self) -> List[str]:  # ToDo!!!
+		"""
+		Try to identify the identifiying columns of this table in
+		  1 or 2 steps:
+		
+		Step 1) use uniqueness
+		Step 2) if more than 1 column is unique: use regexes, more
+		        precisely:
+		
+		Throw out columns where at least one non-empty cell content matches
+		  at least one of the regexes in BLACKLISTED_COMPILED_REGEXES.
+		Hopefully exactly one column will be left over.
+		The idea to disregard cells whose values matches a certain regex
+		  stems from Quercini & Reynaud's paper
+		  "Entity Discovery and Annotation in Tables".
+		"""
+
+		identifying_column_candidates: List[List[str]] = []
+
+		for column in self.columns:
+			for cell in column:
+				for pattern in BLACKLISTED_COMPILED_REGEXES:
+					if pattern.fullmatch(cell) is not None:  # blacklist match
+						continue  # ...means this column is not identifying
+			identifying_column_candidates.append(column)
+
+		if len(identifying_column_candidates) != 1:
+			return None
+		else:
+			return identifying_column_candidates[0]
 
 	def classify(self,\
 				 useTextualSurroundings=True, textualSurroundingsWeighting=1.0,\
