@@ -53,6 +53,63 @@ def main():
     	for example.""",
     	metavar='TTL_PATH',
     	required=True)
+	"""
+	   523040066 Oct  7  2016 instance_types_dbtax_dbo_en.ttl
+	  1170280591 Oct  7  2016 instance_types_dbtax_ext_en.ttl
+	   756372528 Jun 16  2016 instance_types_en.ttl
+	   531673855 Oct  7  2016 instance_types_lhd_dbo_en.ttl
+	   536730187 Oct  7  2016 instance_types_lhd_ext_en.ttl
+	   354246575 Oct  7  2016 instance_types_sdtyped_dbo_en.ttl
+	  4565067400 Jun 16  2016 instance_types_transitive_en.ttl
+	  5131897930 Nov 11  2016 instance_types_transitive_wkd_uris_en.ttl
+	   850228848 Nov 11  2016 instance_types_wkd_uris_en.ttl
+
+	==> /data/dbpedia/data/instance_types_dbtax_dbo_en.ttl <==
+	<http://dbpedia.org/resource/0-0-1-3>
+	<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>
+	<http://dbpedia.org/ontology/Drug> .
+
+	==> /data/dbpedia/data/instance_types_dbtax_ext_en.ttl <==
+	# started 2016-10-07T07:31:43Z
+	<http://dbpedia.org/resource/0.0.0.0>
+	<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>
+	<http://dbpedia.org/dbtax/Protocol> .
+
+	==> /data/dbpedia/data/instance_types_en.ttl <==
+	<http://dbpedia.org/resource/Achilles>
+	<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>
+	<http://www.w3.org/2002/07/owl#Thing> .
+
+	==> /data/dbpedia/data/instance_types_lhd_dbo_en.ttl <==
+	<http://dbpedia.org/resource/I_Could_Use_Another_You>
+	<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>
+	<http://dbpedia.org/ontology/Single> .
+
+	==> /data/dbpedia/data/instance_types_lhd_ext_en.ttl <==
+	<http://dbpedia.org/resource/Electoral_district_of_Elizabeth_(South_Australia)>
+	<http://purl.org/linguistics/gold/hypernym>
+	<http://dbpedia.org/resource/District> .
+
+	==> /data/dbpedia/data/instance_types_sdtyped_dbo_en.ttl <==
+	<http://dbpedia.org/resource/Needles_in_the_Cosmic_Haystack>
+	<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>
+	<http://dbpedia.org/ontology/Album> .
+
+	==> /data/dbpedia/data/instance_types_transitive_en.ttl <==
+	<http://dbpedia.org/resource/Actrius>
+	<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>
+	<http://schema.org/Movie> .
+
+	==> /data/dbpedia/data/instance_types_transitive_wkd_uris_en.ttl <==
+	# <http://dbpedia.org/resource/001_-_Launch_Week>
+	  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>
+	  <http://dbpedia.org/ontology/MusicalWork> <BAD URI: null> .
+
+	==> /data/dbpedia/data/instance_types_wkd_uris_en.ttl <==
+	# <http://dbpedia.org/resource/000_Emergency>
+	  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>
+	  <http://www.w3.org/2002/07/owl#Thing> <BAD URI: null> .
+	"""
 
 	parser.add_argument('--properties',
     	type=str,
