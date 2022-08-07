@@ -1,9 +1,21 @@
 """
 Run
+
 - python3 -m pip install Cython
+or
 - pip install Cython
+
 - cythonize numeric_attr_extension_to_ontology_property_cython_compatible.py
+or
+- cython numeric_attr_extension_to_ontology_property_cython_compatible.py
+
 to compile this Python code into C code.
+Then change #include "Python.h" to #include <Python.h>
+and compile using
+
+- gcc numeric_attr_extension_to_ontology_property_cython_compatible.c
+
+or something like that...
 """
 
 from rdflib import Graph  # python3 -m pip install rdflib
