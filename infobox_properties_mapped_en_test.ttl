@@ -1,0 +1,20 @@
+# started 2016-06-29T07:09:37Z
+<http://dbpedia.org/resource/A> <http://dbpedia.org/property/name> "Latin Capital Letter A"@en .
+<http://dbpedia.org/resource/A> <http://dbpedia.org/property/name> "Latin Small Letter A"@en .
+<http://dbpedia.org/resource/A> <http://dbpedia.org/property/map> "EBCDIC family"@en .
+<http://dbpedia.org/resource/A> <http://dbpedia.org/property/map1char> "1.0"^^<http://dbpedia.org/datatype/nicaraguanCórdoba> .
+<http://dbpedia.org/resource/A> <http://dbpedia.org/property/map1char> "81"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<http://dbpedia.org/resource/A> <http://dbpedia.org/property/map> "ASCII 1"@en .
+<http://dbpedia.org/resource/A> <http://dbpedia.org/property/map2char> "41"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<http://dbpedia.org/resource/A> <http://dbpedia.org/property/map2char> "61"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<http://dbpedia.org/resource/A> <http://dbpedia.org/property/nato> "Alpha"@en .
+<http://dbpedia.org/resource/List_of_Transparent_episodes> <http://dbpedia.org/property/end> "2014-09-26"^^<http://www.w3.org/2001/XMLSchema#date> .
+<http://dbpedia.org/resource/List_of_Transparent_episodes> <http://dbpedia.org/property/color> "#0257AC"@en .
+<http://dbpedia.org/resource/List_of_Transparent_episodes> <http://dbpedia.org/property/link> "#Season 2"@en .
+<http://dbpedia.org/resource/List_of_Transparent_episodes> <http://dbpedia.org/property/start> "2015-11-30"^^<http://www.w3.org/2001/XMLSchema#date> .
+<http://dbpedia.org/resource/List_of_Transparent_episodes> <http://dbpedia.org/property/end> "2015-12-11"^^<http://www.w3.org/2001/XMLSchema#date> .
+<http://dbpedia.org/resource/List_of_Transparent_episodes> <http://dbpedia.org/property/background> "#EE714F"@en .
+<http://dbpedia.org/resource/List_of_Transparent_episodes> <http://dbpedia.org/property/released> "y"@en .
+<http://dbpedia.org/resource/List_of_Transparent_episodes> <http://dbpedia.org/property/country> "U.S."@en .
+<http://dbpedia.org/resource/List_of_Transparent_episodes> <http://dbpedia.org/property/background> "#0257AC"@en .
+# completed 2016-06-29T09:29:34Z
