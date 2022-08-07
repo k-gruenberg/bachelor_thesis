@@ -3,7 +3,19 @@
 # Dua, D. and Graff, C. (2019). UCI Machine Learning Repository
 # [http://archive.ics.uci.edu/ml].
 # Irvine, CA: University of California,
-# School of Information and Computer Science. 
+# School of Information and Computer Science.
+#
+# Attribute Information:
+# 
+#     1. mpg:           continuous
+#     2. cylinders:     multi-valued discrete
+#     3. displacement:  continuous
+#     4. horsepower:    continuous
+#     5. weight:        continuous
+#     6. acceleration:  continuous
+#     7. model year:    multi-valued discrete
+#     8. origin:        multi-valued discrete
+#     9. car name:      string (unique for each instance)
 
 18.0	8	307.0	130.0	3504.	12.0	70	1	"chevrolet chevelle malibu"
 15.0	8	350.0	165.0	3693.	11.5	70	1	"buick skylark 320"
