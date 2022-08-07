@@ -1,0 +1,10 @@
+[package]
+name = "numeric_attr_extension_to_ontology_property_rust"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rdf = "0.1.4"
+clap = { version = "3.0.5", features = ["derive"] }
