@@ -64,7 +64,7 @@ def main():
     	help="""Path (or URL) to a .ttl (turtle) file of
     	DBpedia resources mapped to their types (22-rdf-syntax-ns#type).
     	Download an unzip
-...ToDo...
+downloads.dbpedia.org/2016-04/core-i18n/en/instance_types_en.ttl.bz2
     	for example.""",
     	metavar='TTL_PATH',
     	required=True)
@@ -78,6 +78,9 @@ def main():
 	  4565067400 Jun 16  2016 instance_types_transitive_en.ttl
 	  5131897930 Nov 11  2016 instance_types_transitive_wkd_uris_en.ttl
 	   850228848 Nov 11  2016 instance_types_wkd_uris_en.ttl
+
+	DBTax = Unsupervised Learning for DBpedia Taxonomy
+	(see https://github.com/dbpedia/DBTax)
 
 	==> /data/dbpedia/data/instance_types_dbtax_dbo_en.ttl <==
 	<http://dbpedia.org/resource/0-0-1-3>
@@ -180,6 +183,7 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 	#   https://rdflib.readthedocs.io/en/stable/gettingstarted.html
 	#   and populate dbpedia_resource_to_type:
 	for _resource, _rdf_syntax_ns_type, _type in types_graph:
+		print(f"{_resource}, {_rdf_syntax_ns_type}, {_type}")
 		pass  # ToDo
 
 	print("[4/6] Populating dictionary with parsed --properties .ttl file...")
@@ -188,6 +192,7 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 	#   https://rdflib.readthedocs.io/en/stable/gettingstarted.html
 	#   and populate dbpedia_type_and_property_to_extension:
 	for _resource, _property, _value in properties_graph:
+		print(f"{_resource}, {_property}, {_value}")
 		pass  # ToDo
 
 	bag = args.bag
@@ -214,7 +219,8 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 	print("")
 	print("Score - DBpedia type - DBpedia property - Matched list")
 	print("")
-	for i in range(0, args.k):
+	for i in range(0, min(args.k,\
+		len(dbpedia_type_and_property_to_ks_test_sorted[:args.k]))):
 		el = dbpedia_type_and_property_to_ks_test_sorted[i]
 		dbpedia_type = el[0][0]
 		dbpedia_property = el[0][1]
