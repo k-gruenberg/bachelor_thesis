@@ -163,12 +163,38 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
         Default value: 100""",
         metavar='K')
 
-	parser.add_argument(  # ToDo: also allow for CSV input !!!
+	parser.add_argument(
     	'bag',
     	type=float,
     	help="""A bag of numerical values.""",
     	nargs='*',
     	metavar='NUMBER')
+
+	parser.add_argument('--csv-file',
+    	type=str,
+    	default='',
+    	help="""Path to a CSV file. The n-th column specified with the
+    	--csv-column argument will be used as input to this script.
+    	It has to be a numerical column containing integer or float values!""",
+    	metavar='CSV_FILE_PATH',
+    	required=False)
+
+	parser.add_argument('--csv-separator',
+    	type=str,
+    	default='\t',
+    	help="""The separator symbol used in the CSV file specified by the
+    	--csv-file argument. (Default: TAB)""",
+    	metavar='CSV_SEPARATOR',
+    	required=False)
+
+	parser.add_argument('--csv-column',
+    	type=int,
+    	default=0,
+    	help="""Which column to use as input in the CSV file given by
+    	the --csv-file argument. The first column has index 0.
+    	(Default: 0)""",
+    	metavar='CSV_COLUMN',
+    	required=False)
 
 	args = parser.parse_args()
 
@@ -240,7 +266,21 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 			#     -> i.e. type for the given ressource is unknown
 			continue
 
-	bag: List[float] = args.bag
+	# The input bag to compare against all DBpedia numerical bags:
+	bag: List[float] = []
+	if args.csv_file == "":
+		bag = args.bag
+	else:
+		with open(args.csv_file, "r") as f:
+			for line in f.readlines():
+				if line[:1] == "#" or line.strip() == "":
+					continue  # skip comment lines and empty lines
+				try:
+					bag.append(float(line.split(\
+						args.csv_separator)[args.csv_column].strip()))
+				except ValueError:
+					continue  # skip non-numerical entries in the column
+	print("[INFO] Unsorted input bag = " + long_list_to_short_str(bag))
 	bag.sort()
 
 	print("[5/6] Computing KS scores...")
