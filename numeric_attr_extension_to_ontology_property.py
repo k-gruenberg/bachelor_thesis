@@ -183,8 +183,19 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 	#   https://rdflib.readthedocs.io/en/stable/gettingstarted.html
 	#   and populate dbpedia_resource_to_type:
 	for _resource, _rdf_syntax_ns_type, _type in types_graph:
-		print(f"{_resource}, {_rdf_syntax_ns_type}, {_type}")
-		pass  # ToDo
+		if not "22-rdf-syntax-ns#type" in _rdf_syntax_ns_type:
+			continue
+
+		_resource = _resource.lstrip("http://dbpedia.org/resource/")
+
+		_type = _type.lstrip("http://dbpedia.org/ontology/")
+
+		if "/" in _type:
+			continue  # skip Things: (http://)www.w3.org/2002/07/owl#Thing
+
+		dbpedia_resource_to_type[_resource] = _type
+
+		#print(f"{_resource}, {_rdf_syntax_ns_type}, {_type}")
 
 	print("[4/6] Populating dictionary with parsed --properties .ttl file...")
 
@@ -192,8 +203,25 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 	#   https://rdflib.readthedocs.io/en/stable/gettingstarted.html
 	#   and populate dbpedia_type_and_property_to_extension:
 	for _resource, _property, _value in properties_graph:
-		print(f"{_resource}, {_property}, {_value}")
-		pass  # ToDo
+		try:
+			_value = float(_value)  # ToDo: possibly more advanced parsing
+
+			_resource = _resource.lstrip("http://dbpedia.org/resource/")
+
+			_property = _property.lstrip("hhttp://dbpedia.org/property/")
+
+			_type = dbpedia_resource_to_type[_resource]
+
+			dbpedia_type_and_property_to_extension[(_type, _property)]\
+				.append(_value)  # ToDo !!!
+
+			#print(f"{_resource}, {_property}, {_value}")
+		except (ValueError, KeyError):
+			# (a) ValueError: could not convert string to float, or
+			#     -> i.e. property is not numeric
+			# (b) KeyError in dbpedia_resource_to_type
+			#     -> i.e. type for the given ressource is unknown
+			continue
 
 	bag = args.bag
 	bag.sort()
