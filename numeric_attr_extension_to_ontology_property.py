@@ -1,9 +1,24 @@
 from rdflib import Graph  # python3 -m pip install rdflib
 import argparse
 from typing import Dict, List, Tuple, Iterator
+from collections import defaultdict
+
+def remove_prefix(s: str, prefix: str) -> str:
+	len_prefix = len(prefix)
+	if s[:len_prefix] == prefix:
+		return s[len_prefix:]
+	else:
+		return s
+
+def long_list_to_short_str(lst: List[float]) -> str:
+	if len(lst) <= 7:
+		return str(lst)
+	else:
+		return\
+	f"[{lst[0]}, {lst[1]}, ..., {lst[len(lst)//2]}, ..., {lst[-2]}, {lst[-1]}]"
 
 def merge(sorted_list_1: List[float], sorted_list_2: List[float])\
-	-> Iterator[Tuple[float, int, int]]:   # ToDo: test
+	-> Iterator[Tuple[float, int, int]]:
 	"""
 	Merges two sorted lists.
 	The resulting iterator contains no duplicates, i.e. each value only once.
@@ -29,7 +44,7 @@ def merge(sorted_list_1: List[float], sorted_list_2: List[float])\
 		
 		yield x, index1, index2
 
-def ks(sorted_bag: List[float], unsorted_bag: List[float]) -> float:  # ToDo: test
+def ks(sorted_bag: List[float], unsorted_bag: List[float]) -> float:
 	"""
 	Computes the KS similarity between two given bags of numerical values,
 	one already sorted bag and one unsorted bag, efficiently.
@@ -104,7 +119,8 @@ downloads.dbpedia.org/2016-04/core-i18n/en/instance_types_en.ttl.bz2
 	<http://dbpedia.org/ontology/Single> .
 
 	==> /data/dbpedia/data/instance_types_lhd_ext_en.ttl <==
-	<http://dbpedia.org/resource/Electoral_district_of_Elizabeth_(South_Australia)>
+	<http://dbpedia.org/resource/Electoral_district_of_Elizabeth_
+	    (South_Australia)>
 	<http://purl.org/linguistics/gold/hypernym>
 	<http://dbpedia.org/resource/District> .
 
@@ -147,7 +163,7 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
         Default value: 100""",
         metavar='K')
 
-	parser.add_argument(
+	parser.add_argument(  # ToDo: also allow for CSV input !!!
     	'bag',
     	type=float,
     	help="""A bag of numerical values.""",
@@ -163,8 +179,9 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 	#   to the list of values taken by all DBpedia resources that are an
 	#   instance of that type:
 	dbpedia_type_and_property_to_extension\
-		: Dict[Tuple[str, str], List[float]] = {}
+		: Dict[Tuple[str, str], List[float]] = defaultdict(list)
 
+	print("")
 	print("[1/6] Parsing --types .ttl file...")
 
 	# Parse the .ttl file passed as --types:
@@ -186,9 +203,9 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 		if not "22-rdf-syntax-ns#type" in _rdf_syntax_ns_type:
 			continue
 
-		_resource = _resource.lstrip("http://dbpedia.org/resource/")
+		_resource = remove_prefix(_resource, "http://dbpedia.org/resource/")
 
-		_type = _type.lstrip("http://dbpedia.org/ontology/")
+		_type = remove_prefix(_type, "http://dbpedia.org/ontology/")
 
 		if "/" in _type:
 			continue  # skip Things: (http://)www.w3.org/2002/07/owl#Thing
@@ -206,14 +223,14 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 		try:
 			_value = float(_value)  # ToDo: possibly more advanced parsing
 
-			_resource = _resource.lstrip("http://dbpedia.org/resource/")
+			_resource = remove_prefix(_resource, "http://dbpedia.org/resource/")
 
-			_property = _property.lstrip("hhttp://dbpedia.org/property/")
+			_property = remove_prefix(_property, "http://dbpedia.org/property/")
 
 			_type = dbpedia_resource_to_type[_resource]
 
 			dbpedia_type_and_property_to_extension[(_type, _property)]\
-				.append(_value)  # ToDo !!!
+				.append(_value)
 
 			#print(f"{_resource}, {_property}, {_value}")
 		except (ValueError, KeyError):
@@ -223,7 +240,7 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 			#     -> i.e. type for the given ressource is unknown
 			continue
 
-	bag = args.bag
+	bag: List[float] = args.bag
 	bag.sort()
 
 	print("[5/6] Computing KS scores...")
@@ -234,7 +251,7 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 	#   instance of that type and the input list of numeric values:
 	dbpedia_type_and_property_to_ks_test: Dict[Tuple[str, str], float] =\
 		{ key : ks(bag, lst)\
-		for key, lst in dbpedia_type_and_property_to_extension}
+		for key, lst in dbpedia_type_and_property_to_extension.items()}
 
 	print("[6/6] Sorting results by KS score...")
 
@@ -245,7 +262,7 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
             reverse=False)  # smaller KS values == more similar
 
 	print("")
-	print("Score - DBpedia type - DBpedia property - Matched list")
+	print("KS Score - DBpedia type - DBpedia property - Matched list")
 	print("")
 	for i in range(0, min(args.k,\
 		len(dbpedia_type_and_property_to_ks_test_sorted[:args.k]))):
@@ -257,8 +274,8 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 			dbpedia_type_and_property_to_extension[\
 			(dbpedia_type, dbpedia_property)]
 
-		print(f"""{ks_test_score} - {dbpedia_type} -
-			{dbpedia_property} - {matched_list}""")
+		print(f"{ks_test_score} - {dbpedia_type} - " +\
+			f"{dbpedia_property} - {long_list_to_short_str(matched_list)}")
 
 if __name__ == "__main__":
 	main()
