@@ -12,18 +12,31 @@ def merge(sorted_list_1: List[float], sorted_list_2: List[float])\
 	len_sorted_list_2 = len(sorted_list_2)
 
 	index1: int = 0
-	index2: float = 0
+	index2: int = 0
 	x: float = float('nan')
-	while index1 < len_sorted_list_1 or index2 < len_sorted_list_1:
-		x = min(sorted_list_1[index1], sorted_list_2[index2])
-		while sorted_list_1[index1] == x: index1 += 1
-		while sorted_list_2[index2] == x: index2 += 1
+	while index1 < len_sorted_list_1 or index2 < len_sorted_list_2:
+		if index1 == len_sorted_list_1:
+			x = sorted_list_2[index2]
+		elif index2 == len_sorted_list_2:
+			x = sorted_list_1[index1]
+		else:
+			x = min(sorted_list_1[index1], sorted_list_2[index2])
+		
+		while index1 < len_sorted_list_1 and sorted_list_1[index1] == x:
+			index1 += 1
+		while index2 < len_sorted_list_2 and sorted_list_2[index2] == x:
+			index2 += 1
+		
 		yield x, index1, index2
 
 def ks(sorted_bag: List[float], unsorted_bag: List[float]) -> float:  # ToDo: test
 	"""
 	Computes the KS similarity between two given bags of numerical values,
-    one already sorted bag and one unsorted bag, efficiently.
+	one already sorted bag and one unsorted bag, efficiently.
+
+	Attention:
+	Throws a `ZeroDivisionError` when either of the given bags/lists
+	is empty!
 	"""
 
 	unsorted_bag.sort()
@@ -34,7 +47,9 @@ def ks(sorted_bag: List[float], unsorted_bag: List[float]) -> float:  # ToDo: te
 	max_difference: float = 0.0
 
 	for x, index1, index2 in merge(sorted_bag, unsorted_bag):
-		max_difference = max(max_difference, abs(index1 - index2))
+		max_difference = max(max_difference,\
+			abs(index1 * one_over_len_sorted_bag -\
+				index2 * one_over_len_unsorted_bag))
 
 	return max_difference
 
@@ -196,20 +211,20 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
             key=lambda tuple: tuple[1],\
             reverse=False)  # smaller KS values == more similar
 
-    print("")
-    print("Score - DBpedia type - DBpedia property - Matched list")
-    print("")
-    for i in range(0, args.k):
-    	el = dbpedia_type_and_property_to_ks_test_sorted[i]
-    	dbpedia_type = el[0][0]
-    	dbpedia_property = el[0][1]
-    	ks_test_score = el[1]
-    	matched_list =\
-    		dbpedia_type_and_property_to_extension[\
-    		(dbpedia_type, dbpedia_property)]
+	print("")
+	print("Score - DBpedia type - DBpedia property - Matched list")
+	print("")
+	for i in range(0, args.k):
+		el = dbpedia_type_and_property_to_ks_test_sorted[i]
+		dbpedia_type = el[0][0]
+		dbpedia_property = el[0][1]
+		ks_test_score = el[1]
+		matched_list =\
+			dbpedia_type_and_property_to_extension[\
+			(dbpedia_type, dbpedia_property)]
 
-    	print(f"""{ks_test_score} - {dbpedia_type} -
-    		{dbpedia_property} - {matched_list}""")
+		print(f"""{ks_test_score} - {dbpedia_type} -
+			{dbpedia_property} - {matched_list}""")
 
 if __name__ == "__main__":
 	main()
