@@ -158,7 +158,8 @@ fn main() {
         .expect("Reading --properties .ttl file failed!");
     let mut reader =
         TurtleParser::from_string(properties_ttl_content);
-    let properties_graph = reader.decode().expect("Parsing --properties .ttl file failed!");
+    let properties_graph = reader.decode()
+        .expect("Parsing --properties .ttl file failed!");
 
     println!("[3/6] Populating dictionary with parsed --types .ttl file...");
 
