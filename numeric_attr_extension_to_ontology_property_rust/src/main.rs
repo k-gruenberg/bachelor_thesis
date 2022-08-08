@@ -10,7 +10,6 @@ use rdf::node::Node;
 
 use rdf::reader::turtle_parser::TurtleParser;
 use rdf::reader::rdf_parser::RdfParser;
-use rdf::uri::Uri;
 
 fn long_list_to_short_str(lst: &Vec<f64>) -> String {
     let lst_len: usize = lst.len();
@@ -24,8 +23,8 @@ fn long_list_to_short_str(lst: &Vec<f64>) -> String {
 
 /// Merges two sorted lists.
 /// The resulting iterator contains no duplicates, i.e. each value only once.
-fn merge(sorted_list_1: Vec<f64>, sorted_list_2: Vec<f64>)
-    -> impl std::iter::Iterator<Item=(f64, usize, usize)> {
+fn merge<'a>(sorted_list_1: &'a Vec<f64>, sorted_list_2: &'a Vec<f64>)
+             -> impl std::iter::Iterator<Item=(f64, usize, usize)> + 'a {
     let len_sorted_list_1 = sorted_list_1.len();
     let len_sorted_list_2 = sorted_list_2.len();
 
@@ -62,7 +61,7 @@ fn merge(sorted_list_1: Vec<f64>, sorted_list_2: Vec<f64>)
 /// Attention:
 /// Throws a `ZeroDivisionError` when either of the given bags/lists
 /// is empty!
-fn ks(sorted_bag: Vec<f64>, mut unsorted_bag: Vec<f64>) -> f64 {
+fn ks(sorted_bag: &Vec<f64>, unsorted_bag: &mut Vec<f64>) -> f64 {
     unsorted_bag.sort_by(|a, b| a.partial_cmp(b).unwrap());
     // see https://users.rust-lang.org/t/how-to-sort-a-vec-of-floats/2838
     // because the trait `Ord` is not implemented for `f64`
@@ -72,8 +71,8 @@ fn ks(sorted_bag: Vec<f64>, mut unsorted_bag: Vec<f64>) -> f64 {
 
     let mut max_difference: f64 = 0.0;
 
-    for (x, index1, index2)
-        in merge(sorted_bag, unsorted_bag) {
+    for (_x, index1, index2)
+        in merge(sorted_bag, &unsorted_bag) {
         max_difference = max_difference.max(
                              ((index1 as f64) * one_over_len_sorted_bag -
                                  (index2 as f64) * one_over_len_unsorted_bag).abs());
@@ -171,16 +170,18 @@ fn main() {
         }
 
         let _resource = node_to_string(triple.subject())
-            .strip_prefix("http://dbpedia.org/resource/");
+            .strip_prefix("http://dbpedia.org/resource/")
+            .unwrap_or_else(|| node_to_string(triple.subject()));
 
         let _type = node_to_string(triple.object())
-            .strip_prefix("http://dbpedia.org/ontology/");
+            .strip_prefix("http://dbpedia.org/ontology/")
+            .unwrap_or_else(|| node_to_string(triple.object()));
 
         if _type.contains("/") {
             continue;  // skip Things: (http://)www.w3.org/2002/07/owl#Thing
         }
 
-        dbpedia_resource_to_type[_resource] = _type
+        dbpedia_resource_to_type.insert(_resource.to_string(), _type.to_string());
     }
 
     println!("[4/6] Populating dictionary with parsed --properties .ttl file...");
@@ -189,16 +190,19 @@ fn main() {
     //   and populate dbpedia_type_and_property_to_extension:
     for triple in properties_graph.triples_iter() {
         // ToDo: possibly more advanced parsing:
-        if let Some(_value) = triple.object().literal.parse::<f64>() {
+        if let Ok(_value) = node_to_string(triple.object()).parse::<f64>() {
 
             let _resource = node_to_string(triple.subject())
-                .strip_prefix("http://dbpedia.org/resource/");
+                .strip_prefix("http://dbpedia.org/resource/")
+                .unwrap_or_else(|| node_to_string(triple.subject()));
 
             let _property = node_to_string(triple.predicate())
-                .strip_prefix("http://dbpedia.org/property/");
+                .strip_prefix("http://dbpedia.org/property/")
+                .unwrap_or_else(|| node_to_string(triple.predicate()));
 
             if let Some(_type) = dbpedia_resource_to_type.get(_resource) {
-                dbpedia_type_and_property_to_extension.entry((_type.clone(), _property))
+                dbpedia_type_and_property_to_extension
+                    .entry((_type.clone(), _property.to_string()))
                     .or_insert_with(|| Vec::new())
                     .push(_value);
             }
@@ -206,8 +210,9 @@ fn main() {
     }
 
     // The input bag to compare against all DBpedia numerical bags:
-    let mut bag: Vec<f64>;
+    let mut bag: Vec<f64> = Vec::new();
     if let Some(csv_file) = args.csv_file {
+        let csv_separator = args.csv_separator.unwrap_or("\t".to_string());
         // cf. https://doc.rust-lang.org/rust-by-example/std_misc/file/read_lines.html:
         let lines = read_lines(csv_file)
             .expect("cannot read given CSV file!");
@@ -217,7 +222,7 @@ fn main() {
                     continue;
                 } else {
                     if let Some(Ok(number)) = line
-                        .split(&args.csv_separator.unwrap_or("\t".to_string()))
+                        .split(&csv_separator)
                         .nth(args.csv_column.unwrap_or(0))
                         .map(|s| s.trim().parse::<f64>()) {
                         bag.push(number);
@@ -237,21 +242,21 @@ fn main() {
     //   to the metric returned by the KS (Kolmogorov–Smirnov) test
     //   on the list of values taken by all DBpedia resources that are an
     //   instance of that type and the input list of numeric values:
-    let dbpedia_type_and_property_to_ks_test: HashMap<(String, String), f64> =
+    let dbpedia_type_and_property_to_ks_test: HashMap<(String, String), (f64, Vec<f64>)> =
         HashMap::from_iter(
             dbpedia_type_and_property_to_extension
                     .into_iter()
-                    .map(|(key, lst)|
-                        (key, ks(bag, lst)))
+                    .map(|(key, mut lst)|
+                        (key, (ks(&bag, &mut lst), lst)))
         );
 
     println!("[6/6] Sorting results by KS score...");
 
     let mut dbpedia_type_and_property_to_ks_test_sorted
-        : Vec<((String, String), f64)> =
+        : Vec<((String, String), (f64, Vec<f64>))> =
         dbpedia_type_and_property_to_ks_test.into_iter().collect();
     dbpedia_type_and_property_to_ks_test_sorted
-        .sort_by(|a, b| a.partial_cmp(b).unwrap());
+        .sort_by(|((_, _), (a, _)), ((_, _), (b, _))| a.partial_cmp(b).unwrap());
     // smaller KS values == more similar
 
     println!();
@@ -259,18 +264,17 @@ fn main() {
     println!();
     for i in 0..args.k.min(
                           dbpedia_type_and_property_to_ks_test_sorted[0..args.k].len()) {
-        let el: ((String, String), f64) = dbpedia_type_and_property_to_ks_test_sorted[i];
-        let dbpedia_type = el.0.0;
-        let dbpedia_property = el.0.1;
-        let ks_test_score = el.1;
-        let matched_list =
-            dbpedia_type_and_property_to_extension[
-                &(dbpedia_type, dbpedia_property)];
+        let el: &((String, String), (f64, Vec<f64>)) =
+            &dbpedia_type_and_property_to_ks_test_sorted[i];
+        let dbpedia_type = &el.0.0;
+        let dbpedia_property = &el.0.1;
+        let ks_test_score = &el.1.0;
+        let matched_list = &el.1.1;
 
         println!("{} - {} -
                 {} - {}",
                  ks_test_score, dbpedia_type, dbpedia_property,
-                 long_list_to_short_str(&matched_list)
+                 long_list_to_short_str(matched_list)
         );
     }
 }
@@ -278,7 +282,7 @@ fn main() {
 fn node_to_string(node: &Node) -> &String {
     match node {
         Node::UriNode { uri } => uri.to_string(),
-        Node::LiteralNode { literal, data_type, language }
+        Node::LiteralNode { literal, data_type: _, language: _ }
             => &literal,
         Node::BlankNode { id } => &id,
     }
