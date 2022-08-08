@@ -1,15 +1,17 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use clap::{Parser};
-
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
-use rdf::node::Node;
 
+use clap::{Parser};
+
+use rdf::node::Node;
 use rdf::reader::turtle_parser::TurtleParser;
 use rdf::reader::rdf_parser::RdfParser;
+
+use regex::Regex;
 
 fn long_list_to_short_str(lst: &Vec<f64>) -> String {
     let lst_len: usize = lst.len();
@@ -154,8 +156,25 @@ fn main() {
     println!("[2/6] Parsing --properties .ttl file...");
 
     // Parse the .ttl file passed as --properties:
-    let properties_ttl_content = fs::read_to_string(args.properties)
-        .expect("Reading --properties .ttl file failed!");
+    let mut properties_ttl_content =
+        String::with_capacity(fs::metadata(args.properties.clone())
+            .map(|metadata| metadata.len()).unwrap_or(0) as usize);
+    let re = Regex::new(
+        r#"^<http://dbpedia.org/resource/.+> <http://dbpedia.org/property/.+> ".+"(@en|\^\^<http://.+.org/.+>) \.$"#
+        ).expect("Parsing regex failed!");
+    for line in read_lines(args.properties)
+        .expect("Reading --properties .ttl file failed!") {
+        if let Ok(line) = line {
+            // Only read in lines that match the regex `re`:
+            if re.is_match(&line) {
+                properties_ttl_content.push_str(&line);
+                properties_ttl_content.push('\n');
+            }
+        }
+    }
+    // // Would read in the whole file and not only lines matches the regex `re`:
+    // let properties_ttl_content = fs::read_to_string(args.properties)
+    //     .expect("Reading --properties .ttl file failed!");
     let mut reader =
         TurtleParser::from_string(properties_ttl_content);
     let properties_graph = reader.decode()

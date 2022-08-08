@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 rdf = "0.1.4"
 clap = { version = "3.0.5", features = ["derive"] }
+regex = "1"
