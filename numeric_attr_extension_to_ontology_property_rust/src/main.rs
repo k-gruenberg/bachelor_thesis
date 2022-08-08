@@ -262,8 +262,8 @@ fn main() {
     println!();
     println!("KS Score - DBpedia type - DBpedia property - Matched list");
     println!();
-    for i in 0..args.k.min(
-                          dbpedia_type_and_property_to_ks_test_sorted[0..args.k].len()) {
+    for i in 0..args.k.min(dbpedia_type_and_property_to_ks_test_sorted
+                              .iter().take(args.k).len()) {
         let el: &((String, String), (f64, Vec<f64>)) =
             &dbpedia_type_and_property_to_ks_test_sorted[i];
         let dbpedia_type = &el.0.0;
@@ -271,8 +271,7 @@ fn main() {
         let ks_test_score = &el.1.0;
         let matched_list = &el.1.1;
 
-        println!("{} - {} -
-                {} - {}",
+        println!("{} - {} - {} - {}",
                  ks_test_score, dbpedia_type, dbpedia_property,
                  long_list_to_short_str(matched_list)
         );
