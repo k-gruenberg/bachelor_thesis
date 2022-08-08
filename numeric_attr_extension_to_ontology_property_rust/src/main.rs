@@ -160,7 +160,7 @@ fn main() {
         String::with_capacity(fs::metadata(args.properties.clone())
             .map(|metadata| metadata.len()).unwrap_or(0) as usize);
     let re = Regex::new(
-        r#"^<http://dbpedia.org/resource/.+> <http://dbpedia.org/property/.+> ".+"(@en|\^\^<http://.+.org/.+>) \.$"#
+        r#"^<http://dbpedia\.org/resource/.+> <http://dbpedia\.org/property/.+> "[0-9.]+"(@en|\^\^<http://(dbpedia\.org|www\.w3\.org)/.+>) \.$"#
         ).expect("Parsing regex failed!");
     for line in read_lines(args.properties)
         .expect("Reading --properties .ttl file failed!") {
