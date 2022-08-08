@@ -16,6 +16,10 @@ and compile using
 - gcc numeric_attr_extension_to_ontology_property_cython_compatible.c
 
 or something like that...
+
+Potentially one has to install
+
+- sudo apt-get install python3-dev
 """
 
 from rdflib import Graph  # python3 -m pip install rdflib
