@@ -204,6 +204,8 @@ fn main() {
         dbpedia_resource_to_type.insert(_resource.to_string(), _type.to_string());
     }
 
+    println!("[INFO] {} DBpedia resources", dbpedia_resource_to_type.len());
+
     println!("[4/6] Populating dictionary with parsed --properties .ttl file...");
 
     // Iterate through the (subject, predicate, object) triples
@@ -228,6 +230,9 @@ fn main() {
             }
         }
     }
+
+    println!("[INFO] {} (DBpedia type, numeric DBpedia property) pairs",
+             dbpedia_type_and_property_to_extension.len());
 
     // The input bag to compare against all DBpedia numerical bags:
     let mut bag: Vec<f64> = Vec::new();
@@ -259,7 +264,7 @@ fn main() {
     println!("[5/6] Computing KS scores...");
 
     // Maps each pair of a DBpedia type and numeric DBpedia property
-    //   to the metric returned by the KS (Kolmogorov–Smirnov) test
+    //   to the metric returned by the KS (Kolmogorov-Smirnov) test
     //   on the list of values taken by all DBpedia resources that are an
     //   instance of that type and the input list of numeric values:
     let dbpedia_type_and_property_to_ks_test: HashMap<(String, String), (f64, Vec<f64>)> =
