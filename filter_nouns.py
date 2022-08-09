@@ -96,6 +96,7 @@ for noun_candidate in noun_candidates:
     if noun_candidate.lower() in nouns_with_definition.keys():
         dictionary_match = noun_candidate.lower()
     # when the noun candidate is a plural, look up the singular in the dictionary:
+    #   (cf. the principle of https://en.wikipedia.org/wiki/Stemming)
     elif noun_candidate.lower()[-3:] == "ies" and noun_candidate.lower()[:-3] + "y"\
             in nouns_with_definition.keys():
         dictionary_match = noun_candidate.lower()[:-3] + "y"

@@ -106,6 +106,14 @@ def inverse_cantor_pairing_function(z: int) -> Tuple[int, int]:
 
 
 def noun_match(noun1: str, noun2: str) -> bool:
+    """
+    Two given nouns match when they are equal or when one of them
+    is the plural/singular form of the other one.
+    The matching is also case-insensitive.
+
+    This is a basic form of so called "stemming",
+    see https://en.wikipedia.org/wiki/Stemming
+    """
     noun1 = noun1.lower()
     noun2 = noun2.lower()
     return noun1 == noun2\
