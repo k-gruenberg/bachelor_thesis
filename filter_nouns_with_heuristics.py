@@ -122,6 +122,8 @@ def noun_match(noun1: str, noun2: str) -> bool:
         or noun1[-1:] ==   "s" and noun2 == noun1[:-1]\
         or noun2[-1:] ==   "s" and noun1 == noun2[:-1]\
 
+# def filter_nouns_with_heuristics_as_list(input_text: str, VERBOSE: bool)
+# def filter_nouns_with_heuristics_as_dict(input_text: str, VERBOSE: bool)
 
 def filter_nouns_with_heuristics(input_text: str, VERBOSE: bool)\
     -> List[WikidataItem]:

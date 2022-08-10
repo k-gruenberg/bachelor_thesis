@@ -127,7 +127,15 @@ struct Args {
     /// the --csv-file argument. The first column has index 0.
     /// (Default: 0)
     #[clap(long)]
-    csv_column: Option<usize>
+    csv_column: Option<usize>,
+
+    /// Optional parameter: do not just output the k lowest KS scores but also the KS scores
+    /// regarding these given DBpedia properties or regarding all properties of these
+    /// given DBpedia types.
+    /// Syntax: "type:property", "type:", ":property" (may be arbitrarily combined!)
+    /// Examples: "Place:2006Population", "Place:", ":2006Population"
+    #[clap(long)]
+    compare_with: Option<Vec<String>> // not existent in Python version!
 }
 
 fn main() {
@@ -300,6 +308,59 @@ fn main() {
                  ks_test_score, dbpedia_type, dbpedia_property,
                  long_list_to_short_str(matched_list)
         );
+    }
+
+    // not existent in Python version:
+    if let Some(compare_withs) = args.compare_with {
+        println!();
+        println!("===== Additional comparisons as specified by the user: =====");
+        for compare_with in compare_withs {
+            if compare_with.starts_with(":") { // e.g. ":2006Population"
+                let dbpedia_property_name = compare_with.strip_prefix(":").unwrap();
+
+                for ((dbpedia_type, dbpedia_property),
+                    (ks_test_score, matched_list))
+                    in &dbpedia_type_and_property_to_ks_test_sorted {
+                    if dbpedia_property == dbpedia_property_name {
+                        println!("{} - {} - {} - {}",
+                                 ks_test_score, dbpedia_type, dbpedia_property,
+                                 long_list_to_short_str(matched_list)
+                        );
+                    }
+                }
+            } else if compare_with.ends_with(":") { // e.g. "Place:"
+                let dbpedia_type_name = compare_with.strip_suffix(":").unwrap();
+
+                for ((dbpedia_type, dbpedia_property),
+                    (ks_test_score, matched_list))
+                in &dbpedia_type_and_property_to_ks_test_sorted {
+                    if dbpedia_type == dbpedia_type_name {
+                        println!("{} - {} - {} - {}",
+                                 ks_test_score, dbpedia_type, dbpedia_property,
+                                 long_list_to_short_str(matched_list)
+                        );
+                    }
+                }
+            } else if compare_with.contains(":") { // e.g. "Place:2006Population"
+                let dbpedia_type_name = compare_with.split(":").nth(0).unwrap();
+                let dbpedia_property_name = compare_with.split(":").nth(1).unwrap();
+
+                for ((dbpedia_type, dbpedia_property),
+                    (ks_test_score, matched_list))
+                in &dbpedia_type_and_property_to_ks_test_sorted {
+                    if dbpedia_type == dbpedia_type_name &&
+                        dbpedia_property == dbpedia_property_name {
+                        println!("{} - {} - {} - {}",
+                                 ks_test_score, dbpedia_type, dbpedia_property,
+                                 long_list_to_short_str(matched_list)
+                        );
+                    }
+                }
+            } else {
+                println!("[ERROR] Invalid value supplied to --compare_with: '{}' contains no ':'",
+                         compare_with);
+            }
+        }
     }
 }
 
