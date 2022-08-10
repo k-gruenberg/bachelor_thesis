@@ -335,6 +335,9 @@ class Table:
 		Classify this table using the "Using Attribute Names" approach,
 		implemented in attr_names_to_ontology_class.py.
 		Higher scores mean better matches.
+
+		When useSBERT==False, the Jaccard index is used for computing
+		word similarity instead.
 		"""
 
 		return attr_names_to_ontology_class(\
@@ -344,15 +347,26 @@ class Table:
 			VERBOSE=False
 			)
 
-	def classifyUsingAttrExtensions(self) -> Dict[WikidataItem, float]:
+	def classifyUsingAttrExtensions(self, useBing=False, useWebIsAdb=False)\
+		 -> Dict[WikidataItem, float]:
 		"""
 		Classify this table using the "Using Attribute Extensions" approach,
 		implemented in attr_extension_to_ontology_class.py.
 		Higher scores mean better matches.
+
+		The `useBing` and `useWebIsAdb` parameters
+		shall not both be set to True!
 		"""
 
-		return attr_extension_to_ontology_class(\
-			cell_labels=self.get_identifying_column())
+		if useBing:
+			return None
+			# ToDo: refactor attr_extension_to_ontology_class_web_search.py
+		elif useWebIsAdb:
+			return None  # ToDo: not even coded yet...
+		else:
+			return attr_extension_to_ontology_class(\
+				cell_labels=self.get_identifying_column())
+
 		# ToDo: write get_identifying_column() function !!!!!
 
 	@classmethod
@@ -586,7 +600,7 @@ def main():
 		description="NETT - Narrative Entity Type(s) to Tables")
 
 	parser.add_argument(
-    	'entityTypes',
+    	'entityTypes', # Narratives = "Knowing what to look for"
     	type=str,
     	help="""A list of entity types.
     	Ideally they're Wikidata ID's of the form 'Q000000',
@@ -732,6 +746,64 @@ def main():
 		For this to work you need to run `pip install -U sentence-transformers`
 		or `python3 -m pip install -U sentence-transformers` first!
 		""")
+
+	# Narratives = "Taking Advantage of the Knowledge in the Narrative":
+
+	parser.add_argument('--co-occurring-keywords',
+    	type=str,
+    	default='',
+    	help="""
+    	List other words occurring in the narrative. The results are then
+    	limited to those tables where at least one of these words occurs in
+    	either the surrounding text of the table or inside the table.
+    	""",
+    	nargs='*',
+    	metavar='KEYWORD')
+
+	parser.add_argument('--co-occurring-keywords-all',
+		action='store_true',
+		help="""
+		Set this flag to require all(!) keywords specified with the 
+		--co-occurring-keywords parameter to occur in the surrounding text
+		of or inside each table.
+		(By default, one keyword occuring is regarded as being sufficient.)
+		""")
+
+	parser.add_argument('--attribute-cond',
+    	type=str,
+    	default='',
+    	help="""
+    	List one or multiple attribute conditions of the form
+    	"[attribute name] [<=,>=,<,>,==,!=,in,not in]
+    	 [value, value range or value list]", e.g.
+        "horsepower >= 500" or
+        "year in range(1980,2000)" or
+        "firstName not in ['Alex', 'Alexander']"
+    	When supplied, the results are limited to those tables where
+    	(a) a column name could be matched to each specified attribute name
+    	   (--jaccard or --sbert is used, depending on parameter)
+    	and
+    	(b) all(!) values in the extension of that column fulfill
+    	    the specified condition.
+    	Note that (a) and (b) are combined, i.e. columns where all values
+    	fulfill the condition in (b) are considered to be more likely to match
+    	the attribute in (a).
+    	Use the --attribute-cond-strictness parameter
+    	to specify the strictness of
+    	this condition check as a value between 0.0 (no check at all)
+    	and 1.0 (100-percent strict).
+    	""",
+    	nargs='*',
+    	metavar='CONDITION')
+
+	parser.add_argument('--attribute-cond-strictness',
+    	type=float,
+    	default=1.0,
+    	help="""
+    	Only meaningful in combination with the --attribute-cond parameter.
+    	A value between 0.0 (least strict) and 1.0 (most strict, default).
+    	""",
+    	metavar='STRICTNESS')
 
 	args = parser.parse_args()
 
