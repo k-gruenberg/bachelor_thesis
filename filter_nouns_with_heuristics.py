@@ -11,7 +11,7 @@ import re  # regex
 from collections import OrderedDict
 import statistics
 import math
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from WikidataItem import WikidataItem
 
@@ -122,11 +122,9 @@ def noun_match(noun1: str, noun2: str) -> bool:
         or noun1[-1:] ==   "s" and noun2 == noun1[:-1]\
         or noun2[-1:] ==   "s" and noun1 == noun2[:-1]\
 
-# def filter_nouns_with_heuristics_as_list(input_text: str, VERBOSE: bool)
-# def filter_nouns_with_heuristics_as_dict(input_text: str, VERBOSE: bool)
 
-def filter_nouns_with_heuristics(input_text: str, VERBOSE: bool)\
-    -> List[WikidataItem]:
+def filter_nouns_with_heuristics_as_tuple_list(input_text: str, VERBOSE: bool,\
+    ALLOW_EQUAL_SCORES: bool) -> List[Tuple[WikidataItem, float]]:  # ToDo !!!!!
     
     if VERBOSE or DEBUG:
         print("")  # separator
@@ -526,7 +524,7 @@ def filter_nouns_with_heuristics(input_text: str, VERBOSE: bool)\
     # * We will use method (3) when some nouns are much more common than other
     #   nouns.
 
-    results: List[WikidataItem] = []  # output to be printed
+    results: List[Tuple[WikidataItem, float]] = []  # output (to be printed)
 
     frequency_of_most_frequent_word =\
         word_frequency(\
@@ -551,11 +549,13 @@ def filter_nouns_with_heuristics(input_text: str, VERBOSE: bool)\
                     list(successful_dict_matches_with_ontology_links.items())\
                         [y][1]
                 if x < len(ontology_links_for_yth_noun):
-                    results += [ontology_links_for_yth_noun[x]]
+                    ontology_link = ontology_links_for_yth_noun[x]
+                    score = todo if ALLOW_EQUAL_SCORES else todo  # ToDo!!!
+                    results.append((ontology_link, score))
     else: # Some nouns are much more common than other nouns:
         # Use method (3):
         if VERBOSE:
-            print("Some nouns are much more comman than others: "\
+            print("Some nouns are much more common than others: "\
                 "list Cantor-like...")
         total_number_of_ontology_links =\
             sum(map(\
@@ -570,10 +570,12 @@ def filter_nouns_with_heuristics(input_text: str, VERBOSE: bool)\
                x < len(\
                 list(successful_dict_matches_with_ontology_links.items())[y][1]\
                ):
-                results.append(\
-                    list(successful_dict_matches_with_ontology_links.items())\
-                    [y][1][x]\
-                )
+                ontology_link = list(\
+                    successful_dict_matches_with_ontology_links.items())\
+                    [y][1][x]
+                score = word_frequency(todo) + todo / todo\
+                    if ALLOW_EQUAL_SCORES else todo  # ToDo!!!
+                results.append((ontology_link, score))
             i += 1
 
     # # Method (1) would have looked like this:
@@ -582,7 +584,7 @@ def filter_nouns_with_heuristics(input_text: str, VERBOSE: bool)\
     # results = [x for xs in results for x in xs]
 
     # Remove duplicates (duplicates exist when the text contained synonyms):
-    results = list(OrderedDict.fromkeys(results))
+    results = list(OrderedDict.fromkeys(results))  # ToDo: new
 
     # Third, put additional weights on results with a very high ontology index.
     # (E.g. Q11666766 (restaurant;
@@ -602,12 +604,27 @@ def filter_nouns_with_heuristics(input_text: str, VERBOSE: bool)\
     return results
 
 
-def main():  # ToDo: argparse
+def filter_nouns_with_heuristics_as_list(input_text: str, VERBOSE: bool)\
+    -> List[WikidataItem]:
+    return [wikidata_item for wikidata_item, score\
+        in filter_nouns_with_heuristics_as_tuple_list(\
+            input_text=input_text, VERBOSE=VERBOSE, ALLOW_EQUAL_SCORES=False)]
+
+def filter_nouns_with_heuristics_as_dict(input_text: str, VERBOSE: bool,\
+    ALLOW_EQUAL_SCORES: bool) -> Dict[WikidataItem, float]:
+    return dict(filter_nouns_with_heuristics_as_tuple_list(\
+        input_text=input_text,\
+        VERBOSE=VERBOSE,\
+        ALLOW_EQUAL_SCORES=ALLOW_EQUAL_SCORES))
+
+
+def main():  # ToDo: argparse  # ToDo: test!!!
     # Whether to activate verbose prints:
     VERBOSE = (len(sys.argv) >= 3 and sys.argv[2] in ["--verbose", "-v"])
 
     results: List[WikidataItem] =\
-        filter_nouns_with_heuristics(input_text=sys.argv[1], VERBOSE=VERBOSE)
+        filter_nouns_with_heuristics_as_list(\
+            input_text=sys.argv[1], VERBOSE=VERBOSE)
 
     # At last, print the result:
     for result in results:
