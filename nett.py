@@ -726,7 +726,8 @@ def main():
 		print("This combination of parameters is not yet implemented.")  # ToDo!
 		# -> use pretty_print() as ask user for correct mapping for each table
 		# -> the user enters "1", "2", "3", ..., "X", "N/A", or "finish"
-		# -> after entering "finish", the statistics (MRR, Top-k coverage etc.)
+		# -> after entering "finish", the statistics
+		#    (MRR, Top-k coverage etc. !!!!! for various weightings !!!!!)
 		#    are printed and the user is asked whether they want to export
 		#    their annotations (Y/n)
 	elif corpus != "" and stats and entityTypes != []:
