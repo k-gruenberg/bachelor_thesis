@@ -50,6 +50,15 @@ import re
 
 from WikidataItem import WikidataItem
 
+# Import the fundamental approaches
+#     #1 "Using Textual Surroundings"
+#     #2 "Using Attribute Names"
+#     #3 "Using Attribute Extensions"
+# from the respective Python files:
+from filter_nouns_with_heuristics import filter_nouns_with_heuristics_as_dict
+from attr_names_to_ontology_class import attr_names_to_ontology_class
+from attr_extension_to_ontology_class import attr_extension_to_ontology_class
+
 def normalize(dct: Dict[WikidataItem, float])\
 	-> Dict[WikidataItem, float]:
 	if dct is not None:
@@ -309,13 +318,42 @@ class Table:
 		return combinedResult
 
 	def classifyUsingTextualSurroundings(self) -> Dict[WikidataItem, float]:
-		pass  # ToDo: filter_nouns_with_heuristics.py (refactor)
+		"""
+		Classify this table using the "Using Textual Surroundings" approach,
+		implemented in filter_nouns_with_heuristics.py.
+		Higher scores mean better matches.
+		"""
 
-	def classifyUsingAttrNames(self) -> Dict[WikidataItem, float]:
-		pass  # ToDo: attr_names_to_ontology_class.py (refactor)
+		return filter_nouns_with_heuristics_as_dict(\
+			input_text=self.surroundingText,\
+			VERBOSE=False,\
+			ALLOW_EQUAL_SCORES=True)
+
+	def classifyUsingAttrNames(self, useSBERT: bool)\
+		-> Dict[WikidataItem, float]:
+		"""
+		Classify this table using the "Using Attribute Names" approach,
+		implemented in attr_names_to_ontology_class.py.
+		Higher scores mean better matches.
+		"""
+
+		return attr_names_to_ontology_class(\
+			inputAttrNames=self.headerRow,
+			USE_BETTER_SUM_FORMULA=True,
+			USE_SBERT_INSTEAD_OF_JACCARD=useSBERT,
+			VERBOSE=False
+			)
 
 	def classifyUsingAttrExtensions(self) -> Dict[WikidataItem, float]:
-		pass  # ToDo: attr_extension_to_ontology_class.py (refactor)
+		"""
+		Classify this table using the "Using Attribute Extensions" approach,
+		implemented in attr_extension_to_ontology_class.py.
+		Higher scores mean better matches.
+		"""
+
+		return attr_extension_to_ontology_class(\
+			cell_labels=self.get_identifying_column())
+		# ToDo: write get_identifying_column() function !!!!!
 
 	@classmethod
 	def parseCSV(csv: str) -> Table:
