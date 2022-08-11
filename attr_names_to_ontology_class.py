@@ -2,6 +2,12 @@
 # an ordered list of class candidates from the DBpedia ontology that have
 # similarly named attributes.
 
+# Prerequisites:
+#
+# python3 -m pip install -U sentence-transformers
+#
+# but only when using the --sbert option.
+
 # The DBpedia ontology is contained in the `ontology--DEV_type=orig.owl` file
 #   (which was downloaded from
 #    https://databus.dbpedia.org/ontologies/dbpedia.org/ontology--DEV).
@@ -56,6 +62,65 @@
 import sys
 from typing import Dict, List
 import xml.etree.ElementTree as ET
+import argparse
+
+# ===== SBERT variables: =====
+# Global variables necessary when the --sbert parameter is used:
+model = None
+sbert_encodings = {}  # each attribute name mapped to a vector (by SBERT)
+
+
+
+def initialize_sbert_model(VERBOSE: bool):
+	global model
+	if model is None:
+		# *** For code below cf. https://www.sbert.net/docs/quickstart.html ***
+		if VERBOSE: print("[INFO] Preparing SBERT...")
+		from sentence_transformers import SentenceTransformer
+		model = SentenceTransformer('all-MiniLM-L6-v2')
+		if VERBOSE: print("[INFO] Prepared SBERT.")
+
+
+def trigrams(word: str) -> List[str]:
+	"""
+	E.g. trigrams("Hello") == ['hel', 'ell', 'llo']
+	"""
+	return [word[i:i+3].lower() for i in range(0, len(word) - 2)]
+
+def similarity(attrName1: str, attrName2: str,\
+	USE_SBERT: bool) -> float:
+	"""
+	E.g. similarity("horsepower", "enginePower", USE_SBERT=False) == 0.30769...
+         similarity("horsepower", "modelStartYear", USE_SBERT=False) == 0.0
+    i.e. when using Jaccard similarity of character trigrams.
+	"""
+	if not USE_SBERT:  # Use Jaccard and not SBERT:
+		a = set(trigrams(attrName1))
+		b = set(trigrams(attrName2))
+		aIntersectB = a.intersection(b)
+		aUnionB = a.union(b)
+		return len(aIntersectB) / len(aUnionB)
+	else:  # Use SBERT('s cosine similarity) instead of Jaccard similarity:
+		from sentence_transformers import util
+		initialize_sbert_model(VERBOSE=False)
+		# *** For code below cf.
+		#     https://www.sbert.net/docs/quickstart.html ***	
+		# Sentences are encoded by calling model.encode():
+		emb1 = sbert_encodings[attrName1]\
+			if attrName1 in sbert_encodings\
+			else sbert_encodings.setdefault(attrName1,\
+				model.encode(attrName1))  # ToDo: serialize and cache !!!
+		emb2 = sbert_encodings[attrName2]\
+			if attrName2 in sbert_encodings\
+			else sbert_encodings.setdefault(attrName2,\
+				model.encode(attrName2))
+		# Compute Cosine-Similarity:
+		cos_sim = util.cos_sim(emb1, emb2)
+		return float(cos_sim)
+
+
+
+# ===== DBpedia: =====
 
 # Each DBpedia class mapped to its properties:
 dbpediaProperties: Dict[str, List[str]] = {}
@@ -144,45 +209,8 @@ def attr_names_to_ontology_class(inputAttrNames: List[str],\
 	#            * Comparing Sentence Similarities:
 	#              https://www.sbert.net/docs/quickstart.html
 
-	model = None
-	sbert_encodings = {}  # each attribute name mapped to a vector (by SBERT)
-	if USE_SBERT_INSTEAD_OF_JACCARD:
-		# *** For code below cf. https://www.sbert.net/docs/quickstart.html ***
-		if VERBOSE: print("[INFO] Preparing SBERT...")
-		from sentence_transformers import SentenceTransformer, util
-		model = SentenceTransformer('all-MiniLM-L6-v2')
-		if VERBOSE: print("[INFO] Prepared SBERT.")
-
-	# E.g. trigrams("Hello") == ['hel', 'ell', 'llo']
-	def trigrams(word: str) -> List[str]:
-		return [word[i:i+3].lower() for i in range(0, len(word) - 2)]
-
-	# E.g. similarity("horsepower", "enginePower") == 0.3076923076923077
-	#      similarity("horsepower", "modelStartYear") == 0.0
-	#   when USE_SBERT_INSTEAD_OF_JACCARD = False,
-	#   i.e. when using Jaccard similarity of character trigrams.
-	def similarity(attrName1: str, attrName2: str) -> float:
-		if not USE_SBERT_INSTEAD_OF_JACCARD:  # Use Jaccard and not SBERT:
-			a = set(trigrams(attrName1))
-			b = set(trigrams(attrName2))
-			aIntersectB = a.intersection(b)
-			aUnionB = a.union(b)
-			return len(aIntersectB) / len(aUnionB)
-		else:  # Use SBERT('s cosine similarity) instead of Jaccard similarity:
-			# *** For code below cf.
-			#     https://www.sbert.net/docs/quickstart.html ***	
-			# Sentences are encoded by calling model.encode():
-			emb1 = sbert_encodings[attrName1]\
-				if attrName1 in sbert_encodings\
-				else sbert_encodings.setdefault(attrName1,\
-					model.encode(attrName1))  # ToDo: serialize and cache !!!
-			emb2 = sbert_encodings[attrName2]\
-				if attrName2 in sbert_encodings\
-				else sbert_encodings.setdefault(attrName2,\
-					model.encode(attrName2))
-			# Compute Cosine-Similarity:
-			cos_sim = util.cos_sim(emb1, emb2)
-			return float(cos_sim)
+	if model is None and USE_SBERT_INSTEAD_OF_JACCARD:
+		initialize_sbert_model(VERBOSE=VERBOSE)
 
 	# Each DBpedia class mapped to a score measuring how close its attribute
 	#   names fit the `inputAttrNames`:
@@ -237,7 +265,8 @@ def attr_names_to_ontology_class(inputAttrNames: List[str],\
 			#   ...
 			dbpediaClassesWithMatchScore[dbpediaClass] =\
 				sum(\
-					[max([similarity(ontologyAttrName, inputAttrName)\
+					[max([similarity(ontologyAttrName, inputAttrName,\
+						USE_SBERT=USE_SBERT_INSTEAD_OF_JACCARD)\
 						for inputAttrName in inputAttrNames])\
 					for ontologyAttrName in ontologyAttrNames]\
 				)
@@ -289,7 +318,8 @@ def attr_names_to_ontology_class(inputAttrNames: List[str],\
 			#   ...
 			dbpediaClassesWithMatchScore[dbpediaClass] =\
 				sum(\
-					[max([similarity(ontologyAttrName, inputAttrName)\
+					[max([similarity(ontologyAttrName, inputAttrName,\
+						USE_SBERT=USE_SBERT_INSTEAD_OF_JACCARD)\
 						for ontologyAttrName in ontologyAttrNames])\
 					for inputAttrName in inputAttrNames]\
 				)
@@ -300,10 +330,53 @@ def attr_names_to_ontology_class(inputAttrNames: List[str],\
 
 
 def main():  # ToDo: argparse
-	inputAttrNames: List[str] = sys.argv[1:]
+	parser = argparse.ArgumentParser(
+		description="""
+		Map a list of attribute names to an ordered list of ontology classes,
+		using attribute name similarity.
+		""")
+
+	parser.add_argument(
+    	'inputAttrNames',
+    	type=str,
+    	help="""
+    	The input attribute names.
+    	""",
+    	nargs='*',
+    	metavar='ATTR_NAME')
+
+	parser.add_argument('--sbert',
+		action='store_true',
+		help="""
+		Use SBERT (www.sbert.net/docs/) for attribute name similarity
+		instead of Jaccard.
+		Only works when SBERT is installed:
+		python3 -m pip install -U sentence-transformers
+		""")
+
+	parser.add_argument('--verbose', '-v',
+		action='store_true',
+		help="""
+		Verbose output.
+		""")
+
+	parser.add_argument('--inferior-formula',
+		action='store_true',
+		help="""
+		Use the inferior sum formula (for testing only, not recommended).
+		""")
+
+	args = parser.parse_args()
+
+	# naive argument parsing: inputAttrNames: List[str] = sys.argv[1:]
 
 	dbpediaClassesWithMatchScore: Dict[str, float] =\
-		attr_names_to_ontology_class(inputAttrNames=inputAttrNames)
+		attr_names_to_ontology_class(\
+			inputAttrNames=args.inputAttrNames,\
+			USE_BETTER_SUM_FORMULA=not args.inferior_formula,\
+			USE_SBERT_INSTEAD_OF_JACCARD=args.sbert,\
+			VERBOSE=args.verbose\
+			)
 
 	# Now that we have a match score for each DBpedia class, we can print out
 	#   all of them (with a match score >0); in descending order, i.e. highest
