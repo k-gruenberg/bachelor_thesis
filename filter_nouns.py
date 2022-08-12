@@ -11,7 +11,8 @@ import re  # regex
 def get_wikidata_entry_candidates(search_string):
     api_url = \
         "https://www.wikidata.org/" \
-        "w/api.php?action=wbsearchentities&format=json&language=en&type=item&continue=0&search="\
+        "w/api.php?action=wbsearchentities" \
+        "&format=json&language=en&type=item&continue=0&search="\
         + urllib.parse.quote_plus(search_string)
     json_result = urlopen(api_url).read().decode('utf-8')
     parsed_json = json.loads(json_result)
@@ -31,14 +32,19 @@ def get_wikidata_entry_candidates(search_string):
 input_text = sys.argv[1]  # the text to filter for nouns
 NO_WIKIDATA = (len(sys.argv) >= 3 and sys.argv[2] == "--no-wikidata")
 
-oxford_dictionary_file_path = os.path.expanduser("~/Oxford_English_Dictionary.txt")
+oxford_dictionary_file_path =\
+    os.path.expanduser("~/Oxford_English_Dictionary.txt")
 oxford_dictionary_url =\
-    "https://raw.githubusercontent.com/sujithps/Dictionary/master/Oxford%20English%20Dictionary.txt"
+    "https://raw.githubusercontent.com/sujithps/Dictionary/master/" \
+    "Oxford%20English%20Dictionary.txt"
 
-# Download the Oxford English Dictionary to a file (if not already) and open that file:
+# Download the Oxford English Dictionary to a file (if not already)
+#   and open that file:
 if not exists(oxford_dictionary_file_path):
-    print("Downloading Oxford English Dictionary to " + oxford_dictionary_file_path + "...")
-    os.system("wget " + oxford_dictionary_url + " -O " + oxford_dictionary_file_path)
+    print("Downloading Oxford English Dictionary to " +\
+        oxford_dictionary_file_path + "...")
+    os.system("wget " + oxford_dictionary_url + " -O " +\
+        oxford_dictionary_file_path)
     print("Download complete.")
 oxford_dictionary_file = open(oxford_dictionary_file_path)
 
@@ -70,7 +76,8 @@ for line in oxford_dictionary_file:
 # Now filter all the nouns from the input texts and
 #   print them together with their definition and ontology links:
 
-# First, generate all noun candidates from the input text (a noun may consist of multiple words!):
+# First, generate all noun candidates from the input text
+#   (a noun may consist of multiple words!):
 noun_candidates = []
 words = input_text.split()
 # remove all non-word chars, otherwise "Restaurants:" will
@@ -90,7 +97,8 @@ for noun_candidate in noun_candidates:
         # e.g. "credit" but "credit card" has already been matched before
         continue
         # a side effect of this is:
-        #   "I" won't be matched anymore either because "credit card" contains an "i"
+        #   "I" won't be matched anymore either because "credit card"
+        #   contains an "i"
 
     dictionary_match = ""
     if noun_candidate.lower() in nouns_with_definition.keys():
@@ -105,7 +113,8 @@ for noun_candidate in noun_candidates:
         dictionary_match = noun_candidate.lower()[:-1]
 
     if dictionary_match != "":  # successful match in dictionary:
-        successful_matches.append(noun_candidate)  # e.g. add "credit card" to successful matches
+        successful_matches.append(noun_candidate)
+        #   -> e.g. add "credit card" to successful matches
 
         print(noun_candidate)
         print(nouns_with_definition[dictionary_match])

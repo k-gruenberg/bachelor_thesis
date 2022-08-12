@@ -10,7 +10,8 @@
 #      (2) Q4167410 (Wikimedia disambiguation page)
 #      (1) Q1361017 (Ford Torino)
 #      (1) Q1137594 (coupé)
-# * "malibu" "satellite" "rebel" "challenger" "monte carlo" "corona" "hornet" "firebird"
+# * "malibu" "satellite" "rebel" "challenger" "monte carlo" "corona"
+#   "hornet" "firebird"
 #   => (4) Q134556 (single)
 #      (4) Q16521 (taxon)
 #      (3) Q101352 (family name)
