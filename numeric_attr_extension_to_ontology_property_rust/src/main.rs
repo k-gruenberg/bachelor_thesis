@@ -143,7 +143,7 @@ struct Args {
     /// Syntax: "type:property", "type:", ":property" (may be arbitrarily combined!)
     /// Examples: "Place:2006Population", "Place:", ":2006Population"
     #[clap(long)]
-    compare_with: Option<Vec<String>>, // not existent in Python version!
+    compare_with: Option<Vec<String>>,
 
     /// When this parameter is set, the data parsed and combined from the two .ttl files given
     /// in the --types and --properties arguments is also exported to the specified file in
@@ -151,12 +151,12 @@ struct Args {
     /// That file can then be used later in the --input argument to speed things up by saving the
     /// parsing of two big .ttl files.
     #[clap(long, parse(from_os_str))]
-    output: Option<PathBuf>,  // not existent in Python version!
+    output: Option<PathBuf>,
 
     /// Specify the TSV file previously generated using the --output parameter.
     /// When --input is set, the --types and --properties parameters are not needed anymore.
     #[clap(long, parse(from_os_str))]
-    input: Option<PathBuf>  // not existent in Python version!
+    input: Option<PathBuf>
 }
 
 fn main() {
@@ -368,7 +368,6 @@ fn main() {
         );
     }
 
-    // not existent in Python version:
     if let Some(compare_withs) = args.compare_with {
         println!();
         println!("===== Additional comparisons as specified by the user: =====");
@@ -415,7 +414,7 @@ fn main() {
                     }
                 }
             } else {
-                println!("[ERROR] Invalid value supplied to --compare_with: '{}' contains no ':'",
+                println!("[ERROR] Invalid value supplied to --compare-with: '{}' contains no ':'",
                          compare_with);
             }
         }

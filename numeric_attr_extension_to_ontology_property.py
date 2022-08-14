@@ -1,4 +1,3 @@
-from rdflib import Graph  # python3 -m pip install rdflib
 import argparse
 from typing import Dict, List, Tuple, Iterator
 from collections import defaultdict
@@ -82,7 +81,7 @@ def main():
 downloads.dbpedia.org/2016-04/core-i18n/en/instance_types_en.ttl.bz2
     	for example.""",
     	metavar='TTL_PATH',
-    	required=True)
+    	required=False)
 	"""
 	   523040066 Oct  7  2016 instance_types_dbtax_dbo_en.ttl
 	  1170280591 Oct  7  2016 instance_types_dbtax_ext_en.ttl
@@ -154,7 +153,7 @@ downloads.dbpedia.org/2016-04/core-i18n/en/instance_types_en.ttl.bz2
 downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
     	for example.""",
     	metavar='TTL_PATH',
-    	required=True)
+    	required=False)
 
 	parser.add_argument('-k',
         type=int,
@@ -196,6 +195,47 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
     	metavar='CSV_COLUMN',
     	required=False)
 
+	parser.add_argument('--compare-with',
+    	type=str,
+    	help="""
+    	Optional parameter: do not just output the k lowest KS scores but also
+    	the KS scores regarding these given DBpedia properties or regarding all
+    	properties of these given DBpedia types.
+        Syntax:
+        "type:property", "type:", ":property" (may be arbitrarily combined!)
+        Examples: "Place:2006Population", "Place:", ":2006Population"
+    	""",
+    	nargs='*',
+    	metavar='COMPARE_WITH',
+    	required=False)
+
+	parser.add_argument('--output',
+    	type=str,
+    	default='',
+    	help="""
+    	When this parameter is set, the data parsed and combined from the two
+    	.ttl files given in the --types and --properties arguments is also
+    	exported to the specified file in TSV (tab-separated values) format.
+        That file can then be used later in the --input argument to speed
+        things up by saving the parsing of two big .ttl files.
+        It is highly recommended to generate the TSV file using the Rust
+        version of this script!
+    	""",
+    	metavar='OUTPUT_FILE_PATH',
+    	required=False)
+
+	parser.add_argument('--input',
+    	type=str,
+    	default='',
+    	help="""
+    	Specify the TSV file previously generated using the --output parameter
+    	(highly recommended to do that with the Rust version of this script).
+        When --input is set, the --types and --properties parameters are not
+        needed anymore.
+    	""",
+    	metavar='INPUT_FILE_PATH',
+    	required=False)
+
 	args = parser.parse_args()
 
 	# Maps each DBpedia resource to its DBpedia type:
@@ -208,63 +248,97 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 		: Dict[Tuple[str, str], List[float]] = defaultdict(list)
 
 	print("")
-	print("[1/6] Parsing --types .ttl file...")
 
-	# Parse the .ttl file passed as --types:
-	types_graph = Graph()
-	types_graph.parse(args.types, format='turtle')
+	if args.input != "":
+		print("[4/6] Populating dictionary with parsed --input TSV file...")
 
-	print("[2/6] Parsing --properties .ttl file...")
+		with open(args.input) as input_tsv:
+			for line in input_tsv:
+				[dbp_type, dbp_property, extension] = line.split("\t")
+				dbpedia_type_and_property_to_extension\
+					[(dbp_type, dbp_property)] = eval(extension)
+				# e.g.: eval("[1.0, 2.0, 3.0]") == [1.0, 2.0, 3.0]
 
-	# Parse the .ttl file passed as --properties:
-	properties_graph = Graph()
-	properties_graph.parse(args.properties, format='turtle')
+	elif args.types != "" and args.properties != "":
+		from rdflib import Graph  # python3 -m pip install rdflib
 
-	print("[3/6] Populating dictionary with parsed --types .ttl file...")
+		print("[1/6] Parsing --types .ttl file...")
 
-	# Iterate through the (subject, predicate, object) triples as in
-	#   https://rdflib.readthedocs.io/en/stable/gettingstarted.html
-	#   and populate dbpedia_resource_to_type:
-	for _resource, _rdf_syntax_ns_type, _type in types_graph:
-		if not "22-rdf-syntax-ns#type" in _rdf_syntax_ns_type:
-			continue
+		# Parse the .ttl file passed as --types:
+		types_graph = Graph()
+		types_graph.parse(args.types, format='turtle')
 
-		_resource = remove_prefix(_resource, "http://dbpedia.org/resource/")
+		print("[2/6] Parsing --properties .ttl file...")
 
-		_type = remove_prefix(_type, "http://dbpedia.org/ontology/")
+		# Parse the .ttl file passed as --properties:
+		properties_graph = Graph()
+		properties_graph.parse(args.properties, format='turtle')
 
-		if "/" in _type:
-			continue  # skip Things: (http://)www.w3.org/2002/07/owl#Thing
+		print("[3/6] Populating dictionary with parsed --types .ttl file...")
 
-		dbpedia_resource_to_type[_resource] = _type
-
-		#print(f"{_resource}, {_rdf_syntax_ns_type}, {_type}")
-
-	print("[4/6] Populating dictionary with parsed --properties .ttl file...")
-
-	# Iterate through the (subject, predicate, object) triples as in
-	#   https://rdflib.readthedocs.io/en/stable/gettingstarted.html
-	#   and populate dbpedia_type_and_property_to_extension:
-	for _resource, _property, _value in properties_graph:
-		try:
-			_value = float(_value)  # ToDo: possibly more advanced parsing
+		# Iterate through the (subject, predicate, object) triples as in
+		#   https://rdflib.readthedocs.io/en/stable/gettingstarted.html
+		#   and populate dbpedia_resource_to_type:
+		for _resource, _rdf_syntax_ns_type, _type in types_graph:
+			if not "22-rdf-syntax-ns#type" in _rdf_syntax_ns_type:
+				continue
 
 			_resource = remove_prefix(_resource, "http://dbpedia.org/resource/")
 
-			_property = remove_prefix(_property, "http://dbpedia.org/property/")
+			_type = remove_prefix(_type, "http://dbpedia.org/ontology/")
 
-			_type = dbpedia_resource_to_type[_resource]
+			if "/" in _type:
+				continue  # skip Things: (http://)www.w3.org/2002/07/owl#Thing
 
-			dbpedia_type_and_property_to_extension[(_type, _property)]\
-				.append(_value)
+			dbpedia_resource_to_type[_resource] = _type
 
-			#print(f"{_resource}, {_property}, {_value}")
-		except (ValueError, KeyError):
-			# (a) ValueError: could not convert string to float, or
-			#     -> i.e. property is not numeric
-			# (b) KeyError in dbpedia_resource_to_type
-			#     -> i.e. type for the given ressource is unknown
-			continue
+			#print(f"{_resource}, {_rdf_syntax_ns_type}, {_type}")
+
+		print(f"[INFO] {len(dbpedia_resource_to_type)} DBpedia resources")
+
+		print("[4/6] Populating dictionary with parsed --properties .ttl file...")
+
+		# Iterate through the (subject, predicate, object) triples as in
+		#   https://rdflib.readthedocs.io/en/stable/gettingstarted.html
+		#   and populate dbpedia_type_and_property_to_extension:
+		for _resource, _property, _value in properties_graph:
+			try:
+				_value = float(_value)  # ToDo: possibly more advanced parsing
+
+				_resource = remove_prefix(_resource, "http://dbpedia.org/resource/")
+
+				_property = remove_prefix(_property, "http://dbpedia.org/property/")
+
+				_type = dbpedia_resource_to_type[_resource]
+
+				dbpedia_type_and_property_to_extension[(_type, _property)]\
+					.append(_value)
+
+				#print(f"{_resource}, {_property}, {_value}")
+			except (ValueError, KeyError):
+				# (a) ValueError: could not convert string to float, or
+				#     -> i.e. property is not numeric
+				# (b) KeyError in dbpedia_resource_to_type
+				#     -> i.e. type for the given ressource is unknown
+				continue
+	else:
+		print("[ERROR] Please supply either the --input argument or, " +\
+			"initially, the --types and --properties arguments! It is " +\
+			"highly recommended to do the latter with the Rust version " +\
+			"of this script!")
+		exit()
+
+	print(f"[INFO] {len(dbpedia_type_and_property_to_extension)} " +\
+		"(DBpedia type, numeric DBpedia property) pairs")
+
+	if args.output != "":
+		print("[INFO] Writing to --output file...")
+		with open(args.output, "w") as file:
+			for dbpedia_type_and_property, extension\
+				in dbpedia_type_and_property_to_extension.items():
+				file.write(f"{dbpedia_type_and_property[0]}\t" +\
+					f"{dbpedia_type_and_property[1]}\t{extension}\n")
+		print("[INFO] Finished writing to --output file.")
 
 	# The input bag to compare against all DBpedia numerical bags:
 	bag: List[float] = []
@@ -316,6 +390,42 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 
 		print(f"{ks_test_score} - {dbpedia_type} - " +\
 			f"{dbpedia_property} - {long_list_to_short_str(matched_list)}")
+
+	if args.compare_with is not None and args.compare_with != []:
+		print("")
+		print("===== Additional comparisons as specified by the user: =====")
+		for compare_with in args.compare_with:
+			if compare_with[:1] == ":":  # e.g. ":2006Population"
+				dbpedia_property_name = compare_with[1:]  # strip prefix ":"
+
+				for ((t,p), kst) in dbpedia_type_and_property_to_ks_test_sorted:
+					if p == dbpedia_property_name:
+						matched_list =\
+							dbpedia_type_and_property_to_extension[(t, p)]
+						print(f"{kst} - {t} - {p} - " +\
+							f"{long_list_to_short_str(matched_list)}")
+			elif compare_with[-1:] == ":":  # e.g. "Place:"
+				dbpedia_type_name = compare_with[:-1]  # strip suffix ":"
+
+				for ((t,p), kst) in dbpedia_type_and_property_to_ks_test_sorted:
+					if t == dbpedia_type_name:
+						matched_list =\
+							dbpedia_type_and_property_to_extension[(t, p)]
+						print(f"{kst} - {t} - {p} - " +\
+							f"{long_list_to_short_str(matched_list)}")
+			elif ":" in compare_with: # e.g. "Place:2006Population"
+				[dbpedia_type_name, dbpedia_property_name] =\
+					compare_with.split(":")
+
+				for ((t,p), kst) in dbpedia_type_and_property_to_ks_test_sorted:
+					if t == dbpedia_type_name and p == dbpedia_property_name:
+						matched_list =\
+							dbpedia_type_and_property_to_extension[(t, p)]
+						print(f"{kst} - {t} - {p} - " +\
+							f"{long_list_to_short_str(matched_list)}")
+			else:
+				print("[ERROR] Invalid value supplied to --compare-with: " +\
+					f" '{compare_with}' contains no ':'")
 
 if __name__ == "__main__":
 	main()

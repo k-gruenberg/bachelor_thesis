@@ -106,6 +106,43 @@ $ python3 attr_extension_to_ontology_class_web_search.py "Manuel Neuer" "Joshua 
 Match a given input bag of numerical values against all (DBpedia type, DBpedia numerical property) pairs using the Kolmogorov-Smirnov (KS) test:
 
 ```
+$ python3 numeric_attr_extension_to_ontology_property.py --csv-file uci-machine-learning-repository-auto-mpg.data.tsv --csv-column 0 --input dbpedia_numeric_attribute_extensions.tsv --compare-with Automobile: MeanOfTransportation: AutomobileEngine: Engine: :enginePower
+
+[4/6] Populating dictionary with parsed --input TSV file...
+[INFO] 53843 (DBpedia type, numeric DBpedia property) pairs
+[INFO] Unsorted input bag = [18.0, 15.0, ..., 20.0, ..., 28.0, 31.0]
+[5/6] Computing KS scores...
+[6/6] Sorting results by KS score...
+
+KS Score - DBpedia type - DBpedia property - Matched list
+
+0.06838569903596248 - Settlement - sepHighC - [0.0, 0.2, ..., 23.0, ..., 43.7, 285.0]
+0.08317446679702123 - Settlement - mayHighC - [0.0, 0.0, ..., 21.5, ..., 44.4, 255.0]
+0.08372156912123252 - City - octHighC - [0.0, 1.6, ..., 22.3, ..., 38.1, 39.1]
+0.09217964824120606 - BasketballTeam - q - [8.0, 10.0, ..., 23.0, ..., 35.0, 39.0]
+0.09301200839880153 - AmericanFootballPlayer - wonderlic - [4.0, 6.0, ..., 24.0, ..., 48.0, 49.0]
+0.09444519896781212 - Village - sepHighC - [5.3, 7.2, ..., 20.5, ..., 40.0, 42.8]
+0.09993748647543932 - AdministrativeRegion - aprHighC - [0.8, 1.0, ..., 23.5, ..., 36.8, 41.0]
+0.10015461925009664 - Town - mayRecordLowF - [3.0, 4.0, ..., 22.0, ..., 63.0, 64.0]
+0.1004555656471362 - Drug - h - [1.0, 1.0, ..., 22.0, ..., 12124.0, 60189.0]
+0.10362418151362876 - Diocese - territory - [10.0, 10.0, ..., 23.0, ..., 39.0, 48.0]
+[...]
+0.19762546703094955 - Settlement - augHighC - [1.5, 3.1, ..., 25.7, ..., 47.2, 321.0]
+0.19885139985642497 - Mountain - aprRecordHighC - [13.7, 13.8, ..., 22.7, ..., 29.0, 31.4]
+
+===== Additional comparisons as specified by the user: =====
+0.26583738363950904 - Automobile - pedestrianPoints - [8.0, 10.0, ..., 21.0, ..., 29.0, 33.7]
+0.40516072425620164 - Automobile - battery - [0.6, 0.9, ..., 16.5, ..., 99.0, 607085.0]
+0.4179229480737018 - Automobile - fuelCapacity - [8.0, 17.2, 120.0]
+0.42386173290695905 - Automobile - adultScore - [15.0, 18.0, ..., 29.0, ..., 35.0, 36.0]
+0.4355108877721943 - Automobile - fuelEconomy - [17.5, 30.0, 31.0]
+[...]
+1.0 - AutomobileEngine - year - [2014.0]
+0.9280756724800473 - Weapon - enginePower - [1.0, 1.0, ..., 241.0, ..., 10200.0, 20053.0]
+1.0 - Automobile - enginePower - [350.0]
+```
+
+```
 $ ./numeric_attr_extension_to_ontology_property_rust 147 1994 75 480 --types /data/dbpedia/data/instance_types_en.ttl --properties /data/dbpedia/data/infobox_properties_mapped_en.ttl
 
 [1/6] Parsing --types .ttl file...
