@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::fs::File;
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, LineWriter, Write};
 use std::path::Path;
 
 use clap::{Parser};
@@ -83,6 +83,14 @@ fn ks(sorted_bag: &Vec<f64>, unsorted_bag: &mut Vec<f64>) -> f64 {
     return max_difference;
 }
 
+fn parse_string_to_vector(s: &str) -> Option<Vec<f64>> {
+    let mut result: Vec<f64> = Vec::new();
+    for number in s[1..s.len()-1].split(", ") { // remove the "[" and "]" at the ends
+        result.push(number.parse().ok()?);
+    }
+    return Some(result);
+}
+
 /// Takes the extension of a numeric column as input
 /// and tries to match it to a DBpedia property and corresponding class.
 #[derive(Parser, Debug)]
@@ -94,7 +102,7 @@ struct Args {
     /// downloads.dbpedia.org/2016-04/core-i18n/en/instance_types_en.ttl.bz2
     /// for example.
     #[clap(long, parse(from_os_str))]
-    types: PathBuf,
+    types: Option<PathBuf>,
 
     /// Path (or URL) to a .ttl (turtle) file of
     /// DBpedia resources mapped to their properties and values.
@@ -102,7 +110,7 @@ struct Args {
     /// downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
     /// for example.
     #[clap(long, parse(from_os_str))]
-    properties: PathBuf,
+    properties: Option<PathBuf>,
 
     /// The number of (DBpedia type, DBpedia property) pairs to output.
     /// Default value: 100
@@ -135,7 +143,20 @@ struct Args {
     /// Syntax: "type:property", "type:", ":property" (may be arbitrarily combined!)
     /// Examples: "Place:2006Population", "Place:", ":2006Population"
     #[clap(long)]
-    compare_with: Option<Vec<String>> // not existent in Python version!
+    compare_with: Option<Vec<String>>, // not existent in Python version!
+
+    /// When this parameter is set, the data parsed and combined from the two .ttl files given
+    /// in the --types and --properties arguments is also exported to the specified file in
+    /// TSV (tab-separated values) format.
+    /// That file can then be used later in the --input argument to speed things up by saving the
+    /// parsing of two big .ttl files.
+    #[clap(long, parse(from_os_str))]
+    output: Option<PathBuf>,  // not existent in Python version!
+
+    /// Specify the TSV file previously generated using the --output parameter.
+    /// When --input is set, the --types and --properties parameters are not needed anymore.
+    #[clap(long, parse(from_os_str))]
+    input: Option<PathBuf>  // not existent in Python version!
 }
 
 fn main() {
@@ -151,96 +172,133 @@ fn main() {
         : HashMap<(String, String), Vec<f64>> = HashMap::new();
 
     println!();
-    println!("[1/6] Parsing --types .ttl file...");
 
-    // Parse the .ttl file passed as --types:
-    // cf. https://docs.rs/rdf/latest/rdf/:
-    let types_ttl_content = fs::read_to_string(args.types)
-        .expect("Reading --types .ttl file failed!");
-    let mut reader =
-        TurtleParser::from_string(types_ttl_content);
-    let types_graph = reader.decode().expect("Parsing --types .ttl file failed!");
+    if let Some(input_tsv) = args.input {
+        println!("[4/6] Populating dictionary with parsed --input TSV file...");
 
-    println!("[2/6] Parsing --properties .ttl file...");
-
-    // Parse the .ttl file passed as --properties:
-    let mut properties_ttl_content =
-        String::with_capacity(fs::metadata(args.properties.clone())
-            .map(|metadata| metadata.len()).unwrap_or(0) as usize);
-    let re = Regex::new(
-        r#"^<http://dbpedia\.org/resource/.+> <http://dbpedia\.org/property/.+> "[0-9.]+"(@en|\^\^<http://(dbpedia\.org|www\.w3\.org)/.+>) \.$"#
-        ).expect("Parsing regex failed!");
-    for line in read_lines(args.properties)
-        .expect("Reading --properties .ttl file failed!") {
-        if let Ok(line) = line {
-            // Only read in lines that match the regex `re`:
-            if re.is_match(&line) {
-                properties_ttl_content.push_str(&line);
-                properties_ttl_content.push('\n');
+        for line in read_lines(input_tsv)
+            .expect("Reading --input TSV file failed!") {
+            if let Ok(line) = line {
+                let mut line_split = line.split("\t");
+                dbpedia_type_and_property_to_extension.insert(
+                    (line_split.next()
+                         .expect("--input TSV file has invalid format").to_string(),
+                     line_split.next()
+                         .expect("--input TSV file has invalid format").to_string()
+                    ),
+                    parse_string_to_vector(line_split.next()
+                        .expect("--input TSV file has invalid format")
+                    ).expect("vector in --input TSV file has invalid format")
+                );
             }
         }
-    }
-    // // Would read in the whole file and not only lines matches the regex `re`:
-    // let properties_ttl_content = fs::read_to_string(args.properties)
-    //     .expect("Reading --properties .ttl file failed!");
-    let mut reader =
-        TurtleParser::from_string(properties_ttl_content);
-    let properties_graph = reader.decode()
-        .expect("Parsing --properties .ttl file failed!");
+    } else if let (Some(args_types), Some(args_properties)) = (args.types, args.properties) {
+        println!("[1/6] Parsing --types .ttl file...");
 
-    println!("[3/6] Populating dictionary with parsed --types .ttl file...");
+        // Parse the .ttl file passed as --types:
+        // cf. https://docs.rs/rdf/latest/rdf/:
+        let types_ttl_content = fs::read_to_string(args_types)
+            .expect("Reading --types .ttl file failed!");
+        let mut reader =
+            TurtleParser::from_string(types_ttl_content);
+        let types_graph = reader.decode().expect("Parsing --types .ttl file failed!");
 
-    // Iterate through the (subject, predicate, object) triples
-    //   and populate dbpedia_resource_to_type:
-    for triple in types_graph.triples_iter() {
-        if !node_to_string(triple.predicate()).contains("22-rdf-syntax-ns#type") {
-            continue;
+        println!("[2/6] Parsing --properties .ttl file...");
+
+        // Parse the .ttl file passed as --properties:
+        let mut properties_ttl_content =
+            String::with_capacity(fs::metadata(args_properties.clone())
+                .map(|metadata| metadata.len()).unwrap_or(0) as usize);
+        let re = Regex::new( // ToDo: shorten line below:
+                             r#"^<http://dbpedia\.org/resource/.+> <http://dbpedia\.org/property/.+> "[0-9.]+"(@en|\^\^<http://(dbpedia\.org|www\.w3\.org)/.+>) \.$"#
+        ).expect("Parsing regex failed!");
+        for line in read_lines(args_properties)
+            .expect("Reading --properties .ttl file failed!") {
+            if let Ok(line) = line {
+                // Only read in lines that match the regex `re`:
+                if re.is_match(&line) {
+                    properties_ttl_content.push_str(&line);
+                    properties_ttl_content.push('\n');
+                }
+            }
         }
+        // // Would read in the whole file and not only lines matches the regex `re`:
+        // let properties_ttl_content = fs::read_to_string(args.properties)
+        //     .expect("Reading --properties .ttl file failed!");
+        let mut reader =
+            TurtleParser::from_string(properties_ttl_content);
+        let properties_graph = reader.decode()
+            .expect("Parsing --properties .ttl file failed!");
 
-        let _resource = node_to_string(triple.subject())
-            .strip_prefix("http://dbpedia.org/resource/")
-            .unwrap_or_else(|| node_to_string(triple.subject()));
+        println!("[3/6] Populating dictionary with parsed --types .ttl file...");
 
-        let _type = node_to_string(triple.object())
-            .strip_prefix("http://dbpedia.org/ontology/")
-            .unwrap_or_else(|| node_to_string(triple.object()));
-
-        if _type.contains("/") {
-            continue;  // skip Things: (http://)www.w3.org/2002/07/owl#Thing
-        }
-
-        dbpedia_resource_to_type.insert(_resource.to_string(), _type.to_string());
-    }
-
-    println!("[INFO] {} DBpedia resources", dbpedia_resource_to_type.len());
-
-    println!("[4/6] Populating dictionary with parsed --properties .ttl file...");
-
-    // Iterate through the (subject, predicate, object) triples
-    //   and populate dbpedia_type_and_property_to_extension:
-    for triple in properties_graph.triples_iter() {
-        // ToDo: possibly more advanced parsing:
-        if let Ok(_value) = node_to_string(triple.object()).parse::<f64>() {
+        // Iterate through the (subject, predicate, object) triples
+        //   and populate dbpedia_resource_to_type:
+        for triple in types_graph.triples_iter() {
+            if !node_to_string(triple.predicate()).contains("22-rdf-syntax-ns#type") {
+                continue;
+            }
 
             let _resource = node_to_string(triple.subject())
                 .strip_prefix("http://dbpedia.org/resource/")
                 .unwrap_or_else(|| node_to_string(triple.subject()));
 
-            let _property = node_to_string(triple.predicate())
-                .strip_prefix("http://dbpedia.org/property/")
-                .unwrap_or_else(|| node_to_string(triple.predicate()));
+            let _type = node_to_string(triple.object())
+                .strip_prefix("http://dbpedia.org/ontology/")
+                .unwrap_or_else(|| node_to_string(triple.object()));
 
-            if let Some(_type) = dbpedia_resource_to_type.get(_resource) {
-                dbpedia_type_and_property_to_extension
-                    .entry((_type.clone(), _property.to_string()))
-                    .or_insert_with(|| Vec::new())
-                    .push(_value);
+            if _type.contains("/") {
+                continue;  // skip Things: (http://)www.w3.org/2002/07/owl#Thing
+            }
+
+            dbpedia_resource_to_type.insert(_resource.to_string(), _type.to_string());
+        }
+
+        println!("[INFO] {} DBpedia resources", dbpedia_resource_to_type.len());
+
+        println!("[4/6] Populating dictionary with parsed --properties .ttl file...");
+
+        // Iterate through the (subject, predicate, object) triples
+        //   and populate dbpedia_type_and_property_to_extension:
+        for triple in properties_graph.triples_iter() {
+            // ToDo: possibly more advanced parsing:
+            if let Ok(_value) = node_to_string(triple.object()).parse::<f64>() {
+                let _resource = node_to_string(triple.subject())
+                    .strip_prefix("http://dbpedia.org/resource/")
+                    .unwrap_or_else(|| node_to_string(triple.subject()));
+
+                let _property = node_to_string(triple.predicate())
+                    .strip_prefix("http://dbpedia.org/property/")
+                    .unwrap_or_else(|| node_to_string(triple.predicate()));
+
+                if let Some(_type) = dbpedia_resource_to_type.get(_resource) {
+                    dbpedia_type_and_property_to_extension
+                        .entry((_type.clone(), _property.to_string()))
+                        .or_insert_with(|| Vec::new())
+                        .push(_value);
+                }
             }
         }
+    } else {
+        println!("[ERROR] Please supply either the --input argument or, initially,\
+        the --types and --properties arguments!");
+        return;
     }
 
     println!("[INFO] {} (DBpedia type, numeric DBpedia property) pairs",
              dbpedia_type_and_property_to_extension.len());
+
+    if let Some(output_path) = args.output {
+        println!("[INFO] Writing to --output file...");
+        let file = File::create(output_path).expect("could not create --output file");
+        let mut file = LineWriter::new(file);
+        for ((dbp_type, dbp_property,), extension) in dbpedia_type_and_property_to_extension.iter() {
+            file.write_all(format!("{}\t{}\t{:?}\n", dbp_type, dbp_property, extension).as_ref())
+                .expect("could not write to --output file");
+        }
+        file.flush().expect("could not flush to --output file");
+        println!("[INFO] Finished writing to --output file.");
+    }
 
     // The input bag to compare against all DBpedia numerical bags:
     let mut bag: Vec<f64> = Vec::new();
