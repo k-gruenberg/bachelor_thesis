@@ -305,9 +305,11 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 			try:
 				_value = float(_value)  # ToDo: possibly more advanced parsing
 
-				_resource = remove_prefix(_resource, "http://dbpedia.org/resource/")
+				_resource =\
+					remove_prefix(_resource, "http://dbpedia.org/resource/")
 
-				_property = remove_prefix(_property, "http://dbpedia.org/property/")
+				_property =\
+					remove_prefix(_property, "http://dbpedia.org/property/")
 
 				_type = dbpedia_resource_to_type[_resource]
 
