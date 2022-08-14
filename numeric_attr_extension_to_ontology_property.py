@@ -67,6 +67,19 @@ def ks(sorted_bag: List[float], unsorted_bag: List[float]) -> float:
 
 	return max_difference
 
+def initialize(input_tsv_file="dbpedia_numeric_attribute_extensions.tsv"):
+	pass  # ToDo
+
+def best_k_dbpedia_property_matches_for_bag_of_numerical_values(\
+	bag: List[float], k: int)\
+	-> List[Tuple[float, str, str, List[float]]]:
+	return None  # ToDo
+
+def match_dbpedia_property_against_bag_of_numerical_values(\
+	bag: List[float], dbpedia_type: str, dbpedia_property: str)\
+	-> List[Tuple[float, str, str, List[float]]]:
+	return None  # ToDo
+
 def main():
 	parser = argparse.ArgumentParser(
 		description="""Takes the extension of a numeric column as input
