@@ -280,7 +280,7 @@ fn main() {
             }
         }
     } else {
-        println!("[ERROR] Please supply either the --input argument or, initially,\
+        println!("[ERROR] Please supply either the --input argument or, initially, \
         the --types and --properties arguments!");
         return;
     }
