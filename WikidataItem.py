@@ -196,6 +196,9 @@ class WikidataItem:
     	else:
     		return self.entity_id
 
+    def __repr__(self):
+        return str(self)
+
     @classmethod
     def get_items_matching_search_string(cls, search_string: str)\
         -> List[WikidataItem]:
