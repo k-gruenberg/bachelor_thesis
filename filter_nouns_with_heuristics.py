@@ -95,6 +95,20 @@ WORD_BLACKLIST =\
 DEBUG = False
 
 
+def remove_duplicates(input_list: List[Tuple[WikidataItem, float]]) ->\
+    List[Tuple[WikidataItem, float]]:
+    """
+    Takes a list of tuples and returns the same list, but only keeping
+    the first list item when there are multiple ones with the
+    same 1st tuple element.
+    """
+    result: List[Tuple[WikidataItem, float]] = []
+    for wikidata_item, score in input_list:
+        if wikidata_item not in [wi for wi, s in result]:
+            result.append((wikidata_item, score))
+    return result
+
+
 def inverse_cantor_pairing_function(z: int) -> Tuple[int, int]:
     # Source:
     # https://en.wikipedia.org/wiki/Pairing_function
@@ -191,7 +205,7 @@ def score_top_to_bottom(x: int, y: int, word_freq: int, max_word_freq: int,\
     # 3 7 11 15
     # 4 8 12 16
     
-    if ALLOW_EQUAL_SCORES:  # ToDo: test
+    if ALLOW_EQUAL_SCORES:
         # Score like this:
         # 1.0 0.5 0.25 0.125
         # 1.0 0.5 0.25 0.125
@@ -221,7 +235,7 @@ def score_cantor_like(x: int, y: int, word_freq: int, max_word_freq: int,\
     #  6 9
     # 10
     
-    if ALLOW_EQUAL_SCORES:  # ToDo: test
+    if ALLOW_EQUAL_SCORES:
         # [1/(1+x+y) for x,y in\
         #  [inverse_cantor_pairing_function(z) for z in range(0,100)]]
         # is monotonically decreasing!
@@ -664,8 +678,11 @@ def filter_nouns_with_heuristics_as_tuple_list(input_text: str,\
     # results = [x for xs in results for x in xs]
 
     # Remove duplicates (duplicates exist when the text contained synonyms):
-    results = list(OrderedDict.fromkeys(results))
-    # (possible ToDo: consider duplicates for scoring)
+    results = remove_duplicates(results)
+    # The line below doesn't always work anymore since we've introduced scoring:
+    # results = list(OrderedDict.fromkeys(results))
+    #
+    # => (possible ToDo: consider duplicates for scoring)
 
     # Third, put additional weights on results with a very high ontology index.
     # (E.g. Q11666766 (restaurant;
@@ -699,7 +716,7 @@ def filter_nouns_with_heuristics_as_dict(input_text: str, VERBOSE: bool,\
         ALLOW_EQUAL_SCORES=ALLOW_EQUAL_SCORES))
 
 
-def main():  # ToDo: test!!!
+def main():
     parser = argparse.ArgumentParser(
         description="""
         Filter nouns from a given text and map them to Wikidata entries,

@@ -199,6 +199,12 @@ class WikidataItem:
     def __repr__(self):
         return str(self)
 
+    def __eq__(self, other):
+        if isinstance(other, WikidataItem):
+            return self.entity_id == other.entity_id
+        return False
+
+
     @classmethod
     def get_items_matching_search_string(cls, search_string: str)\
         -> List[WikidataItem]:
