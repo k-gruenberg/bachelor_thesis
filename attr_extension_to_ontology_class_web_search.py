@@ -35,7 +35,7 @@ import requests
 
 import argparse
 
-from filter_nouns_with_heuristics import filter_nouns_with_heuristics
+from filter_nouns_with_heuristics import filter_nouns_with_heuristics_as_list
 from filter_nouns_with_heuristics import noun_match
 
 class SearchEngine(Enum):
@@ -138,7 +138,7 @@ def bing_search_results_snippets(search_string: str) -> List[str]:
         elif 'BING_SEARCH_V7_ENDPOINT' not in os.environ:
             print("Fatal error: Please set the " +\
                   "BING_SEARCH_V7_ENDPOINT " +\
-                  "environment variable to your Microsoft Bing API Endpoint!" +\
+                  "environment variable to your Microsoft Bing API Endpoint!"+\
                   "You can find it on portal.azure.com")
             exit()
 
@@ -190,7 +190,7 @@ def bing_search_results_snippets(search_string: str) -> List[str]:
             #pprint(response.json())
 
             f = open(cached_json_file, "x")
-            f.write(response.text)  # https://requests.readthedocs.io/en/latest/
+            f.write(response.text)  #https://requests.readthedocs.io/en/latest/
             f.close()
         except Exception as ex:
             raise ex
@@ -215,39 +215,57 @@ def bing_search_results_snippets(search_string: str) -> List[str]:
 
 nouns_with_definition: Dict[str, str] = {}
 
-def is_noun(word: str) -> bool:  # ToDo: shorten lines!!!!! & maybe avoid code duplication!
+def is_noun(word: str) -> bool:  # ToDo: maybe avoid code duplication
     # Code below is adapted from filter_nouns_with_heuristics.py:
 
     if nouns_with_definition == {}:
-        oxford_dictionary_file_path = os.path.expanduser("~/Oxford_English_Dictionary.txt")
+        oxford_dictionary_file_path =\
+            os.path.expanduser("~/Oxford_English_Dictionary.txt")
         oxford_dictionary_url =\
-            "https://raw.githubusercontent.com/sujithps/Dictionary/master/Oxford%20English%20Dictionary.txt"
+            "https://raw.githubusercontent.com/sujithps/Dictionary/" +\
+            "master/Oxford%20English%20Dictionary.txt"
 
-        # Download the Oxford English Dictionary to a file (if not already) and open that file:
+        # Download the Oxford English Dictionary to a file (if not already)
+        #   and open that file:
         if not exists(oxford_dictionary_file_path):
-            print("Downloading Oxford English Dictionary to " + oxford_dictionary_file_path + "...")
-            os.system("wget " + oxford_dictionary_url + " -O " + oxford_dictionary_file_path)
+            print("Downloading Oxford English Dictionary to " +\
+                oxford_dictionary_file_path + "...")
+            os.system("wget " + oxford_dictionary_url + " -O " +\
+                oxford_dictionary_file_path)
             print("Download complete.")
         oxford_dictionary_file = open(oxford_dictionary_file_path)
 
-        # Filter out only the nouns (and their definitions) from the dictionary file:
+        # Filter out only the nouns (and their definitions)
+        #   from the dictionary file:
         for line in oxford_dictionary_file:
             line = line.strip()  # trim
             if len(line) <= 1:
-                continue  # skip empty lines and lines containing only one character ("A", "B", "C", ...)
-            if " —n. " in line:  # word has multiple definitions, one of them is a noun:
-                noun = " ".join(list(takewhile(lambda w: w not in ["—n.", "—v.", "—adj."], line.split())))
-                noun = re.sub(r"\d", "", noun)  # remove digits from noun (e.g. "Date1")
-                noun = re.sub(r"\(.*\)", "", noun).strip()  # e.g. "Program  (brit. Programme)"=>"Program"
+                # Skip empty lines and lines containing only
+                #   one character ("A", "B", "C", ...):
+                continue
+            if " —n. " in line:
+                # Word has multiple definitions, one of them is a noun:
+                noun = " ".join(list(takewhile(\
+                    lambda w: w not in ["—n.", "—v.", "—adj."], line.split())))
+                # Remove digits from noun (e.g. "Date1"):
+                noun = re.sub(r"\d", "", noun)
+                # Remove parentheses,
+                #   e.g. turn "Program  (brit. Programme)" into "Program":
+                noun = re.sub(r"\(.*\)", "", noun).strip()
                 if len(noun) <= 2: continue  # ignore nouns with 1 or 2 letters
-                # the noun definition is everything after the first "—n." and before the next "—":
+                # The noun definition is everything after the first "—n."
+                #   and before the next "—":
                 definition = line.split(" —n. ")[1].split("—")[0].strip()
                 nouns_with_definition[noun.lower()] =\
                     nouns_with_definition.get(noun.lower(), "") + definition
-            elif " n. " in line:  # word has only one definition, which is a noun:
+            elif " n. " in line:
+                # Word has only one definition, which is a noun:
                 noun = line.split(" n. ")[0].strip()
-                noun = re.sub(r"\d", "", noun)  # remove digits from noun (e.g. "Date2")
-                noun = re.sub(r"\(.*\)", "", noun).strip()  # e.g. "Program  (brit. Programme)"=>"Program"
+                # Remove digits from noun (e.g. "Date2"):
+                noun = re.sub(r"\d", "", noun)
+                # Remove parentheses,
+                #   e.g. turn "Program  (brit. Programme)" into "Program":
+                noun = re.sub(r"\(.*\)", "", noun).strip()
                 if len(noun) <= 2: continue  # ignore nouns with 1 or 2 letters
                 definition = line.split(" n. ")[1].strip()
                 nouns_with_definition[noun.lower()] =\
@@ -258,7 +276,8 @@ def is_noun(word: str) -> bool:  # ToDo: shorten lines!!!!! & maybe avoid code d
         return False
     elif word.lower() in nouns_with_definition:
         return True
-    # when the noun candidate is a plural, look up the singular in the dictionary:
+    # When the noun candidate is a plural,
+    #   look up the singular in the dictionary:
     elif word.lower()[-3:] == "ies" and word.lower()[:-3] + "y"\
             in nouns_with_definition:
         return True
@@ -358,7 +377,7 @@ def main():
                         snippet.split()\
                     )\
                 )\
-            )  # ToDo: maybe(!) multi-word nouns (also has disadvantages) => ToDo: mention this in bachelor thesis !!!!
+            )  #ToDo: maybe(!) multi-word nouns (has disadvantages, see thesis)
             for noun in nouns_in_snippet:
                 nouns_to_snippet_count[noun] += 1
 
@@ -394,7 +413,8 @@ def main():
             print(concatenated_string)
         elif args.list_onto:
             results: List[WikidataItem] =\
-                filter_nouns_with_heuristics(input_text=concatenated_string,\
+                filter_nouns_with_heuristics_as_list(\
+                    input_text=concatenated_string,\
                     VERBOSE=False)
 
             # Print the result:
@@ -411,5 +431,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# ToDo: include results in paper !!!!!
