@@ -159,7 +159,10 @@ def match_dbpedia_property_against_bag_of_numerical_values(\
 	#   instance of that type and the input list of numeric values:
 	dbpedia_type_and_property_to_ks_test: Dict[Tuple[str, str], float] =\
 		{ key : ks(bag, lst)\
-		for key, lst in dbpedia_type_and_property_to_extension.items()}
+		for key, lst in dbpedia_type_and_property_to_extension.items()\
+		if (key[0] == dbpedia_type or dbpedia_type == '')\
+			and (key[1] == dbpedia_property or dbpedia_property == '')}
+	# ...only compute KS scores if needed!
 
 	if VERBOSE: print("[6/6] Sorting results by KS score...")
 
@@ -173,11 +176,9 @@ def match_dbpedia_property_against_bag_of_numerical_values(\
 
 	for ((dbp_type, dbp_prop), ks_score)\
     	in dbpedia_type_and_property_to_ks_test_sorted:
-		if (dbp_type == dbpedia_type or dbpedia_type == '')\
-			and (dbp_prop == dbpedia_property or dbpedia_property == ''):
-			matched_list =\
-				dbpedia_type_and_property_to_extension[(dbp_type, dbp_prop)]
-			result.append((ks_score, dbp_type, dbp_prop, matched_list))
+		matched_list =\
+			dbpedia_type_and_property_to_extension[(dbp_type, dbp_prop)]
+		result.append((ks_score, dbp_type, dbp_prop, matched_list))
 
 	return result
 
