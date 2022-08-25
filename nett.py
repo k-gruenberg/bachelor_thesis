@@ -663,6 +663,21 @@ def main():
 		action='store_true',
 		help='Do not take attribute extensions of tables into account.')
 
+	parser.add_argument('--prefer-textual-surroundings',
+		action='store_true',
+		help="""Use textual surroundings only, unless this approach yields no
+		results whatsoever, then use the other ones.""")
+
+	parser.add_argument('--prefer-attr-names',
+		action='store_true',
+		help="""Use attribute/column names only, unless this approach yields no
+		results whatsoever, then use the other ones.""")
+
+	parser.add_argument('--prefer-attr-extensions',
+		action='store_true',
+		help="""Use attribute extensions only, unless this approach yields no
+		results whatsoever, then use the other ones.""")
+
 	parser.add_argument('--normalize',
 		action='store_true',
 		help="""Whether to normalize the result of each of the 3
