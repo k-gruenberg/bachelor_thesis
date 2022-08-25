@@ -178,6 +178,18 @@ for child in root:
 			dbpediaProperties[domain] = [propertyName]
 		#print("[Property] " + propertyName + " [domain] " + domain)
 
+def get_dbpedia_properties() -> Dict[str, List[str]]:
+	"""
+	Each DBpedia class mapped to its properties.
+	"""
+	return dbpediaProperties
+
+def get_dbpedia_superclasses() -> Dict[str, List[str]]:
+	"""
+	Each DBpedia class mapped to its superclasses.
+	"""
+	return dbpediaSuperclasses
+
 # Now that we have the DBpedia ontology, we can do the matching between
 #   the `dbpediaProperties` and the input attribute names:
 
