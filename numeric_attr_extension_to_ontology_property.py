@@ -67,18 +67,120 @@ def ks(sorted_bag: List[float], unsorted_bag: List[float]) -> float:
 
 	return max_difference
 
+
+# Maps each DBpedia resource to its DBpedia type:
+dbpedia_resource_to_type: Dict[str, str] = {}
+
+# Maps each pair of a DBpedia type and numeric DBpedia property
+#   to the list of values taken by all DBpedia resources that are an
+#   instance of that type:
+dbpedia_type_and_property_to_extension\
+	: Dict[Tuple[str, str], List[float]] = defaultdict(list)
+
+
 def initialize(input_tsv_file="dbpedia_numeric_attribute_extensions.tsv"):
-	pass  # ToDo
+	"""
+	It is necessary to call this function before calling
+	best_k_dbpedia_property_matches_for_bag_of_numerical_values()
+	or
+	match_dbpedia_property_against_bag_of_numerical_values()!
+	Initialization may take about a minute!
+	"""
+	with open(input_tsv_file) as input_tsv:
+		for line in input_tsv:
+			[dbp_type, dbp_property, extension] = line.split("\t")
+			dbpedia_type_and_property_to_extension\
+				[(dbp_type, dbp_property)] = eval(extension)
+			# e.g.: eval("[1.0, 2.0, 3.0]") == [1.0, 2.0, 3.0]
+
 
 def best_k_dbpedia_property_matches_for_bag_of_numerical_values(\
-	bag: List[float], k: int)\
+	bag: List[float], k: int, VERBOSE: bool=False)\
 	-> List[Tuple[float, str, str, List[float]]]:
-	return None  # ToDo
+	bag.sort()
+
+	if VERBOSE: print("[5/6] Computing KS scores...")
+
+	# Maps each pair of a DBpedia type and numeric DBpedia property
+	#   to the metric returned by the KS (Kolmogorov–Smirnov) test
+	#   on the list of values taken by all DBpedia resources that are an
+	#   instance of that type and the input list of numeric values:
+	dbpedia_type_and_property_to_ks_test: Dict[Tuple[str, str], float] =\
+		{ key : ks(bag, lst)\
+		for key, lst in dbpedia_type_and_property_to_extension.items()}
+
+	if VERBOSE: print("[6/6] Sorting results by KS score...")
+
+	dbpedia_type_and_property_to_ks_test_sorted\
+		: List[Tuple[Tuple[str, str], float]] =\
+        sorted(dbpedia_type_and_property_to_ks_test.items(),\
+            key=lambda tuple: tuple[1],\
+            reverse=False)  # smaller KS values == more similar
+
+	result: List[Tuple[float, str, str, List[float]]] = []
+
+	for i in range(0, min(k,\
+		len(dbpedia_type_and_property_to_ks_test_sorted[:k]))):
+		el = dbpedia_type_and_property_to_ks_test_sorted[i]
+		dbpedia_type = el[0][0]
+		dbpedia_property = el[0][1]
+		ks_test_score = el[1]
+		matched_list =\
+			dbpedia_type_and_property_to_extension[\
+			(dbpedia_type, dbpedia_property)]
+
+		result.append((ks_test_score, dbpedia_type,\
+			dbpedia_property, matched_list))
+
+	return result
+
 
 def match_dbpedia_property_against_bag_of_numerical_values(\
-	bag: List[float], dbpedia_type: str, dbpedia_property: str)\
+	bag: List[float], dbpedia_type: str = '', dbpedia_property: str = '',\
+	VERBOSE: bool=False)\
 	-> List[Tuple[float, str, str, List[float]]]:
-	return None  # ToDo
+	"""
+	Examples:
+	* dbpedia_type='Place', dbpedia_property='2006Population':
+      Compare against the '2006Population' property of the 'Place' type.
+	* dbpedia_type='Automobile', dbpedia_property='':
+      Compare against all properties of the 'Automobile' type.
+	* dbpedia_type='', dbpedia_property='enginePower':
+	  Compare against all properties named 'enginePower', all types.
+	(cf. --compare-with command line argument)
+	"""
+	bag.sort()
+
+	if VERBOSE: print("[5/6] Computing KS scores...")
+
+	# Maps each pair of a DBpedia type and numeric DBpedia property
+	#   to the metric returned by the KS (Kolmogorov–Smirnov) test
+	#   on the list of values taken by all DBpedia resources that are an
+	#   instance of that type and the input list of numeric values:
+	dbpedia_type_and_property_to_ks_test: Dict[Tuple[str, str], float] =\
+		{ key : ks(bag, lst)\
+		for key, lst in dbpedia_type_and_property_to_extension.items()}
+
+	if VERBOSE: print("[6/6] Sorting results by KS score...")
+
+	dbpedia_type_and_property_to_ks_test_sorted\
+		: List[Tuple[Tuple[str, str], float]] =\
+        sorted(dbpedia_type_and_property_to_ks_test.items(),\
+            key=lambda tuple: tuple[1],\
+            reverse=False)  # smaller KS values == more similar
+
+	result: List[Tuple[float, str, str, List[float]]] = []
+
+	for ((dbp_type, dbp_prop), ks_score)\
+    	in dbpedia_type_and_property_to_ks_test_sorted:
+		if (dbp_type == dbpedia_type or dbpedia_type == '')\
+			and (dbp_prop == dbpedia_property or dbpedia_property == ''):
+			matched_list =\
+				dbpedia_type_and_property_to_extension[(dbp_type, dbp_prop)]
+			result.append((ks_score, dbp_type, dbp_prop, matched_list))
+
+	return result
+
 
 def main():
 	parser = argparse.ArgumentParser(
@@ -90,9 +192,11 @@ def main():
     	default='',
     	help="""Path (or URL) to a .ttl (turtle) file of
     	DBpedia resources mapped to their types (22-rdf-syntax-ns#type).
-    	Download an unzip
+    	Download and unzip
 downloads.dbpedia.org/2016-04/core-i18n/en/instance_types_en.ttl.bz2
-    	for example.""",
+    	for example.
+    	It is highly recommended to only use this argument in the Rust
+    	version of this script!""",
     	metavar='TTL_PATH',
     	required=False)
 	"""
@@ -162,9 +266,11 @@ downloads.dbpedia.org/2016-04/core-i18n/en/instance_types_en.ttl.bz2
     	default='',
     	help="""Path (or URL) to a .ttl (turtle) file of
     	DBpedia resources mapped to their properties and values.
-    	Download an unzip
+    	Download and unzip
 downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
-    	for example.""",
+    	for example.
+    	It is highly recommended to only use this argument in the Rust
+    	version of this script!""",
     	metavar='TTL_PATH',
     	required=False)
 
@@ -245,33 +351,19 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
     	(highly recommended to do that with the Rust version of this script).
         When --input is set, the --types and --properties parameters are not
         needed anymore.
+        Default: 'dbpedia_numeric_attribute_extensions.tsv'
+        (but only when --types and --properties aren't supplied)
     	""",
     	metavar='INPUT_FILE_PATH',
     	required=False)
 
 	args = parser.parse_args()
 
-	# Maps each DBpedia resource to its DBpedia type:
-	dbpedia_resource_to_type: Dict[str, str] = {}
-
-	# Maps each pair of a DBpedia type and numeric DBpedia property
-	#   to the list of values taken by all DBpedia resources that are an
-	#   instance of that type:
-	dbpedia_type_and_property_to_extension\
-		: Dict[Tuple[str, str], List[float]] = defaultdict(list)
-
 	print("")
 
 	if args.input != "":
 		print("[4/6] Populating dictionary with parsed --input TSV file...")
-
-		with open(args.input) as input_tsv:
-			for line in input_tsv:
-				[dbp_type, dbp_property, extension] = line.split("\t")
-				dbpedia_type_and_property_to_extension\
-					[(dbp_type, dbp_property)] = eval(extension)
-				# e.g.: eval("[1.0, 2.0, 3.0]") == [1.0, 2.0, 3.0]
-
+		initialize(input_tsv_file=args.input)
 	elif args.types != "" and args.properties != "":
 		from rdflib import Graph  # python3 -m pip install rdflib
 
@@ -337,11 +429,8 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 				#     -> i.e. type for the given ressource is unknown
 				continue
 	else:
-		print("[ERROR] Please supply either the --input argument or, " +\
-			"initially, the --types and --properties arguments! It is " +\
-			"highly recommended to do the latter with the Rust version " +\
-			"of this script!")
-		exit()
+		print("[4/6] Populating dictionary with default --input TSV file...")
+		initialize()
 
 	print(f"[INFO] {len(dbpedia_type_and_property_to_extension)} " +\
 		"(DBpedia type, numeric DBpedia property) pairs")
@@ -370,39 +459,16 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 				except ValueError:
 					continue  # skip non-numerical entries in the column
 	print("[INFO] Unsorted input bag = " + long_list_to_short_str(bag))
-	bag.sort()
 
-	print("[5/6] Computing KS scores...")
+	result: List[Tuple[float, str, str, List[float]]] =\
+		best_k_dbpedia_property_matches_for_bag_of_numerical_values(\
+		bag=bag, k=args.k, VERBOSE=True)
 
-	# Maps each pair of a DBpedia type and numeric DBpedia property
-	#   to the metric returned by the KS (Kolmogorov–Smirnov) test
-	#   on the list of values taken by all DBpedia resources that are an
-	#   instance of that type and the input list of numeric values:
-	dbpedia_type_and_property_to_ks_test: Dict[Tuple[str, str], float] =\
-		{ key : ks(bag, lst)\
-		for key, lst in dbpedia_type_and_property_to_extension.items()}
-
-	print("[6/6] Sorting results by KS score...")
-
-	dbpedia_type_and_property_to_ks_test_sorted\
-		: List[Tuple[Tuple[str, str], float]] =\
-        sorted(dbpedia_type_and_property_to_ks_test.items(),\
-            key=lambda tuple: tuple[1],\
-            reverse=False)  # smaller KS values == more similar
-
+	# Print result:
 	print("")
 	print("KS Score - DBpedia type - DBpedia property - Matched list")
 	print("")
-	for i in range(0, min(args.k,\
-		len(dbpedia_type_and_property_to_ks_test_sorted[:args.k]))):
-		el = dbpedia_type_and_property_to_ks_test_sorted[i]
-		dbpedia_type = el[0][0]
-		dbpedia_property = el[0][1]
-		ks_test_score = el[1]
-		matched_list =\
-			dbpedia_type_and_property_to_extension[\
-			(dbpedia_type, dbpedia_property)]
-
+	for ks_test_score, dbpedia_type, dbpedia_property, matched_list in result:
 		print(f"{ks_test_score} - {dbpedia_type} - " +\
 			f"{dbpedia_property} - {long_list_to_short_str(matched_list)}")
 
@@ -410,34 +476,20 @@ downloads.dbpedia.org/2016-04/core-i18n/en/infobox_properties_mapped_en.ttl.bz2
 		print("")
 		print("===== Additional comparisons as specified by the user: =====")
 		for compare_with in args.compare_with:
-			if compare_with[:1] == ":":  # e.g. ":2006Population"
-				dbpedia_property_name = compare_with[1:]  # strip prefix ":"
-
-				for ((t,p), kst) in dbpedia_type_and_property_to_ks_test_sorted:
-					if p == dbpedia_property_name:
-						matched_list =\
-							dbpedia_type_and_property_to_extension[(t, p)]
-						print(f"{kst} - {t} - {p} - " +\
-							f"{long_list_to_short_str(matched_list)}")
-			elif compare_with[-1:] == ":":  # e.g. "Place:"
-				dbpedia_type_name = compare_with[:-1]  # strip suffix ":"
-
-				for ((t,p), kst) in dbpedia_type_and_property_to_ks_test_sorted:
-					if t == dbpedia_type_name:
-						matched_list =\
-							dbpedia_type_and_property_to_extension[(t, p)]
-						print(f"{kst} - {t} - {p} - " +\
-							f"{long_list_to_short_str(matched_list)}")
-			elif ":" in compare_with: # e.g. "Place:2006Population"
+			if ":" in compare_with: # e.g. "Place:2006Population"
 				[dbpedia_type_name, dbpedia_property_name] =\
 					compare_with.split(":")
 
-				for ((t,p), kst) in dbpedia_type_and_property_to_ks_test_sorted:
-					if t == dbpedia_type_name and p == dbpedia_property_name:
-						matched_list =\
-							dbpedia_type_and_property_to_extension[(t, p)]
-						print(f"{kst} - {t} - {p} - " +\
-							f"{long_list_to_short_str(matched_list)}")
+				res: List[Tuple[float, str, str, List[float]]] =\
+					match_dbpedia_property_against_bag_of_numerical_values(\
+						bag=bag,\
+						dbpedia_type=dbpedia_type_name,\
+						dbpedia_property=dbpedia_property_name,\
+						VERBOSE=False)
+
+				for ks_test_score, dbp_t, dbp_p, matched_list in res:
+					print(f"{ks_test_score} - {dbp_t} - " +\
+						f"{dbp_p} - {long_list_to_short_str(matched_list)}")
 			else:
 				print("[ERROR] Invalid value supplied to --compare-with: " +\
 					f" '{compare_with}' contains no ':'")
