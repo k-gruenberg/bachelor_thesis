@@ -35,8 +35,11 @@ import requests
 
 import argparse
 
-from filter_nouns_with_heuristics import filter_nouns_with_heuristics_as_list
-from filter_nouns_with_heuristics import noun_match
+from filter_nouns_with_heuristics import\
+    filter_nouns_with_heuristics_as_list,\
+    filter_nouns_with_heuristics_as_dict,\
+    filter_nouns_with_heuristics_as_tuple_list,\
+    noun_match
 
 class SearchEngine(Enum):
     """
@@ -128,6 +131,8 @@ def bing_search_results_snippets(search_string: str) -> List[str]:
 
     if not os.path.exists(cached_json_file):
         # We don't have the results for `search_string` cached yet:
+
+        print(f"Debug: {cached_json_file} not found")
 
         if 'BING_SEARCH_V7_SUBSCRIPTION_KEY' not in os.environ:
             print("Fatal error: Please set the " +\
@@ -288,6 +293,146 @@ def is_noun(word: str) -> bool:  # ToDo: maybe avoid code duplication
         return False
 
 
+def attr_extension_to_ontology_class_web_search(cell_labels: List[str],\
+    k: int = 30, search_engine: SearchEngine = SearchEngine.BING)\
+    -> List[Tuple[str, int]]:
+    """
+    This function takes the same `cell_labels` argument as the
+    attr_extension_to_ontology_class() function in
+    attr_extension_to_ontology_class.py but instead of a
+    Dict[WikidataItem, int] (mapping WikidataItem's to scores)
+    it returns a
+    List[Tuple[str, int]] (mapping nouns to scores; where the nouns already
+    capture the semantics of the table, ideally the entity type of the tuples).
+
+    The `k` parameter specifies the maximum number of nouns that shall be
+    in the returned dictionary. By default, it is set to 30.
+    Set it to -1 to return the complete dictionary - this is not recommended
+    though because the total number of nouns might be quite large!
+
+    The default `search_engine` is `BING` and it is recommended to leave it
+    that way! The other options would be `YACY` (bad results) and
+    `GOOGLE_VIA_SERPAPI` (not implemented).
+
+    Example:
+
+    attr_extension_to_ontology_class_web_search(["Manuel Neuer",
+    "Joshua Kimmich", "Kai Havertz", "Marco Reus", "Timo Werner",
+    "Serge Gnabry", "Antonio Rüdiger"], k=5)
+    ==
+    [('club', 20), ('german', 14), ('professional', 12), ('team', 12),
+    ('player', 12)]
+    """
+    
+    # Perform a web search for each of these cell labels and store
+    #   the result snippets in a list: 
+    web_search_snippets: Dict[str, List[str]] = {}
+    for cell_label in cell_labels:
+        if search_engine == SearchEngine.YACY:
+            web_search_snippets[cell_label] =\
+                yacy_search_results_descriptions(cell_label)
+        elif search_engine == SearchEngine.GOOGLE_VIA_SERPAPI:
+            print("Google Search via serpapi.com is not implemented!")
+            exit()
+        else:  # Default: Use Bing:
+            web_search_snippets[cell_label] =\
+                bing_search_results_snippets(cell_label)
+
+    # Instead of using a text classifier on the snippets as Quercini & Reynaud
+    #   do in their paper "Entity Discovery and Annotation in Tables",
+    #   we use the idea from filter_nouns_heuristics.py again and look and the
+    #   most common nouns from the snippets.
+    # When the user specified the `--list-onto` we also map these nouns to the
+    #   Wikidata ontology again.
+
+    # Each noun mapped to the number of snippets it occurs in:
+    nouns_to_snippet_count: Dict[str, int] = defaultdict(int)
+    for cell_label in cell_labels:
+        for snippet in web_search_snippets[cell_label]:
+            nouns_in_snippet: Set[str] = set(\
+                filter(lambda word: is_noun(word),\
+                    map(lambda word: re.sub(r"\W", "", word).lower(),\
+                        snippet.split()\
+                    )\
+                )\
+            )  #ToDo: maybe(!) multi-word nouns (has disadvantages, see thesis)
+            for noun in nouns_in_snippet:
+                nouns_to_snippet_count[noun] += 1
+
+    # Merge singular and plural form of the same noun, e.g. "car" and "cars":
+    nouns: List[str] = list(nouns_to_snippet_count.keys())
+    for noun1 in nouns:
+        for noun2 in nouns:
+            if noun1 != noun2 and noun_match(noun1, noun2):
+                singular = noun1 if len(noun1) <= len(noun2) else noun2
+                plural   = noun2 if len(noun1) <= len(noun2) else noun1
+                nouns_to_snippet_count[singular] +=\
+                    nouns_to_snippet_count[plural]
+                del nouns_to_snippet_count[plural]
+
+    nouns_to_snippet_count_sorted: List[Tuple[str, int]] =\
+        sorted(nouns_to_snippet_count.items(),\
+            key=lambda tuple: tuple[1], reverse=True)
+
+    # Only consider the K most common nouns:
+    if k >= 0:
+        nouns_to_snippet_count_sorted = nouns_to_snippet_count_sorted[:k]
+
+    return nouns_to_snippet_count_sorted
+
+    # ToDo: maybe also get rid of nouns occurring in the parameter strings
+
+
+def attr_extension_to_ontology_class_web_search_concat_nouns(\
+    cell_labels: List[str],\
+    k: int = 30, search_engine: SearchEngine = SearchEngine.BING) -> str:
+    """
+    This concatenated string can be used in approach #1
+    (filter_nouns_with_heuristics.py)
+    which should also get rid of nouns that don't describe types again.
+    """
+
+    nouns_to_snippet_count_sorted =\
+        attr_extension_to_ontology_class_web_search(\
+        cell_labels=cell_labels, k=k, search_engine=search_engine)
+    
+    concatenated_string: str = ""
+    for noun, count in nouns_to_snippet_count_sorted:
+        concatenated_string += (noun + " ") * count + "xxxxx "
+
+    return concatenated_string
+
+
+def attr_extension_to_ontology_class_web_search_list_onto_as_tuple_list(\
+    cell_labels: List[str],\
+    k: int = 30, search_engine: SearchEngine = SearchEngine.BING,\
+    VERBOSE: bool = False) -> List[Tuple[WikidataItem, float]]:
+    return filter_nouns_with_heuristics_as_tuple_list(\
+        input_text=attr_extension_to_ontology_class_web_search_concat_nouns(\
+            cell_labels=cell_labels, k=k, search_engine=search_engine),\
+        VERBOSE=VERBOSE)
+
+
+def attr_extension_to_ontology_class_web_search_list_onto_as_list(\
+    cell_labels: List[str],\
+    k: int = 30, search_engine: SearchEngine = SearchEngine.BING,\
+    VERBOSE: bool = False) -> List[WikidataItem]:
+    return filter_nouns_with_heuristics_as_list(\
+        input_text=attr_extension_to_ontology_class_web_search_concat_nouns(\
+            cell_labels=cell_labels, k=k, search_engine=search_engine),\
+        VERBOSE=VERBOSE)
+
+
+def attr_extension_to_ontology_class_web_search_list_onto_as_dict(\
+    cell_labels: List[str],\
+    k: int = 30, search_engine: SearchEngine = SearchEngine.BING,\
+    VERBOSE: bool = False) -> Dict[WikidataItem, float]:
+    return filter_nouns_with_heuristics_as_dict(\
+        input_text=attr_extension_to_ontology_class_web_search_concat_nouns(\
+            cell_labels=cell_labels, k=k, search_engine=search_engine),\
+        VERBOSE=VERBOSE)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="""
@@ -346,87 +491,38 @@ def main():
 
     args = parser.parse_args()
 
-    # Perform a web search for each of these cell labels and store
-    #   the result snippets in a list: 
-    web_search_snippets: Dict[str, List[str]] = {}
-    for cell_label in args.cell_labels:
-        if args.yacy:
-            web_search_snippets[cell_label] =\
-                yacy_search_results_descriptions(cell_label)
-        elif args.google:
-            print("Google Search via serpapi.com is not implemented!")
-            exit()
-        else:  # Default: Use Bing:
-            web_search_snippets[cell_label] =\
-                bing_search_results_snippets(cell_label)
+    search_engine: SearchEngine = SearchEngine.BING  # = default search engine
+    if args.yacy:
+        search_engine = SearchEngine.YACY
+    elif args.google:
+        search_engine = SearchEngine.GOOGLE_VIA_SERPAPI
 
-    # Instead of using a text classifier on the snippets as Quercini & Reynaud
-    #   do in their paper "Entity Discovery and Annotation in Tables",
-    #   we use the idea from filter_nouns_heuristics.py again and look and the
-    #   most common nouns from the snippets.
-    # When the user specified the `--list-onto` we also map these nouns to the
-    #   Wikidata ontology again.
+    if args.concat_nouns:
+        concatenated_string: str =\
+            attr_extension_to_ontology_class_web_search_concat_nouns(\
+                cell_labels=args.cell_labels, k=args.k,
+                search_engine=search_engine)
+        print(concatenated_string)
+    elif args.list_onto:
+        results: List[WikidataItem] =\
+            attr_extension_to_ontology_class_web_search_list_onto_as_list(\
+                cell_labels=args.cell_labels, k=args.k,
+                search_engine=search_engine)
 
-    # Each noun mapped to the number of snippets it occurs in:
-    nouns_to_snippet_count: Dict[str, int] = defaultdict(int)
-    for cell_label in args.cell_labels:
-        for snippet in web_search_snippets[cell_label]:
-            nouns_in_snippet: Set[str] = set(\
-                filter(lambda word: is_noun(word),\
-                    map(lambda word: re.sub(r"\W", "", word).lower(),\
-                        snippet.split()\
-                    )\
-                )\
-            )  #ToDo: maybe(!) multi-word nouns (has disadvantages, see thesis)
-            for noun in nouns_in_snippet:
-                nouns_to_snippet_count[noun] += 1
-
-    # Merge singular and plural form of the same noun, e.g. "car" and "cars":
-    nouns: List[str] = list(nouns_to_snippet_count.keys())
-    for noun1 in nouns:
-        for noun2 in nouns:
-            if noun1 != noun2 and noun_match(noun1, noun2):
-                singular = noun1 if len(noun1) <= len(noun2) else noun2
-                plural   = noun2 if len(noun1) <= len(noun2) else noun1
-                nouns_to_snippet_count[singular] +=\
-                    nouns_to_snippet_count[plural]
-                del nouns_to_snippet_count[plural]
-
-    nouns_to_snippet_count_sorted: List[Tuple[str, int]] =\
-        sorted(nouns_to_snippet_count.items(),\
-            key=lambda tuple: tuple[1], reverse=True)
-
-    # Only consider the K most common nouns:
-    nouns_to_snippet_count_sorted = nouns_to_snippet_count_sorted[:args.k]
-
-    if args.concat_nouns or args.list_onto:
-        concatenated_string: str = ""
-        for noun, count in nouns_to_snippet_count_sorted:
-            concatenated_string += (noun + " ") * count + "xxxxx "
-
-        # This concatenated string can be used in approach #1
-        # (filter_nouns_with_heuristics.py)
-        # which should also get rid of nouns that don't describe types again;
-        # see below (args.list_onto case):
-
-        if args.concat_nouns:
-            print(concatenated_string)
-        elif args.list_onto:
-            results: List[WikidataItem] =\
-                filter_nouns_with_heuristics_as_list(\
-                    input_text=concatenated_string,\
-                    VERBOSE=False)
-
-            # Print the result:
-            for result in results:
-                print(result.entity_id + " (" + result.label + "; " +\
-                    result.description + ")")
+        # Print the result:
+        for result in results:
+            print(result.entity_id + " (" + result.label + "; " +\
+                result.description + ")")
     else:  # Default: args.list_nouns:
         # Return the nouns ordered by the number of snippets they occur in:
+
+        nouns_to_snippet_count_sorted: List[Tuple[str, int]] =\
+        attr_extension_to_ontology_class_web_search(\
+            cell_labels=args.cell_labels, k=args.k,
+            search_engine=search_engine)
+
         for noun, count in nouns_to_snippet_count_sorted:
             print("(" + str(count) + ") " + noun)
-
-    # ToDo: maybe also get rid of nouns occurring in the parameter strings
 
 
 if __name__ == "__main__":
