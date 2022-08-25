@@ -64,13 +64,10 @@ from nett_map_dbpedia_classes_to_wikidata import\
 from nett_map_dbpedia_properties_to_sbert_vectors import\
 	get_dbpedia_properties_mapped_to_SBERT_vector
 
-print("[PREPARING] Mapping DBpedia classes to wikidata...")
-
-dbpediaClassesMappedToWikidata: Dict[str, str] =\
-	get_dbpedia_classes_mapped_to_wikidata()
-
-dbpediaPropertiesMappedToSBERTvector: Dict[str, Any] =\
-	get_dbpedia_properties_mapped_to_SBERT_vector()
+dbpediaClassesMappedToWikidata: Dict[str, str] = None
+dbpediaPropertiesMappedToSBERTvector: Dict[str, Any] = None
+# => these 2 are only set in the main() so that calling "--help" isn't
+#    unnecessarily slowed down
 
 def normalize(dct: Dict[WikidataItem, float])\
 	-> Dict[WikidataItem, float]:
@@ -817,6 +814,16 @@ def main():
 	corpus: str = args.corpus
 	stats: bool = args.stats
 	entityTypes: List[str] = args.entityTypes
+
+	# <preparation>
+	print("[PREPARING] Mapping DBpedia classes to wikidata...")
+	dbpediaClassesMappedToWikidata =\
+		get_dbpedia_classes_mapped_to_wikidata()
+	print("[PREPARING] Mapping DBpedia properties to SBERT vectors...")
+	dbpediaPropertiesMappedToSBERTvector =\
+		get_dbpedia_properties_mapped_to_SBERT_vector()
+	print("[PREPARING] Done.")
+	# </preparation>
 
 	if corpus == "" and stats and entityTypes == []:
 		# Give statistics for the default corpus without looking for any
