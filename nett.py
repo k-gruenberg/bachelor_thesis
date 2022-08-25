@@ -59,6 +59,19 @@ from filter_nouns_with_heuristics import filter_nouns_with_heuristics_as_dict
 from attr_names_to_ontology_class import attr_names_to_ontology_class
 from attr_extension_to_ontology_class import attr_extension_to_ontology_class
 
+from nett_map_dbpedia_classes_to_wikidata import\
+	get_dbpedia_classes_mapped_to_wikidata
+from nett_map_dbpedia_properties_to_sbert_vectors import\
+	get_dbpedia_properties_mapped_to_SBERT_vector
+
+print("[PREPARING] Mapping DBpedia classes to wikidata...")
+
+dbpediaClassesMappedToWikidata: Dict[str, str] =\
+	get_dbpedia_classes_mapped_to_wikidata()
+
+dbpediaPropertiesMappedToSBERTvector: Dict[str, Any] =\
+	get_dbpedia_properties_mapped_to_SBERT_vector()
+
 def normalize(dct: Dict[WikidataItem, float])\
 	-> Dict[WikidataItem, float]:
 	if dct is not None:
@@ -68,6 +81,7 @@ def normalize(dct: Dict[WikidataItem, float])\
 				for w, f in dct.items()}
 	else:
 		return None
+
 
 def combine3(dct1: Dict[WikidataItem, float], weight1: float,\
 			dct2: Dict[WikidataItem, float], weight2: float,\
@@ -83,6 +97,7 @@ def combine3(dct1: Dict[WikidataItem, float], weight1: float,\
 		 wi) for wi in allWikidataItems]
 	sort(result, key=lambda tuple: tuple[0], reverse=True)
 	return result
+
 
 class Table:
 	def __init__(self, surroundingText: str, headerRow: List[str],\
@@ -102,7 +117,7 @@ class Table:
 		Restaurant Name       | Rating | Price | Reviews
 		------------------------------------------------
 		Aquarius              |        | $$    | 0
-		BIG & little’s        |        | $     | 0
+		BIG & little's        |        | $     | 0
 		Brown Bag Seafood Co. |        | $$    | 0
 		...                   | ...    | ...   | ...
 
@@ -410,15 +425,6 @@ class Table:
 	def parseFolder(path: str) -> Iterator[Table]:
 		pass  # ToDo (use "yield")
 
-dbpediaClassesMappedToWikidata: Dict[str, str] =\
-	{
-	# ToDo: generate using another script
-	}
-
-dbpediaPropertiesMappedToSBERTvector: Dict[str, Any] =\
-	{
-	# ToDo: generate using another script
-	}
 
 # A small default table corpus (consisting of the 7 tables also used as
 #   examples throughout my paper) to be used when no table corpus is supplied.
@@ -511,11 +517,11 @@ defaultTableCorpusWithCorrectMappings: List[Tuple[Table, WikidataItem]] =\
 			columns=[\
 			["""1Aquarius2459 N Pulaski Rd |
 			At W Altgeld St Order From This Restaurant""",\
-			"""2BIG & little’s1034 W Belmont Ave |
+			"""2BIG & little's1034 W Belmont Ave |
 			At N Kenmore Ave Order From This Restaurant""",\
 			"""3Brown Bag Seafood Co.340 E Randolph St |
 			Btwn N Columbus & N Lake Shore Dr""",\
-			"""4Captain Hook’s Fish & Chicken8550 S Cottage Grove Ave |
+			"""4Captain Hook's Fish & Chicken8550 S Cottage Grove Ave |
 			Btwn E 85th & 86th St"""],\
 			["", "", "", ""],\
 			["$$", "$", "$$", "$"],\
@@ -558,7 +564,7 @@ defaultTableCorpusWithCorrectMappings: List[Tuple[Table, WikidataItem]] =\
 			["The Stroke", "LONELY IS THE NIGHT", "Everybody Wants You",\
 			"My Kinda Lover", "In The Dark", "TOO DAZE GONE",\
 			"THE BIG BEAT", "Rock Me Tonite", "Emotions In Motion",\
-			"Don’t Say You Love Me"],\
+			"Don't Say You Love Me"],\
 			["1905", "1905", "1905", "1905", "1905",\
 			"1905", "1905", "1905", "1905", "1905"],\
 			["17,063", "32,018", "46,267", "54,751", "67,138",\
@@ -594,6 +600,7 @@ defaultTableCorpusWithCorrectMappings: List[Tuple[Table, WikidataItem]] =\
 		)
 	)
 	]
+
 
 def main():
 	parser = argparse.ArgumentParser(
