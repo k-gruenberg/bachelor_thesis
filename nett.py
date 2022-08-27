@@ -2,7 +2,8 @@
 NETT = Narrative Entity Type(s) to Tables
 
 This program takes as input:
-* a corpus of relational tables, either in CSV or in a specific JSON format
+* a corpus of relational tables, either in CSV (or Excel)
+  or in a specific JSON format
   (the files are allowed to be inside one or multiple .tar archives);
   when no corpus is specified a small default corpus is being used
   => note that all tables smaller than 3x3 are rigorously filtered out
@@ -44,9 +45,16 @@ When neither of those is supplied, it returns a ranked list of entity type
 
 from __future__ import annotations
 from typing import List, Dict, Any, Iterator
-import json
+import json  # https://docs.python.org/3/library/json.html
 import argparse
 import re
+import os
+import sys
+import csv  # https://docs.python.org/3/library/csv.html
+import tarfile  # https://docs.python.org/3/library/tarfile.html
+import tempfile  # https://docs.python.org/3/library/tempfile.html
+
+from numpy import transpose
 
 from WikidataItem import WikidataItem
 
@@ -101,13 +109,49 @@ class Table:
 				 columns: List[List[str]]):
 		"""
 		Initalize a new Table that has already been parsed.
+
+		If the `columns` haven't been parsed for a `headerRow` yet,
+		set headerRow=[] and
+		call the parse_header_row() method after construction!
+
+		`headerRow` may be `[]` but never `None`!
 		"""
 
 		self.surroundingText = surroundingText  # (1) Using Textual Surroundings
 		self.headerRow = headerRow  # (2) Using Attribute Names
 		self.columns = columns  # (3) Using Attribute Extensions
 
-	def pretty_print(self, maxNumberOfTuples=6, maxColWidth=25) -> str:
+	def width(self) -> int:
+		"""
+		Returns the width of this Table, i.e. the number of columns.
+		"""
+		return len(self.columns)  # width == # of columns
+
+	def min_height(self, includingHeaderRow=True) -> int:
+		"""
+		Returns the height of this Table, i.e. the number of rows.
+		Including the header row by default (if this Table has one, that is).
+		Set includingHeaderRow=False to exclude a possible header row.
+
+		The value returned is different to that of max_height() only if
+		the columns don't all have the same height, which they should have.
+		"""
+		return min(len(col) for col in self.columns) +\
+			(1 if includingHeaderRow and self.headerRow != [] else 0)
+
+	def max_height(self, includingHeaderRow=True) -> int:
+		"""
+		Returns the height of this Table, i.e. the number of rows.
+		Including the header row by default (if this Table has one, that is).
+		Set includingHeaderRow=False to exclude a possible header row.
+
+		The value returned is different to that of min_height() only if
+		the columns don't all have the same height, which they should have.
+		"""
+		return max(len(col) for col in self.columns) +\
+			(1 if includingHeaderRow and self.headerRow != [] else 0)
+
+	def pretty_print(self, maxNumberOfTuples=6, maxColWidth=25) -> str: # ToDo: what if self.headerRow == [] ?!
 		"""
 		A pretty printable version of this Table, e.g.:
 
@@ -132,13 +176,14 @@ class Table:
 			))
 		# If a header name is longer than corresponding column width, it
 		#   has to be increased further:
-		columnWidths = list(\
-			map(\
-				lambda tuple: max(tuple[0], tuple[1]),\
-				zip(columnWidths, map(lambda header: len(header),\
-					self.headerRow))\
-				)\
-			)
+		if self.headerRow != []:
+			columnWidths = list(\
+				map(\
+					lambda tuple: max(tuple[0], tuple[1]),\
+					zip(columnWidths, map(lambda header: len(header),\
+						self.headerRow))\
+					)\
+				)
 		# Every column shall have a width of at least 3:
 		columnWidths = [max(3, cw) for cw in columnWidths]
 		# Every column shall have a width of at most `maxColWidth`:
@@ -155,7 +200,10 @@ class Table:
 
 		result: str = ""
 
-		result += print_row(self.headerRow, columnWidths)
+		if self.headerRow != []:
+			result += print_row(self.headerRow, columnWidths)
+		else:  # no header row to print => print empty header row:
+			result += print_row([""] * len(columnWidths), columnWidths)
 
 		totalWidth = sum(columnWidths) + 3*(len(columnWidths)-1)
 		result += "-" * totalWidth + "\n" # "-----------------------------"
@@ -169,6 +217,59 @@ class Table:
 			result += print_row(["..."] * len(columnWidths), columnWidths)
 
 		return result
+
+
+	def as_csv(self, with_header=True, max_number_of_rows: int = -1) -> str:
+		if not with_header:
+			self_min_height: int = self.min_height(includingHeaderRow=False)
+			if max_number_of_rows == -1:
+				max_number_of_rows = self_min_height
+			self_as_csv: str = ""
+			for row_index in range(0, min(max_number_of_rows, self_min_height)):
+				self_as_csv += ",".join(\
+					self.columns[col_index][row_index]\
+					for col_index in range(0, self.width())) + "\n"
+			return self_as_csv
+		else:
+			return None  # ToDo
+
+	def parse_header_row(self) -> bool:
+		"""
+		When self.headerRow == []:
+		    Tries to to identify a header row in self.columns using the
+		    heuristic used by the csv.Sniffer().has_header() method
+		    (cf. https://docs.python.org/3/library/csv.html).
+		    If found, the header row is deleted from self.columns and
+		    self.headerRow is set instead.
+		    Returns True when a header row was found and False otherwise.
+		When self.headerRow != []:
+		    This method does nothing and returns True.
+
+		Important note:
+		When using one of the parseXXX() class methods,
+		calling this function is NOT necessary!!
+		"""
+		if self.headerRow == []:
+			self_as_csv_sample: str =\
+				self.as_csv(with_header=False, max_number_of_rows=20)
+			# From https://docs.python.org/3/library/csv.html,
+			# regarding csv.Sniffer.has_header(sample):
+			# "Twenty rows after the first row are sampled; if more than half
+			#  of columns + rows meet the criteria, True is returned."
+			if csv.Sniffer().has_header(self_as_csv_sample):
+				# Set the header row to the first row:
+				self.headerRow = [self.columns[col_index][0] for\
+					col_index in range(0, len(self.columns))]
+				# Delete the header row from self.columns where it
+				#   does not belong:
+				for col_index in range(0, len(self.columns)):
+					del self.columns[col_index][0]
+				return True
+			else:
+				return False  # csv.Sniffer().has_header() found no header.
+		else:
+			return True  # There already is a header row (parsed).
+
 
 	# Correctly regex-matching URLs and email addresses is actually much
 	# harder than one might think, read:
@@ -211,7 +312,7 @@ class Table:
 	BLACKLISTED_COMPILED_REGEXES =\
 		[re.compile(regex_string) for regex_string in BLACKLISTED_REGEXES]
 
-	def get_identifying_column(self) -> List[str]:  # ToDo!!!
+	def get_identifying_column(self) -> List[str]:  # ToDo!!!  # ToDo: what about the heuristic used by T2K Match?!
 		"""
 		Try to identify the identifiying columns of this table in
 		  1 or 2 steps:
@@ -382,11 +483,31 @@ class Table:
 		# ToDo: write get_identifying_column() function !!!!!
 
 	@classmethod
-	def parseCSV(csv: str) -> Table:
-		pass  # ToDo
+	def parseCSV(cls, csv_lines: Iterator[str]) -> Table:
+		# cf. documentation of
+		#   csv.reader(csvfile, dialect='excel', **fmtparams):
+		# "csvfile can be any object which supports the iterator protocol
+		#  and returns a string each time its __next__() method is called —
+		#  file objects and list objects are both suitable. If csvfile is a
+		#  file object, it should be opened with newline=''."
+		
+		columns: List[List[str]] = []
+
+		csv_reader = csv.reader(csv_lines)
+		for row in csv_reader:
+			no_of_cols: int = len(row)  # (number of columns)
+			if columns == []:
+				columns = [[] for i in range(0, no_of_cols)]  # (initialize)
+			for col_index in range(0, no_of_cols):
+				columns[col_index].append(row[col_index])
+
+		result = Table(surroundingText="", headerRow=[],\
+			columns=columns)  # surroundingText is not applicable to CSV files
+		result.parse_header_row()  # set headerRow!=[] if possible
+		return result
 
 	@classmethod
-	def parseXLSX(xlsxPath: str) -> Table:
+	def parseXLSX(cls, xlsxPath: str) -> Table:
 		# Use openpyxl to parse Microsoft Excel files,
 		# cf. https://www.geeksforgeeks.org/
 		#   working-with-excel-spreadsheets-in-python/
@@ -406,21 +527,161 @@ class Table:
 		rows = [list(map(lambda cell_obj: str(cell_obj.value), row))\
 			for row in sheet_obj.iter_rows()]
 
-		csv = "\n".join([", ".join(row) for row in rows])
-
-		return parseCSV(csv)
-
-	@classmethod
-	def parseJSON(json: str) -> Table:
-		pass  # ToDo
+		# If one wanted the CSV as a string, it would lokk like this:
+		#   csv = "\n".join([", ".join(row) for row in rows])
+		# parseCSV() however needs an iterator over the CSV lines:
+		return Table.parseCSV(csv_lines=(", ".join(row) + "\n" for row in rows))
 
 	@classmethod
-	def parseTAR(path: str) -> Iterator[Table]:
-		pass  # ToDo
+	def parseJSON(cls, json: str, onlyRelational=False, onlyWithHeader=True,\
+		useAdditionalHeuristics=False) -> Optional[Table]: # ToDo: change to onlyRelational=True after testing!
+		"""
+		Parses a .JSON file of the format that's used in the
+		WDC Web Table Corpus (http://webdatacommons.org/webtables/2015/
+		downloadInstructions.html):
+
+		{"relation":[[..., ...],[..., ...]],
+		 "pageTitle":"...",
+		 "title":"...",
+		 "url":"https://...",
+		 "hasHeader":true,
+		 "headerPosition":"MIXED",
+		 "tableType":"RELATION",
+		 "tableNum":6,
+		 "s3Link":"common-crawl/crawl-data/...",
+		 "recordEndOffset":867273895,
+		 "recordOffset":867263717,
+		 "tableOrientation":"HORIZONTAL",
+		 "textBeforeTable":"...",
+		 "textAfterTable":"...",
+		 "hasKeyColumn":true,
+		 "keyColumnIndex":0,
+		 "headerRowIndex":0}
+
+		This method returns None for invalid JSON inputs
+		(i.e. not of the above format), for non-relational tables
+		(if onlyRelational=True) and for tables without a header
+		(if onlyWithHeader=True)!
+		"""
+		try:
+			j = json.loads(json)
+			
+			if onlyRelational and j["tableType"] != "RELATION":
+				# e.g. "tableType":"ENTITY"
+				return None  # skip non-relational tables
+
+			surroundingText: str =\
+				j["textBeforeTable"] + " " + j["textAfterTable"]
+			headerRow: List[str] = None
+			columns: List[List[str]] = None
+
+			# For the header information, rely on the information given
+			#   (i.e. do no own heuristics):
+			if j["hasHeader"]:
+				if j["headerPosition"] == "FIRST_ROW":  # (most common case)
+					headerRow = [col[0] for col in j["relation"]]
+					columns = [col[1:] for col in j["relation"]] # strip header
+				elif j["headerPosition"] == "FIRST_COLUMN":
+					# Tranpose the table because for us, the header is always
+					#   in the first row:
+					headerRow = j["relation"][0]  # 1st column = header
+					columns = transpose(j["relation"][1:]).tolist()
+				elif j["headerPosition"] == "MIXED":
+					return None  # skipping such unsure/non-relational? tables
+				else:
+					print("[PARSE ERROR] Unknown value for 'headerPosition'" +\
+						f""" in JSON: '{j["headerPosition"]}'""",\
+						file=sys.stderr)
+					return None
+			else:  # "hasHeader":false => "headerPosition":"NONE"
+				if onlyWithHeader and not useAdditionalHeuristics:
+					# Corpus says that this table has no header, we shall
+					#   not use additional heuristcs and we shall only
+					#   return tables with header => return None:
+					return None
+				elif not onlyWithHeader and not useAdditionalHeuristics:
+					# Corpus says that this table has no header, we **are**
+					#   allowed to return tables without a header but we are
+					#   **not** allowed to use additional heuristics
+					#   => return the table without header
+					#      as it is in the corpus:
+					headerRow = []
+					# We still have to find out which way to orient the columns
+					#   though:
+					columns = None  # ToDo(!)
+				elif useAdditionalHeuristics:
+					# We **are** allowed to use additional heuristics:
+					# Looking at some examples shows that when
+					#   "hasHeader":false, there **is** usually a header
+					#   in the first column...
+					return None  # ToDo(!)
+
+			return Table(surroundingText=surroundingText, headerRow=headerRow,\
+				columns=columns)
+		except:  # (most likely a KeyError when JSON is in invalid format)
+			return None
 
 	@classmethod
-	def parseFolder(path: str) -> Iterator[Table]:
-		pass  # ToDo (use "yield")
+	def parseTAR(cls, tarPath: str) -> Iterator[Table]:
+		# cf. https://docs.python.org/3/library/tarfile.html
+		tar = tarfile.open(tarPath)
+		for tarinfo in tar:
+			# Skip directories and hidden files in the TAR archive:
+			if tarinfo.isfile() and tarinfo.name[:1] != ".":
+				if os.path.splitext(tarinfo.name)[1] == ".json":
+					yield Table.parseJSON(json=tar.extractfile(tarinfo).read())
+				elif os.path.splitext(tarinfo.name)[1] == ".csv":
+					yield Table.parseCSV(csv_lines=tar.extractfile(tarinfo))
+				elif os.path.splitext(tarinfo.name)[1] in [".xlsx", ".xls"]:
+					# Because parseXLSX() expects a path, we have to
+					#   temporarily extract the .xlsx file to the file system:
+					table: Table = None
+					with tempfile.NamedTemporaryFile() as temp_path:
+						# Extract the .xlsx file to a temporary location:
+						tar.extract(tarinfo, path=temp_path)
+						# Parse that temporary .xlsx file:
+						table = Table.parseXLSX(xlsxPath=temp_path)
+					yield table
+				# All other file types in the TAR archive are ignored.
+
+
+	@classmethod
+	def parseFolder(cls, folderPath: str, recursive=True) -> Iterator[Table]:
+		# Sorting is important such that the order is predictable to the user:
+		for folder_item in sorted(os.listdir(folderPath)):
+			folder_item = os.path.join(folderPath, folder_item)
+			if os.path.isfile(folder_item):
+				file_name, file_extension = os.path.splitext(folder_item)
+				if file_extension == ".csv":
+					with open(folder_item, 'r', newline='') as csv_file:
+						# (newline='' is required by the CSV library)
+						yield Table.parseCSV(csv_lines=csv_file)
+				elif file_extension in [".xlsx", ".xls"]:
+					yield Table.parseXLSX(xlsxPath=folder_item)
+				elif file_extension == ".json":
+					with open(folder_item, 'r') as json_file: 
+						yield Table.parseJSON(json=json_file.read())
+				elif file_extension == ".tar":
+					for table in Table.parseTAR(tarPath=folder_item):
+						yield table
+				# Skip files with any other filetype/extension.
+			elif recursive:
+				for table in Table.parseFolder(folderPath=folder_item,\
+					recursive=True):
+					yield table
+			# When the item is a directory and recursive=False, skip it.
+
+	@classmethod
+	def parseCorpus(cls, corpusPath: str, recursive=True) -> Iterator[Table]:
+		if os.path.isfile(corpusPath):
+			file_name, file_extension = os.path.splitext(corpusPath)
+			if file_extension == ".tar":
+				return Table.parseTAR(tarPath=corpusPath)
+			else:
+				sys.exit("Error: --corpus supplied either has to be a "+\
+					" directory or a .TAR file.")
+		else:
+			return Table.parseFolder(folderPath=corpusPath, recursive=recursive)
 
 
 # A small default table corpus (consisting of the 7 tables also used as
@@ -717,6 +978,11 @@ def main():
     	`pip install openpyxl` or
     	`python3 -m pip install openpyxl`""",
     	metavar='PATH')
+
+	parser.add_argument('--corpus-non-recursive',
+		action='store_true',
+		help="""When a folder is specified for the --corpus parameter, do NOT
+		look into its subfolders recursively.""")
 
 	parser.add_argument('--ordered',
 		action='store_true',
