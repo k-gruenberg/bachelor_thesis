@@ -309,8 +309,8 @@ class Table:
 	LONG_REGEX = r".{50,}"
 	TIME_REGEX = r"\d\d:\d\d(:\d\d)?"  # e.g. '00:15' or '00:15:00'
 	DATE_REGEX = r"(\d\d? \w{3,} \d\d\d\d)|(\w{3,} \d\d?, \d\d\d\d)"
-	EMPTY_REGEX = r"\s*"  # e.g. '' or ' ' or '  '
 	# e.g. '25 Jan 1893' or 'August 31, 2006'
+	EMPTY_REGEX = r"\s*"  # e.g. '' or ' ' or '  '
 
 	BLACKLISTED_REGEXES: List[str] = [\
 		PHONE_NUMBER_REGEX,  # matches phone numbers
