@@ -132,20 +132,18 @@ def bing_search_results_snippets(search_string: str) -> List[str]:
     if not os.path.exists(cached_json_file):
         # We don't have the results for `search_string` cached yet:
 
-        print(f"Debug: {cached_json_file} not found")
+        #print(f"Debug: {cached_json_file} not found")
 
         if 'BING_SEARCH_V7_SUBSCRIPTION_KEY' not in os.environ:
-            print("Fatal error: Please set the " +\
+            exit("Fatal error: Please set the " +\
                   "BING_SEARCH_V7_SUBSCRIPTION_KEY " +\
                   "environment variable to your Microsoft Bing API Key! " +\
                   "You can find it on portal.azure.com")
-            exit()
         elif 'BING_SEARCH_V7_ENDPOINT' not in os.environ:
-            print("Fatal error: Please set the " +\
+            exit("Fatal error: Please set the " +\
                   "BING_SEARCH_V7_ENDPOINT " +\
                   "environment variable to your Microsoft Bing API Endpoint!"+\
                   "You can find it on portal.azure.com")
-            exit()
 
         # The free version of the Bing web search API is limited to
         #   3 queries per second:

@@ -66,18 +66,16 @@ from WikidataItem import WikidataItem
 from filter_nouns_with_heuristics import filter_nouns_with_heuristics_as_dict
 from attr_names_to_ontology_class import attr_names_to_ontology_class
 from attr_extension_to_ontology_class import attr_extension_to_ontology_class
+from attr_extension_to_ontology_class_web_search import\
+	attr_extension_to_ontology_class_web_search_list_onto_as_dict
 
 from nett_map_dbpedia_classes_to_wikidata import\
 	get_dbpedia_classes_mapped_to_wikidata
 from nett_map_dbpedia_properties_to_sbert_vectors import\
+	initalize_dbpedia_properties_mapped_to_SBERT_vector,\
 	get_dbpedia_properties_mapped_to_SBERT_vector
 
 DEBUG = True
-
-dbpediaClassesMappedToWikidata: Dict[str, str] = None
-dbpediaPropertiesMappedToSBERTvector: Dict[str, Any] = None
-# => these 2 are only set in the main() so that calling "--help" isn't
-#    unnecessarily slowed down
 
 def normalize(dct: Dict[WikidataItem, float])\
 	-> Dict[WikidataItem, float]:
@@ -102,8 +100,27 @@ def combine3(dct1: Dict[WikidataItem, float], weight1: float,\
 		 weight2 * dct2.get(wi, 0.0) +\
 		 weight3 * dct3.get(wi, 0.0),\
 		 wi) for wi in allWikidataItems]
-	sort(result, key=lambda tuple: tuple[0], reverse=True)
+	result.sort(key=lambda tuple: tuple[0], reverse=True)
 	return result
+
+
+def debug_dict_sorted(d: Dict[WikidataItem, float]) -> str:
+	"""
+	A debug-printable short string representation of a
+	Dict[WikidataItem, float] dictionary, where the floats are to be
+	interpreted as match scores (bigger score = better match).
+	"""
+	if len(d) <= 2:  # empy dictionary or dictionary with <= 2 key value pairs:
+		return str(d)
+	else:
+		max_key: WikidataItem = None
+		max_value: float = float('-inf')
+		for key in d:
+			value: float = d[key]
+			if value > max_value:
+				max_key = key
+				max_value = value
+		return "{" + str(max_key) + ": " + str(max_value) + ", ...}"
 
 
 class Table:
@@ -493,12 +510,13 @@ class Table:
 
 
 	def classify(self,\
+				 useSBERT:bool, useBing=False, useWebIsAdb=False,
 				 useTextualSurroundings=True, textualSurroundingsWeighting=1.0,\
 				 useAttrNames=True, attrNamesWeighting=1.0,\
 				 useAttrExtensions=True, attrExtensionsWeighting=1.0,\
 				 normalizeApproaches=False,
 				 printProgressTo=sys.stdout)\
-				-> List[Tuple[float, WikidataItem]]:  # ToDo: probably move below!
+				-> List[Tuple[float, WikidataItem]]:  # ToDo: test!
 		"""
 		Classify this table semantically.
 		Returns an ordered list of WikidataItems that might represent the entity
@@ -546,6 +564,9 @@ class Table:
 	    => Disadvantage:
 	       The information that one approach might be more confident than
 	       another approach is lost.
+
+	    `printProgressTo` may be set to `sys.stdout`, `sys.stderr` or
+	    `open(os.devnull,"w")` for example.
     	"""
 
 		resultUsingTextualSurroundings: Dict[WikidataItem, float] = {}
@@ -554,18 +575,30 @@ class Table:
 				file=printProgressTo)
 			resultUsingTextualSurroundings =\
 				self.classifyUsingTextualSurroundings()
+			if DEBUG:
+				print("[DEBUG] Result using textual surroundings: " +\
+					f"{debug_dict_sorted(resultUsingTextualSurroundings)}")
 
 		resultUsingAttrNames: Dict[WikidataItem, float] = {}
 		if useAttrNames and self.headerRow != []:
 			print("[PROGRESS] Classifying using attribute names...",\
 				file=printProgressTo)
-			resultUsingAttrNames = self.classifyUsingAttrNames()
+			resultUsingAttrNames = self.classifyUsingAttrNames(\
+				useSBERT=useSBERT)
+			if DEBUG:
+				print("[DEBUG] Result using attribute names: " +\
+					f"{debug_dict_sorted(resultUsingAttrNames)}")
+
 
 		resultUsingAttrExtensions: Dict[WikidataItem, float] = {}
 		if useAttrExtensions and self.columns != []:
 			print("[PROGRESS] Classifying using attribute extensions...",\
 				file=printProgressTo)
-			resultUsingAttrExtensions = self.classifyUsingAttrExtensions()
+			resultUsingAttrExtensions = self.classifyUsingAttrExtensions(\
+				useBing=useBing, useWebIsAdb=useWebIsAdb)
+			if DEBUG:
+				print("[DEBUG] Result using attribute extensions: " +\
+					f"{debug_dict_sorted(resultUsingAttrExtensions)}")
 
 		if normalizeApproaches:
 			resultUsingTextualSurroundings =\
@@ -597,6 +630,7 @@ class Table:
 			input_text=self.surroundingText,\
 			VERBOSE=False,\
 			ALLOW_EQUAL_SCORES=True)
+		# (already returns a Dict[WikidataItem, float])
 
 	def classifyUsingAttrNames(self, useSBERT: bool)\
 		-> Dict[WikidataItem, float]:
@@ -609,12 +643,26 @@ class Table:
 		word similarity instead.
 		"""
 
-		return attr_names_to_ontology_class(\
-			inputAttrNames=self.headerRow,
-			USE_BETTER_SUM_FORMULA=True,
-			USE_SBERT_INSTEAD_OF_JACCARD=useSBERT,
-			VERBOSE=False
-			)
+		# First, clean the header row / attribute names:
+		# (a) remove empty column captions ("")
+		# (b) remove column captions shorter than 3 characters when using
+		#     Jaccard-trigrams instead of SBERT
+		cleaned_headerRow: List[str] =\
+			[header for header in self.headerRow\
+			 if header.strip() != "" and (len(header) >= 3 or useSBERT)]
+
+		# attr_names_to_ontology_class() returns a Dict[str, float]
+		# (with the strings being names of DBpedia classes)
+		# but we need a Dict[WikidataItem, float]:
+		return { WikidataItem(\
+			get_dbpedia_classes_mapped_to_wikidata()[dbpediaClass]) : score\
+			for dbpediaClass, score\
+			in attr_names_to_ontology_class(\
+				inputAttrNames=cleaned_headerRow,
+				USE_BETTER_SUM_FORMULA=True,
+				USE_SBERT_INSTEAD_OF_JACCARD=useSBERT,
+				VERBOSE=False
+			).items()}
 
 	def classifyUsingAttrExtensions(self, useBing=False, useWebIsAdb=False)\
 		 -> Dict[WikidataItem, float]:
@@ -628,13 +676,18 @@ class Table:
 		"""
 
 		if useBing:
-			return None
-			# ToDo: refactor attr_extension_to_ontology_class_web_search.py
-		elif useWebIsAdb:
-			return None  # ToDo: not even coded yet...
-		else:
-			return attr_extension_to_ontology_class(\
+			return\
+				attr_extension_to_ontology_class_web_search_list_onto_as_dict(\
 				cell_labels=self.get_identifying_column())
+			# (already returns a Dict[WikidataItem, float])
+		elif useWebIsAdb:
+			exit("[ERROR] Using the WebIsA DB is not yet implemented!")
+			return None  # (possible ToDo: not even coded yet...)
+		else:
+			return\
+				attr_extension_to_ontology_class(\
+				cell_labels=self.get_identifying_column())
+			# (returns a Dict[WikidataItem, int])
 
 
 	@classmethod
@@ -1308,12 +1361,8 @@ def main():
 	entityTypes: List[str] = args.entityTypes
 
 	# <preparation>
-	print("[PREPARING] Mapping DBpedia classes to wikidata...")
-	dbpediaClassesMappedToWikidata =\
-		get_dbpedia_classes_mapped_to_wikidata()
 	print("[PREPARING] Mapping DBpedia properties to SBERT vectors...")
-	dbpediaPropertiesMappedToSBERTvector =\
-		get_dbpedia_properties_mapped_to_SBERT_vector()
+	initalize_dbpedia_properties_mapped_to_SBERT_vector()
 	print("[PREPARING] Done.")
 	# </preparation>
 

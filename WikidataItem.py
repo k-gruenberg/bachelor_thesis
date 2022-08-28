@@ -204,6 +204,9 @@ class WikidataItem:
             return self.entity_id == other.entity_id
         return False
 
+    def __hash__(self):
+        return hash((self.entity_id))
+
 
     @classmethod
     def get_items_matching_search_string(cls, search_string: str)\
