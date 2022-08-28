@@ -516,7 +516,7 @@ class Table:
 				 useAttrExtensions=True, attrExtensionsWeighting=1.0,\
 				 normalizeApproaches=False,
 				 printProgressTo=sys.stdout)\
-				-> List[Tuple[float, WikidataItem]]:  # ToDo: test!
+				-> List[Tuple[float, WikidataItem]]:
 		"""
 		Classify this table semantically.
 		Returns an ordered list of WikidataItems that might represent the entity
@@ -1090,6 +1090,7 @@ defaultTableCorpusWithCorrectMappings: List[Tuple[Table, WikidataItem]] =\
 def main():
 	parser = argparse.ArgumentParser(
 		description="NETT - Narrative Entity Type(s) to Tables")
+	# ToDo: list a few example calls in this description!!
 
 	parser.add_argument(
     	'entityTypes', # Narratives = "Knowing what to look for"
