@@ -1,0 +1,9 @@
+These tables are from
+
+(a) the WDC Web Table Corpus, created at the University of Mannheim:
+http://webdatacommons.org/webtables/2015/downloadInstructions.html
+
+(b) the UCI Machine Learning Repository, created at UC Irvine:
+https://archive.ics.uci.edu/ml/index.php
+Citation:
+Dua, D. and Graff, C. (2019). UCI Machine Learning Repository [http://archive.ics.uci.edu/ml]. Irvine, CA: University of California, School of Information and Computer Science. 

@@ -7,40 +7,15 @@ This program takes as input:
   (the files are allowed to be inside one or multiple .tar archives);
   when no corpus is specified a small default corpus is being used
   => note that all tables smaller than 3x3 are rigorously filtered out
-* - EITHER: a list of one or more entity types occuring in the narrative that
-    is to be grounded (ideally as Wikidata ID's, otherwise as literal strings)
+* optionally: a list of one or more entity types occuring in the narrative that
+    is to be grounded (ideally as Wikidata ID's or DBpedia class names,
+    otherwise as literal strings then being mapped to Wikidata ID's)
     => you may also supply ids/names of entities instead of entity types,
        in that case they are simply resolved to the entity type they're an
        instance of and the output tables restricted to those containing a
-       string equal or similar to that entity's name
-  - OR: optionally the list of correct mappings for the given corpus
-        (supplied automatically when the default corpus is being used)
-  - when NEITHER of the two is supplied, a ranked list of entity candidates
-    for every table in the corpus is returned
-* various settings as parameters:
-  - ... (see --help)
-  - whether the output tables shall be ordered (--ordered) by how well they fit
-    (lazy outputting is lost in that case!)
-  - whether to use Jaccard (--jaccard) or SBERT (--sbert) for word similarity
-  - whether to activate verbose info prints (-v or --verbose)
-  - whether to activate debug prints (--debug)
-
-When a list of one or more entity types is supplied, it produces as output:
-* for each input entity type an ordered (or unordered) list of relational
-  tables from the given corpus for which the program thinks that the tuples
-  represent entities of that entity type
-* the output is (lazily if unorderd) printed to stdout in JSON format
-
-When a list of correct mappings was given as input, the output is instead:
-* statistics
-  - the MRR (mean reciprocal rank)
-  - the top-k coverage for k=1,2,...,100
-    (k can be supplied as a parameter too, using -k)
-  - the recall for all classes/entity types occurring in the supplied list
-    (sorted)
-
-When neither of those is supplied, it returns a ranked list of entity type
-  candidates for every table in the corpus.
+       string equal or similar to that entity's name # ToDo: this feature!
+* various settings as parameters, see --help, also for more details
+  on the 4 different modes of NETT!
 """
 
 from __future__ import annotations
@@ -910,215 +885,66 @@ class Table:
 					csv_dialect=csv_dialect))
 
 
-# !!!!! ToDo: delete this and create a default_corpus.tar instead !!!!!
-# A small default table corpus (consisting of the 7 tables also used as
-#   examples throughout my paper) to be used when no table corpus is supplied.
-# Useful for testing.
-defaultTableCorpusWithCorrectMappings: List[Tuple[Table, WikidataItem]] =\
-	[ # ToDo: surrounding texts and Wikidata mappings
-	(
-		Table(
-			surroundingText=\
-			"Properties of different car models, from 1970 to 1982.",
-			headerRow=["mpg", "cylinders", "displacement", "horsepower",\
-			"weight", "acceleration", "model year", "origin", "car name"],
-			columns=[\
-			["18.0", "15.0", "18.0"],\
-			["8", "8", "8"],\
-			["307.0", "350.0", "318.0"],\
-			["130.0", "165.0", "150.0"],\
-			["3504.", "3693.", "3436."],\
-			["12.0", "11.5", "11.0"],\
-			["70", "70", "70"],\
-			["1", "1", "1"],\
-			["\"chevrolet chevelle malibu\"", "\"buick skylark 320\"",\
-			"\"plymouth satellite\""]\
-			]\
-		),
-		WikidataItem(
-			entity_id="Q3231690",
-			label="automobile model",
-			description="""industrial automobile model associated with a brand,
-			defined usually from an engineering point of view by a combination
-			of chassis/bodywork"""
-		)
-	),
-	(
-		Table(
-			surroundingText="",
-			headerRow=["Country", "Project Name", "Types of Assistance",\
-			"Approval Number/s", "Status", "Approval Date"],
-			columns=[\
-			["Nepal", "Pakistan", "India", "India"],\
-			["30232-013 Decentralized Rural Infrastructure and Livelihoods",\
-			"""38135-013 Multisector Rehabilitation Project for Azad Jammu &
-			Kashmir""",
-			"35335-013 National Highway Sector II",
-			"""38136-013 Multi-sector Project for Infrastructure Rehabilitation
-			in Jammu and Kashmir"""],\
-			["Loan", "Loan", "Loan", "Loan"],
-			["2092", "2153", "2154", "2151"],
-			["Closed / Terminated", "Closed / Terminated",\
-			"Closed / Terminated", "Closed / Terminated"],
-			["23 Dec 2004", "21 Dec 2004", "21 Dec 2004", "21 Dec 2004"]\
-			]\
-		),
-		WikidataItem(
-			entity_id="Q170584",
-			label="project",
-			description="""collaborative enterprise, frequently involving
-			research or design, that is carefully planned to achieve a
-			particular aim"""
-		)
-	),
-	(
-		Table(
-			surroundingText="",
-			headerRow=["Name", "Yr", "Pos", "G", "Rec.", "Yards", "Avg.",\
-			"TD", "Rec./G", "Yards/G"],
-			columns=[\
-			["Jordan James", "Keevan Lucas", "Trey Watts", "Thomas Roberson"],\
-			["SR", "FR", "SR", "JR"],\
-			["WR", "WR", "RB", "WR"],\
-			["11", "12", "12", "8"],\
-			["39", "32", "46", "27"],\
-			["471", "442", "395", "363"],\
-			["12.08", "13.81", "8.59", "13.44"],\
-			["2", "1", "1", "4"],\
-			["3.5", "2.7", "3.8", "3.4"],\
-			["42.8", "36.8", "32.9", "45.4"]\
-			]\
-		),
-		WikidataItem(
-			entity_id="",  # ToDo: "player" or ... ?!
-			label="",
-			description=""
-		)
-	),
-	(
-		Table(
-			surroundingText="",
-			headerRow=["Restaurant Name", "Rating", "Price", "Reviews"],
-			columns=[\
-			["""1Aquarius2459 N Pulaski Rd |
-			At W Altgeld St Order From This Restaurant""",\
-			"""2BIG & little's1034 W Belmont Ave |
-			At N Kenmore Ave Order From This Restaurant""",\
-			"""3Brown Bag Seafood Co.340 E Randolph St |
-			Btwn N Columbus & N Lake Shore Dr""",\
-			"""4Captain Hook's Fish & Chicken8550 S Cottage Grove Ave |
-			Btwn E 85th & 86th St"""],\
-			["", "", "", ""],\
-			["$$", "$", "$$", "$"],\
-			["0", "0", "0", "14"]
-			]\
-		),
-		WikidataItem(
-			entity_id="Q11707",
-			label="restaurant",
-			description="""single establishment which prepares and serves food,
-			located in building"""
-		)
-	),
-	(
-		Table(
-			surroundingText="",
-			headerRow=["Name", "Status", "County",\
-			"Population Census 1990-04-01", "Population Census 2000-04-01",\
-			"Population Census 2010-04-01"],
-			columns=[\
-			["Mound Station", "Mount Sterling", "Ripley", "Versailles"],\
-			["Village", "City", "Village", "Village"],\
-			["Brown", "Brown", "Brown", "Brown"],\
-			["147", "1,994", "75", "480"],\
-			["124", "2,085", "105", "569"],\
-			["122", "2,025", "86", "478"]
-			]
-		),
-		WikidataItem(
-			entity_id="",  # ToDo: "location" or ... ?!
-			label="",
-			description=""
-		)
-	),
-	(
-		Table(
-			surroundingText="",
-			headerRow=["Song Title", "Year Released *", "Song Rank"],
-			columns=[\
-			["The Stroke", "LONELY IS THE NIGHT", "Everybody Wants You",\
-			"My Kinda Lover", "In The Dark", "TOO DAZE GONE",\
-			"THE BIG BEAT", "Rock Me Tonite", "Emotions In Motion",\
-			"Don't Say You Love Me"],\
-			["1905", "1905", "1905", "1905", "1905",\
-			"1905", "1905", "1905", "1905", "1905"],\
-			["17,063", "32,018", "46,267", "54,751", "67,138",\
-			"69,396", "171,132", "106,024", "158,701", "179,474"]\
-			]\
-		),
-		WikidataItem(
-			entity_id="",  # ToDo: "song" or "musical work" ?!
-			label="",
-			description=""
-		)
-	),
-	(
-		Table(
-			surroundingText="",
-			headerRow=["Name", "School", "Year", "Descendants"],
-			columns=[\
-			["Richard Battin", "David Benney",\
-			"Peter Chiarulli", "Alfred Clark"],\
-			["Massachusetts Institute of Technology",\
-			"Massachusetts Institute of Technology",\
-			"Brown University",\
-			"Massachusetts Institute of Technology"],\
-			["1951", "1959", "1949", "1963"],\
-			["", "158", "", ""]\
-			]\
-		),
-		WikidataItem(
-			entity_id="Q48282",
-			label="student",
-			description="""learner, or someone who attends an educational
-			institution"""
-		)
-	)
-	]
-
-
 def main():
 	parser = argparse.ArgumentParser(
-		description="NETT - Narrative Entity Type(s) to Tables")
+		description="""NETT - Narrative Entity Type(s) to Tables.
+		NETT can be run in 4 modes:
+		(1) --stats, no ENTITY_TYPE(s) supplied => statistics for given corpus
+		(2) --stats, ENTITY_TYPE(s) supplied => statistics for given corpus,
+		with focus on the supplied entity types (specifying additional
+		narrative knowledge is possible)
+		(3) no ENTITY_TYPE(s) supplied => classify all tables in given corpus
+		(but max. 10,000 tables)
+		(4) ENTITY_TYPE(s) supplied => main productive mode: search corpus
+        for tables based on given entity/-ies
+        (and possibly narrative knowledge)!!
+		""")
 	# ToDo: list a few example calls in this description!!
 
 	parser.add_argument(
     	'entityTypes', # Narratives = "Knowing what to look for"
     	type=str,
-    	help="""A list of entity types.
-    	Ideally they're Wikidata ID's of the form 'Q000000',
-    	otherwise they're strings automatically mapped to Wikidata ID's.
-    	Normally they're the entity types to look for.
-    	When the --stats flag is supplied however, they are interpreted as
-    	the correct entity types for the tables in the corpus (when the corpus
-    	folder is read in alphabetical order).
+    	help="""A list of entity types (the entity types to look for).
+    	Ideally they're Wikidata ID's of the form 'Q000000'.
+    	Alternatively they're names of DBpedia classes which are then
+    	mapped to Wikidata ID's using a pre-programmed mapping table.
+    	When they are neither of the form 'Q000000' nor the name of a DBpedia
+    	class, Wikidata is searched with them as a search string and the user
+    	asked which of the search results is the one they meant.
     	When no entity types are supplied at all, a ranked list of entity types
-    	is returned for every table in the corpus instead.""",
+    	is returned for every table in the corpus instead (mode (3))
+    	(assuming that the --stats flag isn't supplied).""",
     	nargs='*',
-    	metavar='TYPE')
+    	metavar='ENTITY_TYPE')
+
+	parser.add_argument('--corpus',
+    	type=str,
+    	default='',
+    	help="""Path to a folder containing tables as CSV/JSON/TAR files.
+    	Or path to a single TAR file containing tables as CSV/JSON files.
+    	You may use 'default_corpus' for testing
+    	(only contains a handful of tables!).
+    	Note that all tables smaller than 3x3 are rigorously filtered out.
+    	Folders are parsed in alphabetical order.
+    	Excel files instead of CSV files are supported too when the
+    	`openpyxl` Python module is installed:
+    	`pip install openpyxl` or
+    	`python3 -m pip install openpyxl`""",
+    	metavar='CORPUS_PATH',
+    	required=True)
+
+	parser.add_argument('--corpus-non-recursive',
+		action='store_true',
+		help="""When a folder is specified for the --corpus parameter, do NOT
+		look into its subfolders recursively.""")
 
 	parser.add_argument('--stats',
 		action='store_true',
-		help="""Interpret the supplied entity types not as those to search for
-		but rather as the correct mappings for the tables in the corpus.
-		The tables in the corpus are still classfied but based on the given
-		correct mappings, statistics are returned instead.
-		Statistics include mean reciprocal rank (MRR), top-k coverage
-		and recall.
-		When no entity types a supplied and another corpus than the small
-		default one is being used, the user will be asked interactively for
-		the correct mapping for every table! This is very useful for evaluating
-		this tool!""")
+		help="""Ask the user to classify each table in the corpus and return
+		statistics in the end. When entity types are supplied as well,
+		only tables are shown to the user where NETT believes they *might*
+		be of one of these entity types. The statictics in the end are then
+		specific to these entity types.""")
 
 	parser.add_argument('-k',
     	type=int,
@@ -1136,7 +962,8 @@ def main():
     	This makes sense particularly when used together with the --normalize
     	flag. When --normalize is set and all weights are kept at their default
     	value of 1.0, then this value shall be somewhere between 0.0 and 3.0.
-    	This is a filter that is set in addition to the -k filter!""",
+    	This is a filter that is set in addition to the -k filter!
+    	By default, this threshold is set to 0.0, i.e. it has no effect.""",
     	metavar='THRESHOLD')
 
 	parser.add_argument('--dont-use-textual-surroundings',
@@ -1206,25 +1033,6 @@ def main():
 	# (Advanced) ToDo: if all weights are set to 0.0 try out ("learn") which
 	#   weights lead to the best results!
 
-	parser.add_argument('--corpus',
-    	type=str,
-    	default='',
-    	help="""Path to a folder containing tables as CSV/JSON/TAR files.
-    	Or path to a single TAR file containing tables as CSV/JSON files.
-    	You may use the 'default_corpus.tar' default corpus for testing.
-    	Note that all tables smaller than 3x3 are rigorously filtered out.
-    	Folders are parsed in alphabetical order.
-    	Excel files instead of CSV files are supported too when the
-    	`openpyxl` Python module is installed:
-    	`pip install openpyxl` or
-    	`python3 -m pip install openpyxl`""",
-    	metavar='PATH')
-
-	parser.add_argument('--corpus-non-recursive',
-		action='store_true',
-		help="""When a folder is specified for the --corpus parameter, do NOT
-		look into its subfolders recursively.""")
-
 	parser.add_argument('--csv-delimiter',
     	type=str,
     	default='',
@@ -1253,7 +1061,9 @@ def main():
 		action='store_true',
 		help="""When this flag is set, the tables in the output are sorted by
 		how well they score. Beware that lazy output is lost which means that
-		this flag should not be used together with a very big corpus!""")
+		this flag should not be used together with a very big corpus!
+		This flag only has an effect when in "productive mode" (4), i.e. when
+		entity types are supplied and --stats is *not* set.""")
 
 	parser.add_argument('--bing',
 		action='store_true',
@@ -1273,15 +1083,16 @@ def main():
 		Wikidata (cf. the --bing flag which contradicts this flag).
 		For this to work, the corresponding MongoDB has to be running
 		on localhost.
+		THIS FEATURE IS NOT IMPLEMENTED!
 		""")
 
 	parser.add_argument('--verbose', '-v',
 		action='store_true',
-		help='Print verbose info prints to stderr.')
+		help='Print verbose info prints.')
 
 	parser.add_argument('--debug',
 		action='store_true',
-		help='Print debug info prints to stderr.')
+		help='Print debug info prints.')
 
 	# cf. https://stackoverflow.com/questions/7869345/
 	#     how-to-make-python-argparse-mutually-exclusive-
@@ -1361,52 +1172,77 @@ def main():
 	stats: bool = args.stats
 	entityTypes: List[str] = args.entityTypes
 
+	DEBUG = args.debug
+
 	# <preparation>
 	print("[PREPARING] Mapping DBpedia properties to SBERT vectors...")
 	initalize_dbpedia_properties_mapped_to_SBERT_vector()
 	print("[PREPARING] Done.")
 	# </preparation>
 
-	if corpus == "" and stats and entityTypes == []:
-		# Give statistics for the default corpus without looking for any
-		#   specific entity types:
-		print("This combination of parameters is not yet implemented.")  # ToDo
-	elif corpus == "" and stats and entityTypes != []:
-		# Give statistics for the default corpus, in general and also specific
-		#  to the entity types mentioned:
-		print("This combination of parameters is not yet implemented.")  # ToDo
-	elif corpus == "" and not stats and entityTypes == []:
-		# Return a ranked list of entity candidates for every table in the
-		#   default corpus:
-		print("This combination of parameters is not yet implemented.")  # ToDo
-	elif corpus == "" and not stats and entityTypes != []:
-		# Return all the tables from the default corpus believed to represent
-		#   one of the given entity types (of course even though we already
-		#   know the correct mappings for the default corpus): 
-		print("This combination of parameters is not yet implemented.")  # ToDo
-	elif corpus != "" and stats and entityTypes == []:
-		# Main Feature #1:
-		#   Non-default corpus without correct entity type mappings supplied as
-		#     parameters, program has to ask user for every table which mapping
-		#     is correct:
+	if stats and entityTypes == []:
+		# (1) Corpus supplied, statistics requested (evaluation feature):
+		#   * Program has to ask user (with the help of pretty_print())
+		#     for every table which mapping is correct.
+		#   * The user enters enters "1", "2", "3", ..., "X", "N/A" for each
+		#     table presented, until the whole corpus has been annotated or
+		#     until the user stops by entering "finish".
+		#   * Then, the statistics (MRR, Top-k coverage; for using
+		#     1, 2 or 3 of the three approaches and for various
+		#     weightings and preferences of these approaches; also specifically
+		#     the "k-recall" for all(!) entity types annotated) are printed
+		#     and the user is asked whether they want to export
+		#     their annotations (Y/n).
+		#   * The --co-occurring-keywords and --attribute-cond parameters
+		#     (the "narrative parameters") are ignored in this case as they
+		#     make no sense when no entity types are specified.
 		print("This combination of parameters is not yet implemented.")  # ToDo!
-		# -> use pretty_print() as ask user for correct mapping for each table
-		# -> the user enters "1", "2", "3", ..., "X", "N/A", or "finish"
-		# -> after entering "finish", the statistics
-		#    (MRR, Top-k coverage etc. !!!!! for various weightings !!!!!)
-		#    are printed and the user is asked whether they want to export
-		#    their annotations (Y/n)
-	elif corpus != "" and stats and entityTypes != []:
-		# Give statistics for a given corpus, the correct entity type mappings
-		#   are supplied (in alphabetical order).
+	elif stats and entityTypes != []:
+		# (2) Corpus and entity types supplied, statistics requested
+		#     (evaluation feature):
+		#   * Like the case (1) but this time, looking for one (or multiple)
+		#     specific entity types.
+		#   * Tables for which NETT believes their tuples definitely do not
+		#     belong to any of these entity types, are skipped and not
+		#     presented to the user at all.
+		#   * Tables for which NETT believes their tuples might belong to any
+		#     of these entity types, are presented to the user in the same way
+		#     as in case (1).
+		#   * In the end, statistics are printed (just as in case (1));
+		#     beware however that the statistics may not be entirely accurate
+		#     when NETT wrongly skipped tables it thought definitely do not
+		#     represent any of the entity types searched for.
+		#   * Note that it also makes sense to use the --co-occurring-keywords
+		#     and --attribute-cond parameters here
+		#     (the "narrative parameters").
+		#   * The user is shown both tables that match this narrative knowledge
+		#     and tables that don't (for a better evaluation afterwards).
 		print("This combination of parameters is not yet implemented.")  # ToDo
-	elif corpus != "" and not stats and entityTypes == []:
-		# Map all tables of the given corpus to the top-k entities:
+	elif not stats and entityTypes == []:
+		# (3) Corpus supplied, entity-type-mappings requested
+		#     (evaluation feature):
+		#   * Map all tables of the given corpus to the top-k entities.
+		#   * It might be sensible to change k to a bigger value
+		#     than 1 (default).
+		#   * For very big corpora, only the first 10,000 annotatable
+		#     relational tables are considered. Then, the program terminates.
+		#   * The --co-occurring-keywords and --attribute-cond parameters
+		#     (the "narrative parameters") are ignored in this case as they
+		#     make no sense when no entity types are specified.
 		print("This combination of parameters is not yet implemented.")  # ToDo
-	elif corpus != "" and not stats and entityTypes != []:
-		# Main Feature #2:
-		#   Search the corpus for tables whose tuples represent one
-		#     of the given entity types:
+	elif not stats and entityTypes != []:
+		# (4) Corpus and entity types supplied, tables requested
+		#     (the main productive feature!!!):
+		#   * Search the corpus for tables whose tuples represent one
+		#     of the given entity types, possibly making use of the narrative
+		#     knowledge provided with the --co-occurring-keywords and
+		#     --attribute-cond parameters (the "narrative parameters").
+		#   * Depending on your requirements for precision and recall, you may
+		#     want to change the -k parameter to a value other than 1.
+		#     With k=1, only tables are retured for which the entity type
+		#     searched for was the best match
+		#     (i.e. highest possible precision, lowest possible recall).
+		#     For bigger k, the recall is higher but the precision lower.
 		print("This combination of parameters is not yet implemented.")  # ToDo!
 
 
