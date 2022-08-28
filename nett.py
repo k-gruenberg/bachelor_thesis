@@ -153,7 +153,8 @@ class Table:
 		return max(len(col) for col in self.columns) +\
 			(1 if includingHeaderRow and self.headerRow != [] else 0)
 
-	def pretty_print(self, maxNumberOfTuples=6, maxColWidth=25) -> str: # ToDo: what if self.headerRow == [] ?!
+	def pretty_print(self, maxNumberOfTuples=6, maxColWidth=25,\
+		maxTotalWidth=180) -> str:
 		"""
 		A pretty printable version of this Table, e.g.:
 
@@ -217,6 +218,11 @@ class Table:
 
 		if maxNumberOfTuples < len(self.columns[0]):  # print "... | ..." row:
 			result += print_row(["..."] * len(columnWidths), columnWidths)
+
+		if maxTotalWidth > 0:
+			result = "\n".join(map(lambda line: line\
+				if len(line) <= maxTotalWidth\
+				else line[:maxTotalWidth-4] + " ...", result.splitlines()))
 
 		return result
 
