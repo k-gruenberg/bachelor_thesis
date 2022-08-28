@@ -1184,7 +1184,10 @@ def main():
 		# (1) Corpus supplied, statistics requested (evaluation feature):
 		#   * Program has to ask user (with the help of pretty_print())
 		#     for every table which mapping is correct.
-		#   * The user enters enters "1", "2", "3", ..., "X", "N/A" for each
+		#   * The user enters enters "1", "2", "3", ...,
+		#     "Q000000" (when the correct entity type is not in the list
+		#     presented) or "NA" (when the tuples of the table shown cannot be
+		#     meaningfully associated with an enity type) for each
 		#     table presented, until the whole corpus has been annotated or
 		#     until the user stops by entering "finish".
 		#   * Then, the statistics (MRR, Top-k coverage; for using
