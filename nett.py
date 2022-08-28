@@ -926,7 +926,7 @@ def main():
     	default='',
     	help="""Path to a folder containing tables as CSV/JSON/TAR files.
     	Or path to a single TAR file containing tables as CSV/JSON files.
-    	You may use 'default_corpus' for testing
+    	You may use 'test_corpus' for testing
     	(only contains a handful of tables!).
     	Note that all tables smaller than 3x3 are rigorously filtered out.
     	Folders are parsed in alphabetical order.
