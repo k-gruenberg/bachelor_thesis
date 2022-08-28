@@ -72,6 +72,8 @@ from nett_map_dbpedia_classes_to_wikidata import\
 from nett_map_dbpedia_properties_to_sbert_vectors import\
 	get_dbpedia_properties_mapped_to_SBERT_vector
 
+DEBUG = True
+
 dbpediaClassesMappedToWikidata: Dict[str, str] = None
 dbpediaPropertiesMappedToSBERTvector: Dict[str, Any] = None
 # => these 2 are only set in the main() so that calling "--help" isn't
@@ -545,8 +547,8 @@ class Table:
 		return Table.parseCSV(csv_str)
 
 	@classmethod
-	def parseJSON(cls, json: str, onlyRelational=False, onlyWithHeader=True,\
-		useAdditionalHeuristics=False) -> Optional[Table]: # ToDo: change to onlyRelational=True after testing!
+	def parseJSON(cls, json_str: str, onlyRelational=False,\
+		onlyWithHeader=True, useAdditionalHeuristics=False) -> Optional[Table]: # ToDo: change to onlyRelational=True after testing!
 		"""
 		Parses a .JSON file of the format that's used in the
 		WDC Web Table Corpus (http://webdatacommons.org/webtables/2015/
@@ -576,7 +578,7 @@ class Table:
 		(if onlyWithHeader=True)!
 		"""
 		try:
-			j = json.loads(json)
+			j = json.loads(json_str)
 			
 			if onlyRelational and j["tableType"] != "RELATION":
 				# e.g. "tableType":"ENTITY"
@@ -630,7 +632,10 @@ class Table:
 
 			return Table(surroundingText=surroundingText, headerRow=headerRow,\
 				columns=columns)
-		except:  # (most likely a KeyError when JSON is in invalid format)
+		except BaseException as e:
+			# (most likely a KeyError when JSON is in invalid format)
+			if DEBUG:
+				print(f"[DEBUG] Error parsing JSON: {e}", file=sys.stderr)
 			return None
 
 	@classmethod
@@ -642,7 +647,8 @@ class Table:
 			# Skip directories and hidden files in the TAR archive:
 			if tarinfo.isfile() and tarinfo.name[:1] != ".":
 				if os.path.splitext(tarinfo.name)[1] == ".json":
-					yield Table.parseJSON(json=tar.extractfile(tarinfo).read())
+					yield Table.parseJSON(\
+						json_str=tar.extractfile(tarinfo).read())
 				elif os.path.splitext(tarinfo.name)[1] == ".csv":
 					yield Table.parseCSV(\
 						csv_str=tar.extractfile(tarinfo).read(),\
@@ -677,7 +683,7 @@ class Table:
 					yield Table.parseXLSX(xlsxPath=folder_item)
 				elif file_extension == ".json":
 					with open(folder_item, 'r') as json_file: 
-						yield Table.parseJSON(json=json_file.read())
+						yield Table.parseJSON(json_str=json_file.read())
 				elif file_extension == ".tar":
 					for table in Table.parseTAR(tarPath=folder_item):
 						yield table
@@ -690,17 +696,17 @@ class Table:
 
 	@classmethod
 	def parseCorpus(cls, corpusPath: str, recursive=True,\
-		returnNones=False, csv_dialect: Dialect = None) -> Iterator[Table]:
+		yieldNones=False, csv_dialect: Dialect = None) -> Iterator[Table]:
 		if os.path.isfile(corpusPath):
 			file_name, file_extension = os.path.splitext(corpusPath)
 			if file_extension == ".tar":
-				return filter(lambda table: returnNones or table is not None,\
+				return filter(lambda table: yieldNones or table is not None,\
 					Table.parseTAR(tarPath=corpusPath, csv_dialect=csv_dialect))
 			else:
 				sys.exit("Error: --corpus supplied either has to be a "+\
 					" directory or a .TAR file.")
 		else:
-			return filter(lambda table: returnNones or table is not None,\
+			return filter(lambda table: yieldNones or table is not None,\
 				Table.parseFolder(folderPath=corpusPath, recursive=recursive,\
 					csv_dialect=csv_dialect))
 
