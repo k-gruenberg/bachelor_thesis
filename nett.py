@@ -885,6 +885,10 @@ class Table:
 					csv_dialect=csv_dialect))
 
 
+def clear_terminal():
+	os.system('cls' if os.name == 'nt' else 'clear')
+
+
 def main():
 	parser = argparse.ArgumentParser(
 		description="""NETT - Narrative Entity Type(s) to Tables.
@@ -1015,19 +1019,19 @@ def main():
 	parser.add_argument('--textual-surroundings-weight',
     	type=float,
     	default=1.0,
-    	help='How to weight the textual surroundings approach.',
+    	help='How to weight the textual surroundings approach. Default: 1.0',
     	metavar='WEIGHTING')
 
 	parser.add_argument('--attr-names-weight',
     	type=float,
     	default=1.0,
-    	help='How to weight the attribute names approach.',
+    	help='How to weight the attribute names approach. Default: 1.0',
     	metavar='WEIGHTING')
 
 	parser.add_argument('--attr-extensions-weight',
     	type=float,
     	default=1.0,
-    	help='How to weight the attribute extensions approach.',
+    	help='How to weight the attribute extensions approach. Default: 1.0',
     	metavar='WEIGHTING')
 
 	# (Advanced) ToDo: if all weights are set to 0.0 try out ("learn") which
@@ -1168,10 +1172,6 @@ def main():
 
 	args = parser.parse_args()
 
-	corpus: str = args.corpus
-	stats: bool = args.stats
-	entityTypes: List[str] = args.entityTypes
-
 	DEBUG = args.debug
 
 	# <preparation>
@@ -1180,7 +1180,7 @@ def main():
 	print("[PREPARING] Done.")
 	# </preparation>
 
-	if stats and entityTypes == []:
+	if args.stats and args.entityTypes == []:
 		# (1) Corpus supplied, statistics requested (evaluation feature):
 		#   * Program has to ask user (with the help of pretty_print())
 		#     for every table which mapping is correct.
@@ -1200,7 +1200,65 @@ def main():
 		#     (the "narrative parameters") are ignored in this case as they
 		#     make no sense when no entity types are specified.
 		print("This combination of parameters is not yet implemented.")  # ToDo!
-	elif stats and entityTypes != []:
+
+		tables_with_classif_result_and_correct_entity_type_specified_by_user:\
+			List[Tuple[Table, List[Tuple[float, WikidataItem]],  WikidataItem]]\
+			= []
+
+		for table in Table.parseCorpus(args.corpus):
+			# Clear terminal:
+			clear_terminal()
+			# Pretty-print table:
+			print(table.pretty_print())
+			print("")
+			# Print surrounding text associated with table:
+			print(f"Surrounding text: '{table.surroundingText}'")
+			print("")
+			# Print classification result:
+			classification_result: List[Tuple[float, WikidataItem]] =\
+				table.classify(\
+				 useSBERT=args.sbert,\
+				 useBing=args.bing,\
+				 useWebIsAdb=args.webisadb,\
+				 useTextualSurroundings=not args.dont_use_textual_surroundings,\
+				 textualSurroundingsWeighting=args.textual_surroundings_weight,\
+				 useAttrNames=not args.dont_use_attr_names,\
+				 attrNamesWeighting=args.attr_names_weight,\
+				 useAttrExtensions=not args.dont_use_attr_extensions,\
+				 attrExtensionsWeighting=args.attr_extensions_weight,\
+				 normalizeApproaches=args.normalize,\
+				 printProgressTo=sys.stdout)
+			classification_result_len: int = len(classification_result)
+			if classification_result_len <= 20:  # list classification results:
+				pass  # ToDo: print
+			else:  # list classification results in two columns:
+				pass # ToDo: print
+			print("")
+			# Ask user to say which of the entity types is the correct one:
+			print("Please enter which of the above entity types is the " +\
+				"correct one, as a number ('1', '2', '3', etc.). " +\
+				"When multiple entity types match, please enter the smaller " +\
+				"number. When none of the entity types match, please enter " +\
+				"the correct Wikidata ID using the 'Q00000' syntax. " +\
+				"When no entity type is applicable at all, enter 'NA'. " +\
+				"Enter 'finish' to stop annotating.")
+			print("ENTER > ", flush=True)
+			user_answer: str = input()
+			if user_answer.lower() == "finish":
+				break  # exit loop, the user wants to finish.
+			elif user_answer.upper() == "NA":
+				pass  # ToDo: what to do?
+			elif False: # ToDo: match against 'Q00000' regex
+				pass  # ToDo: update tables_with_classif_result_and_correct_entity_type_specified_by_user
+			elif False: # ToDo: match against numeric regex
+				pass  # ToDo: update tables_with_classif_result_and_correct_entity_type_specified_by_user
+			else:
+				pass  # ToDo: handle accidental incorrect answer
+
+		# Compute statistics and print them:
+		# ToDo: use tables_with_classif_result_and_correct_entity_type_specified_by_user
+		#       to compute and print statistics
+	elif args.stats and args.entityTypes != []:
 		# (2) Corpus and entity types supplied, statistics requested
 		#     (evaluation feature):
 		#   * Like the case (1) but this time, looking for one (or multiple)
@@ -1221,7 +1279,7 @@ def main():
 		#   * The user is shown both tables that match this narrative knowledge
 		#     and tables that don't (for a better evaluation afterwards).
 		print("This combination of parameters is not yet implemented.")  # ToDo
-	elif not stats and entityTypes == []:
+	elif not args.stats and args.entityTypes == []:
 		# (3) Corpus supplied, entity-type-mappings requested
 		#     (evaluation feature):
 		#   * Map all tables of the given corpus to the top-k entities.
@@ -1233,7 +1291,7 @@ def main():
 		#     (the "narrative parameters") are ignored in this case as they
 		#     make no sense when no entity types are specified.
 		print("This combination of parameters is not yet implemented.")  # ToDo
-	elif not stats and entityTypes != []:
+	elif not args.stats and args.entityTypes != []:
 		# (4) Corpus and entity types supplied, tables requested
 		#     (the main productive feature!!!):
 		#   * Search the corpus for tables whose tuples represent one
