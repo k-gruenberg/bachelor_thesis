@@ -307,6 +307,10 @@ class Table:
 	NUMERIC_REGEX = r"[\+\-]?[\d., _]+"  # r"[\d.,]+"
 	GEO_REGEX = r"""[\+\-\d.,;'" NESW]+"""
 	LONG_REGEX = r".{50,}"
+	TIME_REGEX = r"\d\d:\d\d(:\d\d)?"  # e.g. '00:15' or '00:15:00'
+	DATE_REGEX = r"(\d\d? \w{3,} \d\d\d\d)|(\w{3,} \d\d?, \d\d\d\d)"
+	EMPTY_REGEX = r"\s*"  # e.g. '' or ' ' or '  '
+	# e.g. '25 Jan 1893' or 'August 31, 2006'
 
 	BLACKLISTED_REGEXES: List[str] = [\
 		PHONE_NUMBER_REGEX,  # matches phone numbers
@@ -314,42 +318,172 @@ class Table:
 		EMAIL_REGEX,  # matches email addresses
 		NUMERIC_REGEX,  # matches numeric values
 		GEO_REGEX,  # matches geographic coordinates
-		LONG_REGEX  # matches "long values, such as verbose descriptions"
+		LONG_REGEX,  # matches "long values, such as verbose descriptions"
+		TIME_REGEX,
+		DATE_REGEX,
+		EMPTY_REGEX
 	]  # => cf. Quercini & Reynaud "Entity Discovery and Annotation in Tables"
 
 	BLACKLISTED_COMPILED_REGEXES =\
 		[re.compile(regex_string) for regex_string in BLACKLISTED_REGEXES]
 
-	def get_identifying_column(self) -> List[str]:  # ToDo!!!  # ToDo: what about the heuristic used by T2K Match?!
+
+	@classmethod
+	def column_is_blacklisted(cls, column: List[str],\
+		min_black_list_matches: int = 1) -> bool:
 		"""
-		Try to identify the identifiying columns of this table in
-		  1 or 2 steps:
-		
-		Step 1) use uniqueness
-		Step 2) if more than 1 column is unique: use regexes, more
-		        precisely:
-		
-		Throw out columns where at least one non-empty cell content matches
-		  at least one of the regexes in BLACKLISTED_COMPILED_REGEXES.
-		Hopefully exactly one column will be left over.
-		The idea to disregard cells whose values matches a certain regex
-		  stems from Quercini & Reynaud's paper
-		  "Entity Discovery and Annotation in Tables".
+		A helper function for get_identifying_column().
+		Read documentation there for a detailed explanaition of the
+		`min_black_list_matches` parameter.
 		"""
 
-		identifying_column_candidates: List[List[str]] = []
+		if min_black_list_matches > 0:
+			return len([cell for cell in column\
+				if any(regex.fullmatch(cell)\
+				for regex in Table.BLACKLISTED_COMPILED_REGEXES)])\
+				>= min_black_list_matches
+		else:  # min_black_list_matches <= 0:
+			return len([cell for cell in column\
+				if any(regex.fullmatch(cell)\
+				for regex in Table.BLACKLISTED_COMPILED_REGEXES)])\
+				>= len(column) + min_black_list_matches
 
-		for column in self.columns:
-			for cell in column:
-				for pattern in BLACKLISTED_COMPILED_REGEXES:
-					if pattern.fullmatch(cell) is not None:  # blacklist match
-						continue  # ...means this column is not identifying
-			identifying_column_candidates.append(column)
 
-		if len(identifying_column_candidates) != 1:
-			return None
-		else:
-			return identifying_column_candidates[0]
+	@classmethod
+	def column_uniqueness(cls, column: List[str]) -> float:
+		"""
+		A helper function for get_identifying_column().
+		Returns a score between 0.0 and 1.0 signifying how "unique" a column
+		is (the score is 1.0 iff all cells in the column are unique;
+		for constant columns the score tends towards 0.0).
+		"""
+		return len(set(column)) / len(column)
+
+
+	@classmethod
+	def column_is_unique(cls, column: List[str],\
+		min_uniqueness: float = 0.5) -> bool:
+		"""
+		A helper function for get_identifying_column().
+		Returns whether a column consists of at least
+		min_uniqueness*100% unique values
+		(i.e. only for min_uniqueness=1.0, the column is actually required
+		 to consist of all truly unique values).
+		For min_uniqueness=0.0, this function always returns True.
+		"""
+		return len(set(column)) >= min_uniqueness * len(column)
+
+
+	def get_identifying_column(self, min_uniqueness: float = 0.5,\
+		consider_non_textual_columns_as_last_resort: bool = False,\
+		min_black_list_matches: int = 1) -> List[str]:
+		"""
+		Get (the extension of) the identifying column of this table.
+
+		Ritze et al. call this identifying column the "entity label attribute"
+		in their "Matching HTML Tables to DBpedia" paper (T2K Match).
+		They use the following heuristic to identify it:
+		(a) take the string attribute with the highest number of unique values
+		(b) use the left-most attribute in case of a tie
+
+		Quercini & Reynaud's paper
+		"Entity Discovery and Annotation in Tables" however provides us with
+		yet another valuable idea:
+		ignoring cells whose content matches the regular expression for URLs,
+		email addresses, phone numbers, geographic coordinates, etc.
+
+		We combine these two ideas like this:
+		(1) Is there exactly one unique column, ignoring other unique columns
+		    that match one of the "blacklisted" regexes?
+		    => if so, return that one.
+		    (the fact that it matches none of the regexes implies
+		     that it is a textual column)
+		(2) Are there multiple unique columns, ignoring other unique columns
+		    that match one of the "blacklisted" regexes?
+		    => if so, return the left-most of these.
+		(3) Return the column with the highest number of unique values,
+		    ignoring other columns that match one of the "blacklisted" regexes,
+		    but only if at least 50% of the values are unique.
+		    In case of a tie, use the left-most attribute.
+		(4) Only if consider_non_textual_columns_as_last_resort=True
+		    (by default, it's set to False):
+		    If no column reaches the 50% uniqueness value, also consider
+		    columns that match one of the "blacklisted" regexes, but keeping
+		    the requirement of 50% uniqueness.
+		(5) No candidate for an identifying column was found.
+		    Return the empty list [].
+
+		Note that the 50% threshhold can be altered using the `min_uniqueness`
+		parameter (float value between 0.0 and 1.0, default value = 0.5).
+		With a `min_uniqueness` of 0.0 and
+		`consider_non_textual_columns_as_last_resort` set to True,
+		there will always be an identifying column found in step (3),
+		or (4) when all columns match a "blacklisted" regex.
+
+		The `min_black_list_matches` parameter can be used to adjust when a
+		column is considers to "match" a blacklisted regex:
+		* min_black_list_matches=1 (default):
+		  A column is considered a match, even if just one cell in it
+		  matches a blacklisted regex.
+		* min_black_list_matches=n:
+		  A column is considered a match, if at least n cells in it
+		  match a blacklisted regex.
+		* min_black_list_matches=0:
+		  A column is considered a match, only if **all** cells in it
+		  match a blacklisted regex.
+		* min_black_list_matches=-1:
+		  A column is considered a match, only if all cells, except one, in it
+		  match a blacklisted regex.
+		* min_black_list_matches=-n:
+		  A column is considered a match, only if all cells, except n,
+		  i.e. at least len(column)-n, in it match a blacklisted regex.
+		"""
+
+		blacklisted_columns: List[List[str]] = []
+		non_blacklisted_columns: List[List[str]] = []
+		for col in self.columns:
+			if Table.column_is_blacklisted(col, min_black_list_matches):
+				blacklisted_columns.append(col)
+			else:
+				non_blacklisted_columns.append(col)
+
+		# (1) Is there exactly one unique column (ignoring blacklisted)?
+		#     => if so, return that one.
+		#
+		# (2) Are there multiple unique columns (ignoring blacklisted)?
+		#     => if so, return the left-most of these.
+		unique_non_blacklisted_columns =\
+			[col for col in non_blacklisted_columns\
+			if Table.column_is_unique(col, min_uniqueness=1.0)]
+		if len(unique_non_blacklisted_columns) > 0:
+			return unique_non_blacklisted_columns[0]  # (return left-most col)
+
+		# (3) Return the column with the highest number of unique values
+		#     (ignoring blacklisted and at least min_uniqueness*100% unique,
+		#      using the left-most in case of a tie):
+		most_unique_columns: List[Tuple[List[str], float]] =\
+			sorted([(col, Table.column_uniqueness(col))\
+			for col in non_blacklisted_columns],\
+			key=lambda tuple: tuple[1], reverse=True)
+		if len(most_unique_columns) > 0\
+			and most_unique_columns[0][1] >= min_uniqueness:
+			return most_unique_columns[0][0]
+
+		# (4) Only if consider_non_textual_columns_as_last_resort=True:
+		#     Like step (3) but now (including) blacklisted columns:
+		if consider_non_textual_columns_as_last_resort:
+			most_unique_columns: List[Tuple[List[str], float]] =\
+			sorted([(col, Table.column_uniqueness(col))\
+			for col in blacklisted_columns],\
+			key=lambda tuple: tuple[1], reverse=True)
+			if len(most_unique_columns) > 0\
+				and most_unique_columns[0][1] >= min_uniqueness:
+				return most_unique_columns[0][0]
+
+		# (5) No candidate for an identifying column was found.
+		#     => Return the empty list [].
+		return []
+
 
 	def classify(self,\
 				 useTextualSurroundings=True, textualSurroundingsWeighting=1.0,\
@@ -495,7 +629,6 @@ class Table:
 			return attr_extension_to_ontology_class(\
 				cell_labels=self.get_identifying_column())
 
-		# ToDo: write get_identifying_column() function !!!!!
 
 	@classmethod
 	def identifyCSVdialect(cls, csv_str: str) -> Dialect:
@@ -972,6 +1105,19 @@ def main():
 		action='store_true',
 		help="""Use attribute extensions only, unless this approach yields no
 		results whatsoever, then use the other ones.""")
+
+	parser.add_argument('--require-textual-surroundings',
+		action='store_true',
+		help="""Skip tables without textual surroundings entirely.
+		This has the effect of only considering JSON files in the corpus.""")
+
+	parser.add_argument('--require-attr-names',
+		action='store_true',
+		help='Skip tables without attribute names entirely.')
+
+	parser.add_argument('--require-attr-extensions',
+		action='store_true',
+		help='Skip tables without an identifying/unique column entirely.')
 
 	parser.add_argument('--normalize',
 		action='store_true',
