@@ -347,8 +347,9 @@ class Table:
 				 useTextualSurroundings=True, textualSurroundingsWeighting=1.0,\
 				 useAttrNames=True, attrNamesWeighting=1.0,\
 				 useAttrExtensions=True, attrExtensionsWeighting=1.0,\
-				 normalizeApproaches=False)\
-				-> List[Tuple[float, WikidataItem]]:
+				 normalizeApproaches=False,
+				 printProgressTo=sys.stdout)\
+				-> List[Tuple[float, WikidataItem]]:  # ToDo: probably move below!
 		"""
 		Classify this table semantically.
 		Returns an ordered list of WikidataItems that might represent the entity
@@ -400,15 +401,21 @@ class Table:
 
 		resultUsingTextualSurroundings: Dict[WikidataItem, float] = {}
 		if useTextualSurroundings and self.surroundingText != "":
+			print("[PROGRESS] Classifying using textual surroundings...",\
+				file=printProgressTo)
 			resultUsingTextualSurroundings =\
 				self.classifyUsingTextualSurroundings()
 
 		resultUsingAttrNames: Dict[WikidataItem, float] = {}
 		if useAttrNames and self.headerRow != []:
+			print("[PROGRESS] Classifying using attribute names...",\
+				file=printProgressTo)
 			resultUsingAttrNames = self.classifyUsingAttrNames()
 
 		resultUsingAttrExtensions: Dict[WikidataItem, float] = {}
 		if useAttrExtensions and self.columns != []:
+			print("[PROGRESS] Classifying using attribute extensions...",\
+				file=printProgressTo)
 			resultUsingAttrExtensions = self.classifyUsingAttrExtensions()
 
 		if normalizeApproaches:
@@ -483,17 +490,22 @@ class Table:
 		# ToDo: write get_identifying_column() function !!!!!
 
 	@classmethod
-	def parseCSV(cls, csv_lines: Iterator[str]) -> Table:
-		# cf. documentation of
+	def identifyCSVdialect(cls, csv_str: str) -> Dialect:
+		return csv.Sniffer().sniff(csv_str)
+
+	@classmethod
+	def parseCSV(cls, csv_str: str, dialect: Dialect = None) -> Table:
+		columns: List[List[str]] = []
+
+		# Documentation of
 		#   csv.reader(csvfile, dialect='excel', **fmtparams):
 		# "csvfile can be any object which supports the iterator protocol
 		#  and returns a string each time its __next__() method is called —
 		#  file objects and list objects are both suitable. If csvfile is a
 		#  file object, it should be opened with newline=''."
-		
-		columns: List[List[str]] = []
 
-		csv_reader = csv.reader(csv_lines)
+		csv_reader = csv.reader(csv_str.splitlines(keepends=True), dialect\
+			if dialect is not None else Table.identifyCSVdialect(csv_str))
 		for row in csv_reader:
 			no_of_cols: int = len(row)  # (number of columns)
 			if columns == []:
@@ -527,10 +539,10 @@ class Table:
 		rows = [list(map(lambda cell_obj: str(cell_obj.value), row))\
 			for row in sheet_obj.iter_rows()]
 
-		# If one wanted the CSV as a string, it would lokk like this:
-		#   csv = "\n".join([", ".join(row) for row in rows])
-		# parseCSV() however needs an iterator over the CSV lines:
-		return Table.parseCSV(csv_lines=(", ".join(row) + "\n" for row in rows))
+		#If Table.parseCSV() took an iterator instead, it would look like this:
+		#return Table.parseCSV(csv_lines=(",".join(row) + "\n" for row in rows))
+		csv_str = "\n".join([",".join(row) for row in rows])
+		return Table.parseCSV(csv_str)
 
 	@classmethod
 	def parseJSON(cls, json: str, onlyRelational=False, onlyWithHeader=True,\
@@ -622,7 +634,8 @@ class Table:
 			return None
 
 	@classmethod
-	def parseTAR(cls, tarPath: str) -> Iterator[Table]:
+	def parseTAR(cls, tarPath: str, csv_dialect: Dialect = None)\
+		-> Iterator[Table]:
 		# cf. https://docs.python.org/3/library/tarfile.html
 		tar = tarfile.open(tarPath)
 		for tarinfo in tar:
@@ -631,7 +644,9 @@ class Table:
 				if os.path.splitext(tarinfo.name)[1] == ".json":
 					yield Table.parseJSON(json=tar.extractfile(tarinfo).read())
 				elif os.path.splitext(tarinfo.name)[1] == ".csv":
-					yield Table.parseCSV(csv_lines=tar.extractfile(tarinfo))
+					yield Table.parseCSV(\
+						csv_str=tar.extractfile(tarinfo).read(),\
+						dialect=csv_dialect)
 				elif os.path.splitext(tarinfo.name)[1] in [".xlsx", ".xls"]:
 					# Because parseXLSX() expects a path, we have to
 					#   temporarily extract the .xlsx file to the file system:
@@ -646,7 +661,8 @@ class Table:
 
 
 	@classmethod
-	def parseFolder(cls, folderPath: str, recursive=True) -> Iterator[Table]:
+	def parseFolder(cls, folderPath: str, recursive=True,\
+		csv_dialect: Dialect = None) -> Iterator[Table]:
 		# Sorting is important such that the order is predictable to the user:
 		for folder_item in sorted(os.listdir(folderPath)):
 			folder_item = os.path.join(folderPath, folder_item)
@@ -655,7 +671,8 @@ class Table:
 				if file_extension == ".csv":
 					with open(folder_item, 'r', newline='') as csv_file:
 						# (newline='' is required by the CSV library)
-						yield Table.parseCSV(csv_lines=csv_file)
+						yield Table.parseCSV(csv_str=csv_file.read(),\
+							dialect=csv_dialect)
 				elif file_extension in [".xlsx", ".xls"]:
 					yield Table.parseXLSX(xlsxPath=folder_item)
 				elif file_extension == ".json":
@@ -672,18 +689,23 @@ class Table:
 			# When the item is a directory and recursive=False, skip it.
 
 	@classmethod
-	def parseCorpus(cls, corpusPath: str, recursive=True) -> Iterator[Table]:
+	def parseCorpus(cls, corpusPath: str, recursive=True,\
+		returnNones=False, csv_dialect: Dialect = None) -> Iterator[Table]:
 		if os.path.isfile(corpusPath):
 			file_name, file_extension = os.path.splitext(corpusPath)
 			if file_extension == ".tar":
-				return Table.parseTAR(tarPath=corpusPath)
+				return filter(lambda table: returnNones or table is not None,\
+					Table.parseTAR(tarPath=corpusPath, csv_dialect=csv_dialect))
 			else:
 				sys.exit("Error: --corpus supplied either has to be a "+\
 					" directory or a .TAR file.")
 		else:
-			return Table.parseFolder(folderPath=corpusPath, recursive=recursive)
+			return filter(lambda table: returnNones or table is not None,\
+				Table.parseFolder(folderPath=corpusPath, recursive=recursive,\
+					csv_dialect=csv_dialect))
 
 
+# !!!!! ToDo: delete this and create a default_corpus.tar instead !!!!!
 # A small default table corpus (consisting of the 7 tables also used as
 #   examples throughout my paper) to be used when no table corpus is supplied.
 # Useful for testing.
@@ -970,7 +992,7 @@ def main():
     	default='',
     	help="""Path to a folder containing tables as CSV/JSON/TAR files.
     	Or path to a single TAR file containing tables as CSV/JSON files.
-    	If not specified, a small default corpus is being used.
+    	You may use the 'default_corpus.tar' default corpus for testing.
     	Note that all tables smaller than 3x3 are rigorously filtered out.
     	Folders are parsed in alphabetical order.
     	Excel files instead of CSV files are supported too when the
@@ -983,6 +1005,30 @@ def main():
 		action='store_true',
 		help="""When a folder is specified for the --corpus parameter, do NOT
 		look into its subfolders recursively.""")
+
+	parser.add_argument('--csv-delimiter',
+    	type=str,
+    	default='',
+    	help="""
+    	Specify the delimiter character (e.g. ',' or ';') that's used by the
+    	CSV files in the corpus.
+    	By default, it is automatically recognized for each CSV file
+    	individually. So specify this only when all CSV files in the corpus
+    	have a common format!
+    	""",
+    	metavar='CSV_DELIMITER')
+
+	parser.add_argument('--csv-quotechar',
+    	type=str,
+    	default='',
+    	help="""
+    	Specify the quotechar character (e.g. '"') that's used by the
+    	CSV files in the corpus.
+    	By default, it is automatically recognized for each CSV file
+    	individually. So specify this only when all CSV files in the corpus
+    	have a common format! 
+    	""",
+    	metavar='CSV_QUOTECHAR')
 
 	parser.add_argument('--ordered',
 		action='store_true',
