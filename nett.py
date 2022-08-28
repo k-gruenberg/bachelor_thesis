@@ -227,19 +227,26 @@ class Table:
 		return result
 
 
+	# (possible ToDo: quoting?!)
 	def as_csv(self, with_header=True, max_number_of_rows: int = -1) -> str:
-		if not with_header:
-			self_min_height: int = self.min_height(includingHeaderRow=False)
-			if max_number_of_rows == -1:
-				max_number_of_rows = self_min_height
-			self_as_csv: str = ""
-			for row_index in range(0, min(max_number_of_rows, self_min_height)):
-				self_as_csv += ",".join(\
-					self.columns[col_index][row_index]\
-					for col_index in range(0, self.width())) + "\n"
-			return self_as_csv
-		else:
-			return None  # ToDo
+		self_min_height: int = self.min_height(includingHeaderRow=False)
+
+		if max_number_of_rows == -1:
+			max_number_of_rows = self_min_height
+
+		self_as_csv: str = ""
+
+		if with_header and self.headerRow != []:
+			self_as_csv += ",".join(\
+				self.headerRow[col_index]\
+				for col_index in range(0, len(self.headerRow))) + "\n"
+
+		for row_index in range(0, min(max_number_of_rows, self_min_height)):
+			self_as_csv += ",".join(\
+				self.columns[col_index][row_index]\
+				for col_index in range(0, self.width())) + "\n"
+
+		return self_as_csv
 
 	def parse_header_row(self) -> bool:
 		"""
