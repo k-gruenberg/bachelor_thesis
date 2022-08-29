@@ -4,6 +4,15 @@ from typing import List, Dict, Any, Iterator, Set
 from WikidataItem import WikidataItem
 import Table
 
+def top_k_coverage(k: int, ranks: List[float]) -> float:
+	return len([rank for rank in ranks if rank <= k]) / len(ranks)
+
+def recall_macro_avg(k: int,\
+	ranks_per_entity_type: Dict[WikidataItem, List[float]]) -> float:
+	return sum(len(rank for rank in ranks if rank <= k) / len(ranks)\
+			 for entityType, ranks in ranks_per_entity_type.items())\
+			 / len(ranks_per_entity_type)
+
 class ClassificationResult:
 	"""
 	This is a class particularly useful for generating statistics
@@ -139,13 +148,12 @@ class ClassificationResult:
 			"Top-k coverage (%)",\
 			"Recall (%), macro-average"\
 			],columns=[\
-			[k\
+			[str(k)\
 			 for k in range(1, stats_max_k+1)],\
-			[len([rank for rank in ranks if rank <= k]) / len(ranks)\
+			["{:8.4f}".format(100.0 * top_k_coverage(k=k, ranks=ranks))\
 			 for k in range(1, stats_max_k+1)],\
-			[sum(len(rank for rank in ranks if rank <= k) / len(ranks)\
-			 for entityType, ranks in ranks_per_entity_type.items())\
-			 / len(ranks_per_entity_type)\
+			["{:8.4f}".format(100.0 * recall_macro_avg(k=k,\
+				ranks_per_entity_type=ranks_per_entity_type))\
 			 for k in range(1, stats_max_k+1)]\
 			]).pretty_print())
 
