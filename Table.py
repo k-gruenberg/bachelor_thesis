@@ -61,6 +61,12 @@ class Table:
 		return max(len(col) for col in self.columns) +\
 			(1 if includingHeaderRow and self.headerRow != [] else 0)
 
+	def min_dimension(self) -> int:  # ToDo: use to filter out <3x3 tables!!
+		"""
+		Example: when this is a 4x10 table, returns 4.
+		"""
+		return min(self.width(), self.min_height())
+
 	def pretty_print(self, maxNumberOfTuples=6, maxColWidth=25,\
 		maxTotalWidth=180) -> str:
 		"""

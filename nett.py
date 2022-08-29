@@ -262,6 +262,8 @@ def main():
 		action='store_true',
 		help='Skip tables without an identifying/unique column entirely.')
 
+	# ToDo: how to implement --prefer and --require parameters?! -> remove?!
+
 	parser.add_argument('--normalize',
 		action='store_true',
 		help="""Whether to normalize the result of each of the 3

@@ -70,130 +70,28 @@ class ClassificationResult:
 		List[Tuple[Table, ClassificationResult,  WikidataItem]],\
 		stats_max_k: int = 5) -> None:
 
-		# 3 of 3 approaches:
+		# 3 of 3 approaches, then 2 of 3, then 1 of 3:
+		for useTextualSurroundings, useAttrNames, useAttrExtensions in\
+			[(True, True, True),\
+			 (False, True, True), (True, False, True), (True, True, False),\
+			 (True, False, False), (False, True, False), (False, False, True)]:
 
-		ClassificationResult.print_statistics_overall(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,
-			stats_max_k=k,
-			useTextualSurroundings=True,
-			useAttrNames=True,
-			useAttrExtensions=True
-		)
-		print("")
-		ClassificationResult.print_statistics_entity_type_specific(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,
-			stats_max_k=k,
-			useTextualSurroundings=True,
-			useAttrNames=True,
-			useAttrExtensions=True
-		)
-		print("")
-		
-		# 2 of 3 approaches:
-
-		ClassificationResult.print_statistics_overall(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,
-			stats_max_k=k,
-			useTextualSurroundings=False,
-			useAttrNames=True,
-			useAttrExtensions=True
-		)
-		print("")
-		ClassificationResult.print_statistics_entity_type_specific(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,
-			stats_max_k=k,
-			useTextualSurroundings=False,
-			useAttrNames=True,
-			useAttrExtensions=True
-		)
-		print("")
-
-		ClassificationResult.print_statistics_overall(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,
-			stats_max_k=k,
-			useTextualSurroundings=True,
-			useAttrNames=False,
-			useAttrExtensions=True
-		)
-		print("")
-		ClassificationResult.print_statistics_entity_type_specific(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,
-			stats_max_k=k,
-			useTextualSurroundings=True,
-			useAttrNames=False,
-			useAttrExtensions=True
-		)
-		print("")
-
-		ClassificationResult.print_statistics_overall(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,
-			stats_max_k=k,
-			useTextualSurroundings=True,
-			useAttrNames=True,
-			useAttrExtensions=False
-		)
-		print("")
-		ClassificationResult.print_statistics_entity_type_specific(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,
-			stats_max_k=k,
-			useTextualSurroundings=True,
-			useAttrNames=True,
-			useAttrExtensions=False
-		)
-		print("")
-
-		# 1 of 3 approaches:
-
-		ClassificationResult.print_statistics_overall(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,
-			stats_max_k=k,
-			useTextualSurroundings=True,
-			useAttrNames=False,
-			useAttrExtensions=False
-		)
-		print("")
-		ClassificationResult.print_statistics_entity_type_specific(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,
-			stats_max_k=k,
-			useTextualSurroundings=True,
-			useAttrNames=False,
-			useAttrExtensions=False
-		)
-		print("")
-
-		ClassificationResult.print_statistics_overall(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,
-			stats_max_k=k,
-			useTextualSurroundings=False,
-			useAttrNames=True,
-			useAttrExtensions=False
-		)
-		print("")
-		ClassificationResult.print_statistics_entity_type_specific(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,
-			stats_max_k=k,
-			useTextualSurroundings=False,
-			useAttrNames=True,
-			useAttrExtensions=False
-		)
-		print("")
-
-		ClassificationResult.print_statistics_overall(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,
-			stats_max_k=k,
-			useTextualSurroundings=False,
-			useAttrNames=False,
-			useAttrExtensions=True
-		)
-		print("")
-		ClassificationResult.print_statistics_entity_type_specific(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,
-			stats_max_k=k,
-			useTextualSurroundings=False,
-			useAttrNames=False,
-			useAttrExtensions=True
-		)
-		print("")
+			ClassificationResult.print_statistics_overall(\
+				tables_with_classif_result_and_correct_entity_type_specified_by_user,
+				stats_max_k=stats_max_k,
+				useTextualSurroundings=useTextualSurroundings,
+				useAttrNames=useAttrNames,
+				useAttrExtensions=useAttrExtensions
+			)
+			print("")
+			ClassificationResult.print_statistics_entity_type_specific(\
+				tables_with_classif_result_and_correct_entity_type_specified_by_user,
+				stats_max_k=stats_max_k,
+				useTextualSurroundings=useTextualSurroundings,
+				useAttrNames=useAttrNames,
+				useAttrExtensions=useAttrExtensions
+			)
+			print("")
 		
 
 	@classmethod
@@ -251,15 +149,36 @@ class ClassificationResult:
 			 for k in range(1, stats_max_k+1)]\
 			]).pretty_print())
 
-		# !!!!!
-		# ToDo: at last, print tables showing the effects of varying the
-		#       weightings (with and without normalization)
+		# At last, print tables showing the effects of varying the
+		# weightings (with and without normalization):
 		#       3D table like this:
 		#                     w1=0.0 w1=0.1 w1=0.2 ... w1=1.0
 		#       w2=0.0 w3=0.0
-		#       w2=0.0 w3=0.1      ...top-k coverage(/top-k recall)...
-		#       w2=0.0 w3=0.2
+		#       w2=0.0 w3=0.1      ...top-k coverage/top-k recall...
+		#       w2=0.0 w3=0.2      ...normalized/un-normalized...
 		#       ...
+		if useTextualSurroundings and useAttrNames and useAttrExtensions:
+			print("Top-k coverage for different weightings of the 3 approaches:")
+			# ToDo
+			print("Recall, macro-avg. for diff. weightings of the 3 approaches:")
+			# ToDo
+		elif useAttrNames and useAttrExtensions:
+			print("Top-k coverage for different weightings of the 2 approaches:")
+			# ToDo
+			print("Recall, macro-avg. for diff. weightings of the 2 approaches:")
+			# ToDo
+		elif useTextualSurroundings and useAttrExtensions:
+			print("Top-k coverage for different weightings of the 2 approaches:")
+			# ToDo
+			print("Recall, macro-avg. for diff. weightings of the 2 approaches:")
+			# ToDo
+		elif useTextualSurroundings and useAttrNames:
+			print("Top-k coverage for different weightings of the 2 approaches:")
+			# ToDo
+			print("Recall, macro-avg. for diff. weightings of the 2 approaches:")
+			# ToDo
+		# (for 1 approach, it makes no sense to consider different weightings)
+
 
 	@classmethod
 	def print_statistics_entity_type_specific(cls,\
