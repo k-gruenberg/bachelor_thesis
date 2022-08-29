@@ -29,6 +29,7 @@ class Table:
 		self.surroundingText = surroundingText  # (1) Using Textual Surroundings
 		self.headerRow = headerRow  # (2) Using Attribute Names
 		self.columns = columns  # (3) Using Attribute Extensions
+		self.file_name = "???"  # ToDo: test!
 
 	def width(self) -> int:
 		"""
@@ -779,23 +780,24 @@ class Table:
 		for tarinfo in tar:
 			# Skip directories and hidden files in the TAR archive:
 			if tarinfo.isfile() and tarinfo.name[:1] != ".":
+				table: Table = None
 				if os.path.splitext(tarinfo.name)[1] == ".json":
-					yield Table.parseJSON(\
+					table = Table.parseJSON(\
 						json_str=tar.extractfile(tarinfo).read())
 				elif os.path.splitext(tarinfo.name)[1] == ".csv":
-					yield Table.parseCSV(\
+					table = Table.parseCSV(\
 						csv_str=tar.extractfile(tarinfo).read(),\
 						dialect=csv_dialect)
 				elif os.path.splitext(tarinfo.name)[1] in [".xlsx", ".xls"]:
 					# Because parseXLSX() expects a path, we have to
 					#   temporarily extract the .xlsx file to the file system:
-					table: Table = None
 					with tempfile.NamedTemporaryFile() as temp_path:
 						# Extract the .xlsx file to a temporary location:
 						tar.extract(tarinfo, path=temp_path)
 						# Parse that temporary .xlsx file:
 						table = Table.parseXLSX(xlsxPath=temp_path)
-					yield table
+				table.file_name = tarinfo.name
+				yield table
 				# All other file types in the TAR archive are ignored.
 
 
@@ -810,13 +812,19 @@ class Table:
 				if file_extension == ".csv":
 					with open(folder_item, 'r', newline='') as csv_file:
 						# (newline='' is required by the CSV library)
-						yield Table.parseCSV(csv_str=csv_file.read(),\
+						table = Table.parseCSV(csv_str=csv_file.read(),\
 							dialect=csv_dialect)
+						table.file_name = folder_item
+						yield table
 				elif file_extension in [".xlsx", ".xls"]:
-					yield Table.parseXLSX(xlsxPath=folder_item)
+					table = Table.parseXLSX(xlsxPath=folder_item)
+					table.file_name = folder_item
+					yield table
 				elif file_extension == ".json":
-					with open(folder_item, 'r') as json_file: 
-						yield Table.parseJSON(json_str=json_file.read())
+					with open(folder_item, 'r') as json_file:
+						table = Table.parseJSON(json_str=json_file.read())
+						table.file_name = folder_item
+						yield table
 				elif file_extension == ".tar":
 					for table in Table.parseTAR(tarPath=folder_item):
 						yield table

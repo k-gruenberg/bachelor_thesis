@@ -251,6 +251,16 @@ class ClassificationResult:
 			 for k in range(1, stats_max_k+1)]\
 			]).pretty_print())
 
+		# !!!!!
+		# ToDo: at last, print tables showing the effects of varying the
+		#       weightings (with and without normalization)
+		#       3D table like this:
+		#                     w1=0.0 w1=0.1 w1=0.2 ... w1=1.0
+		#       w2=0.0 w3=0.0
+		#       w2=0.0 w3=0.1      ...top-k coverage(/top-k recall)...
+		#       w2=0.0 w3=0.2
+		#       ...
+
 	@classmethod
 	def print_statistics_entity_type_specific(cls,\
 		tables_with_classif_result_and_correct_entity_type_specified_by_user:\

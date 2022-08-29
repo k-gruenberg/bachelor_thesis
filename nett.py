@@ -421,6 +421,15 @@ def main():
     	""",
     	metavar='STRICTNESS')
 
+	parser.add_argument('--stop-after-n-tables',
+    	type=int,
+    	default=10000,
+    	help="""Stop after (at most) N tables.
+    	This only has an effect in mode (3),
+    	i.e. when neither --stats is specified nor any entity types.
+    	Default value: 10000""",
+    	metavar='N')
+
 	args = parser.parse_args()
 
 	DEBUG = args.debug
@@ -574,8 +583,8 @@ def main():
 		print("This combination of parameters is not yet implemented.")  # ToDo
 	elif not args.stats and args.entityTypes == []:
 		# (3) Corpus supplied, entity-type-mappings requested
-		#     (evaluation feature):
-		#   * Map all tables of the given corpus to the top-k entities.
+		#     (evaluation feature, sort of):
+		#   * Map all tables of the given corpus to the top-k entity types.
 		#   * It might be sensible to change k to a bigger value
 		#     than 1 (default).
 		#   * For very big corpora, only the first 10,000 annotatable
@@ -583,7 +592,29 @@ def main():
 		#   * The --co-occurring-keywords and --attribute-cond parameters
 		#     (the "narrative parameters") are ignored in this case as they
 		#     make no sense when no entity types are specified.
-		print("This combination of parameters is not yet implemented.")  # ToDo
+		decreasing_counter: int = args.stop_after_n_tables  # default: 10000
+		for table in Table.parseCorpus(args.corpus):
+			classification_result: List[Tuple[float, WikidataItem]] =\
+				table.classify(\
+				 useSBERT=args.sbert,\
+				 useBing=args.bing,\
+				 useWebIsAdb=args.webisadb,\
+				 printProgressTo=sys.stdout,\
+				 useTextualSurroundings=not args.dont_use_textual_surroundings,\
+				 textualSurroundingsWeighting=args.textual_surroundings_weight,\
+				 useAttrNames=not args.dont_use_attr_names,\
+				 attrNamesWeighting=args.attr_names_weight,\
+				 useAttrExtensions=not args.dont_use_attr_extensions,\
+				 attrExtensionsWeighting=args.attr_extensions_weight,\
+				 normalizeApproaches=args.normalize\
+				)
+			classification_result: List[Tuple[float, str]] =\
+				list(map(lambda tuple: (tuple[0], tuple[1].entity_id),\
+					classification_result[:args.k]))
+			print(f"{table.file_name}: {classification_result}")
+			decreasing_counter -= 1
+			if decreasing_counter == 0:
+				break
 	elif not args.stats and args.entityTypes != []:
 		# (4) Corpus and entity types supplied, tables requested
 		#     (the main productive feature!!!):
