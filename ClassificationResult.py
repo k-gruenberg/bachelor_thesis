@@ -151,14 +151,21 @@ class ClassificationResult:
 
 		# At last, print tables showing the effects of varying the
 		# weightings (with and without normalization):
-		#       3D table like this:
+		#       For 3 approaches and a fixed k=K, a 3D table like this:
 		#                     w1=0.0 w1=0.1 w1=0.2 ... w1=1.0
 		#       w2=0.0 w3=0.0
-		#       w2=0.0 w3=0.1      ...top-k coverage/top-k recall...
+		#       w2=0.0 w3=0.1      ...top-K coverage/top-K recall...
 		#       w2=0.0 w3=0.2      ...normalized/un-normalized...
 		#       ...
+		#
+		#       For 2 approaches, a 3D table like this:
+		#                  w1=0.0 w1=0.1 w1=0.2 ... w1=1.0
+		#       k=1 w2=0.0
+		#       k=1 w2=0.1      ...top-k coverage/top-k recall...
+		#       k=1 w2=0.2      ...normalized/un-normalized...
+		#       ...
 		if useTextualSurroundings and useAttrNames and useAttrExtensions:
-			print("Top-k coverage for different weightings of the 3 approaches:")
+			print("Top-1 coverage for different weightings of the 3 approaches:")
 			# ToDo
 			print("Recall, macro-avg. for diff. weightings of the 3 approaches:")
 			# ToDo
