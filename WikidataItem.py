@@ -190,6 +190,13 @@ class WikidataItem:
             self.get_property("")
         return self.label
 
+    def get_description(self) -> str:
+        if self.description == "":
+            # Calling self.get_property("") should trigger the retrieval of
+            #   all the properties, including the description:
+            self.get_property("")
+        return self.description
+
     def __str__(self):
     	if self.label != "":
     		return self.entity_id + " (" + self.label + ")"

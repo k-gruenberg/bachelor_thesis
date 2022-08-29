@@ -19,7 +19,7 @@ This program takes as input:
 """
 
 from __future__ import annotations
-from typing import List, Dict, Any, Iterator
+from typing import List, Dict, Any, Iterator, Set
 import json  # https://docs.python.org/3/library/json.html
 import argparse
 import re
@@ -28,6 +28,7 @@ import sys
 import csv  # https://docs.python.org/3/library/csv.html
 import tarfile  # https://docs.python.org/3/library/tarfile.html
 import tempfile  # https://docs.python.org/3/library/tempfile.html
+import math
 
 from numpy import transpose
 
@@ -98,7 +99,300 @@ def debug_dict_sorted(d: Dict[WikidataItem, float]) -> str:
 		return "{" + str(max_key) + ": " + str(max_value) + ", ...}"
 
 
-class Table:
+def print_as_two_columns(text: str, spacing: int = 4) -> str:
+	lines: List[str] = text.splitlines()
+	no_of_lines: int = len(lines)
+
+	# For an odd number of lines, the left column shall be longer than
+	#   the right one:
+	left_column: List[str] = lines[:math.ceil(no_of_lines / 2)]
+	right_column: List[str] = lines[math.ceil(no_of_lines / 2):]
+
+	left_column_width: int = max(len(row) for row in left_column)
+	#right_column_width: int = max(len(row) for row in right_column)
+	# => not necessary to know
+
+	two_column_result: str = ""
+
+	for row_no in range(0, len(left_column)):
+		two_column_result +=\
+		left_column[row_no] +\
+		" " * (left_column_width-len(left_column[row_no])) +\
+		" " * spacing +\
+		(right_column[row_no] if row_no < len(right_column) else "") +\
+		"\n"
+
+	return two_column_result
+
+
+class ClassificationResult:  # ToDo: into separate ClassificationResult.py file !!!!!
+	"""
+	This is a class particularly useful for generating statistics
+	when the user supplied the --stats flag to NETT.
+	It allows computing a classification for the same table many times
+	using varying parameters, efficiently.
+
+	In the constructor, the classification results of all 3 approaches
+	(Using Textual Surroundings, Using Attribute Names
+	& Using Attribute Extensions) are given idenpendently of one another.
+
+	Only when calling the classify() method, one has to specify which
+	of the 3 approaches to use, whether to normalize the scores and how
+	to weight the 3 approaches.
+	"""
+
+	def __init__(self,\
+		resUsingTextualSurroundings: Dict[WikidataItem, float],\
+		resUsingAttrNames: Dict[WikidataItem, float],\
+		resUsingAttrExtensions: Dict[WikidataItem, float]\
+		):
+		self.resUsingTextualSurroundings = resUsingTextualSurroundings
+		self.resUsingAttrNames = resUsingAttrNames
+		self.resUsingAttrExtensions = resUsingAttrExtensions
+
+	def classify(self,\
+				 useTextualSurroundings=True, textualSurroundingsWeighting=1.0,\
+				 useAttrNames=True, attrNamesWeighting=1.0,\
+				 useAttrExtensions=True, attrExtensionsWeighting=1.0,\
+				 normalizeApproaches=False)\
+				-> List[Tuple[float, WikidataItem]]:
+
+		resultUsingTextualSurroundings: Dict[WikidataItem, float] =\
+			self.resUsingTextualSurroundings
+
+		resultUsingAttrNames: Dict[WikidataItem, float] =\
+			self.resUsingAttrNames
+
+		resultUsingAttrExtensions: Dict[WikidataItem, float] =\
+			self.resUsingAttrExtensions
+
+		if normalizeApproaches:
+			resultUsingTextualSurroundings =\
+				normalize(resultUsingTextualSurroundings)
+			resultUsingAttrNames = normalize(resultUsingAttrNames)
+			resultUsingAttrExtensions = normalize(resultUsingAttrExtensions)
+
+		combinedResult: List[Tuple[float, WikidataItem]] = []
+
+		combinedResult = combine3(\
+			dct1=resultUsingTextualSurroundings,\
+			weight1=textualSurroundingsWeighting,\
+			dct2=resultUsingAttrNames,\
+			weight2=attrNamesWeighting,\
+			dct3=resultUsingAttrExtensions,\
+			weight3=attrExtensionsWeighting,\
+		)
+
+		return combinedResult
+
+	@classmethod
+	def print_statistics(cls,\
+		tables_with_classif_result_and_correct_entity_type_specified_by_user:\
+		List[Tuple[Table, ClassificationResult,  WikidataItem]],\
+		stats_max_k: int = 5) -> None:
+
+		# 3 of 3 approaches:
+
+		ClassificationResult.print_statistics_overall(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,
+			stats_max_k=k,
+			useTextualSurroundings=True,
+			useAttrNames=True,
+			useAttrExtensions=True
+		)
+		print("")
+		ClassificationResult.print_statistics_entity_type_specific(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,
+			stats_max_k=k,
+			useTextualSurroundings=True,
+			useAttrNames=True,
+			useAttrExtensions=True
+		)
+		print("")
+		
+		# 2 of 3 approaches:
+
+		ClassificationResult.print_statistics_overall(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,
+			stats_max_k=k,
+			useTextualSurroundings=False,
+			useAttrNames=True,
+			useAttrExtensions=True
+		)
+		print("")
+		ClassificationResult.print_statistics_entity_type_specific(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,
+			stats_max_k=k,
+			useTextualSurroundings=False,
+			useAttrNames=True,
+			useAttrExtensions=True
+		)
+		print("")
+
+		ClassificationResult.print_statistics_overall(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,
+			stats_max_k=k,
+			useTextualSurroundings=True,
+			useAttrNames=False,
+			useAttrExtensions=True
+		)
+		print("")
+		ClassificationResult.print_statistics_entity_type_specific(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,
+			stats_max_k=k,
+			useTextualSurroundings=True,
+			useAttrNames=False,
+			useAttrExtensions=True
+		)
+		print("")
+
+		ClassificationResult.print_statistics_overall(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,
+			stats_max_k=k,
+			useTextualSurroundings=True,
+			useAttrNames=True,
+			useAttrExtensions=False
+		)
+		print("")
+		ClassificationResult.print_statistics_entity_type_specific(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,
+			stats_max_k=k,
+			useTextualSurroundings=True,
+			useAttrNames=True,
+			useAttrExtensions=False
+		)
+		print("")
+
+		# 1 of 3 approaches:
+
+		ClassificationResult.print_statistics_overall(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,
+			stats_max_k=k,
+			useTextualSurroundings=True,
+			useAttrNames=False,
+			useAttrExtensions=False
+		)
+		print("")
+		ClassificationResult.print_statistics_entity_type_specific(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,
+			stats_max_k=k,
+			useTextualSurroundings=True,
+			useAttrNames=False,
+			useAttrExtensions=False
+		)
+		print("")
+
+		ClassificationResult.print_statistics_overall(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,
+			stats_max_k=k,
+			useTextualSurroundings=False,
+			useAttrNames=True,
+			useAttrExtensions=False
+		)
+		print("")
+		ClassificationResult.print_statistics_entity_type_specific(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,
+			stats_max_k=k,
+			useTextualSurroundings=False,
+			useAttrNames=True,
+			useAttrExtensions=False
+		)
+		print("")
+
+		ClassificationResult.print_statistics_overall(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,
+			stats_max_k=k,
+			useTextualSurroundings=False,
+			useAttrNames=False,
+			useAttrExtensions=True
+		)
+		print("")
+		ClassificationResult.print_statistics_entity_type_specific(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,
+			stats_max_k=k,
+			useTextualSurroundings=False,
+			useAttrNames=False,
+			useAttrExtensions=True
+		)
+		print("")
+		
+
+	@classmethod
+	def print_statistics_overall(cls,\
+		tables_with_classif_result_and_correct_entity_type_specified_by_user:\
+		List[Tuple[Table, ClassificationResult,  WikidataItem]],\
+		useTextualSurroundings: bool,\
+		useAttrNames: bool,\
+		useAttrExtensions: bool,
+		stats_max_k: int = 5) -> None:  # ToDo: missing parameters!!!!! => use weightings given or always 1.0 ?!
+
+		# Precomputations:
+
+		number_of_tables: int = len(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user)
+
+		# (floats only to allow for infinity:)
+		ranks: List[float] = None  # ToDo!!!
+
+		ranks_per_entity_type: Dict[WikidataItem, List[float]] = None  # ToDo!!!
+
+		# Compute overall statistics and print them:
+		if useTextualSurroundings and useAttrNames and useAttrExtensions:
+			print("===== Overall stats (using all 3 approaches): =====")
+		elif useAttrNames and useAttrExtensions:
+			print("===== Overall stats (using attr. names & ext.): =====")
+		elif useTextualSurroundings and useAttrExtensions:
+			print("===== Overall stats (using text. surr. & attr. ext.): =====")
+		elif useTextualSurroundings and useAttrNames:
+			print("===== Overall stats (using text. surr. & attr. names): =====")
+		elif useTextualSurroundings:
+			print("===== Overall stats (using text. surr. only): =====")
+		elif useAttrNames:
+			print("===== Overall stats (using attr. names only): =====")
+		elif useAttrExtensions:
+			print("===== Overall stats (using attr. ext. only): =====")
+		else:
+			exit("Called print_statistics_overall() with " +\
+				"all approaches set to False")
+		mrr: float = sum(1/rank for rank in ranks) / len(ranks)
+		print(f"MRR: {mrr}")
+		print(Table(surroundingText="",\
+			headerRow=[\
+			"k",\
+			"Top-k coverage (%)",\
+			"Recall (%), macro-average"\
+			],columns=[\
+			[k\
+			 for k in range(1, stats_max_k+1)],\
+			[len([rank for rank in ranks if rank <= k]) / len(ranks)\
+			 for k in range(1, stats_max_k+1)],\
+			[sum(len(rank for rank in ranks if rank <= k) / len(ranks)\
+			 for entityType, ranks in ranks_per_entity_type.items())\
+			 / len(ranks_per_entity_type)\
+			 for k in range(1, stats_max_k+1)]\
+			]).pretty_print())
+
+	@classmethod
+	def print_statistics_entity_type_specific(cls,\
+		tables_with_classif_result_and_correct_entity_type_specified_by_user:\
+		List[Tuple[Table, ClassificationResult,  WikidataItem]],\
+		useTextualSurroundings: bool,\
+		useAttrNames: bool,\
+		useAttrExtensions: bool,\
+		stats_max_k: int = 5) -> None:  # ToDo!!!!!
+		# Compute entity type-specific statistics and print them:
+		print("===== Entity type-specific recalls " +\
+			"(using parameters given): =====")
+		print(Table(surroundingText="",\
+			headerRow=["Entity type"] +\
+				[f"k={k}" for k in range(1, stats_max_k+1)],\
+			columns=[[enityType for enityType\
+			in all_correct_entity_types_annotated]] +\
+			[[None] for k in range(0, stats_max_k)]\
+			).pretty_print()) # ToDo
+
+
+class Table:  # ToDo: into separate Table.py file !!!!!
 	def __init__(self, surroundingText: str, headerRow: List[str],\
 				 columns: List[List[str]]):
 		"""
@@ -484,8 +778,57 @@ class Table:
 		return []
 
 
+	def classifyGenerically(self,\
+				 useSBERT:bool, useBing=False, useWebIsAdb=False,\
+				 printProgressTo=sys.stdout) -> ClassificationResult:
+		"""
+		Just like classify(), only that the returned result is still generic,
+		i.e. one can still determine which of the 3 approaches to use, whether
+		to normalize them and how to weight them.
+
+		This function is particularly useful for generating statistics,
+		varying the parameters just listed.
+		"""
+		resultUsingTextualSurroundings: Dict[WikidataItem, float] = {}
+		if self.surroundingText != "":
+			print("[PROGRESS] Classifying using textual surroundings...",\
+				file=printProgressTo)
+			resultUsingTextualSurroundings =\
+				self.classifyUsingTextualSurroundings()
+			if DEBUG:
+				print("[DEBUG] Result using textual surroundings: " +\
+					f"{debug_dict_sorted(resultUsingTextualSurroundings)}")
+
+		resultUsingAttrNames: Dict[WikidataItem, float] = {}
+		if self.headerRow != []:
+			print("[PROGRESS] Classifying using attribute names...",\
+				file=printProgressTo)
+			resultUsingAttrNames = self.classifyUsingAttrNames(\
+				useSBERT=useSBERT)
+			if DEBUG:
+				print("[DEBUG] Result using attribute names: " +\
+					f"{debug_dict_sorted(resultUsingAttrNames)}")
+
+
+		resultUsingAttrExtensions: Dict[WikidataItem, float] = {}
+		if self.columns != []:
+			print("[PROGRESS] Classifying using attribute extensions...",\
+				file=printProgressTo)
+			resultUsingAttrExtensions = self.classifyUsingAttrExtensions(\
+				useBing=useBing, useWebIsAdb=useWebIsAdb)
+			if DEBUG:
+				print("[DEBUG] Result using attribute extensions: " +\
+					f"{debug_dict_sorted(resultUsingAttrExtensions)}")
+
+		return ClassificationResult(\
+			resUsingTextualSurroundings=resultUsingTextualSurroundings,\
+			resUsingAttrNames=resultUsingAttrNames,\
+			resUsingAttrExtensions=resultUsingAttrExtensions\
+		)
+
+
 	def classify(self,\
-				 useSBERT:bool, useBing=False, useWebIsAdb=False,
+				 useSBERT:bool, useBing=False, useWebIsAdb=False,\
 				 useTextualSurroundings=True, textualSurroundingsWeighting=1.0,\
 				 useAttrNames=True, attrNamesWeighting=1.0,\
 				 useAttrExtensions=True, attrExtensionsWeighting=1.0,\
@@ -575,24 +918,19 @@ class Table:
 				print("[DEBUG] Result using attribute extensions: " +\
 					f"{debug_dict_sorted(resultUsingAttrExtensions)}")
 
-		if normalizeApproaches:
-			resultUsingTextualSurroundings =\
-				normalize(resultUsingTextualSurroundings)
-			resultUsingAttrNames = normalize(resultUsingAttrNames)
-			resultUsingAttrExtensions = normalize(resultUsingAttrExtensions)
-
-		combinedResult: List[Tuple[float, WikidataItem]] = []
-
-		combinedResult = combine3(\
-			dct1=resultUsingTextualSurroundings,\
-			weight1=textualSurroundingsWeighting,\
-			dct2=resultUsingAttrNames,\
-			weight2=attrNamesWeighting,\
-			dct3=resultUsingAttrExtensions,\
-			weight3=attrExtensionsWeighting,\
+		return ClassificationResult(\
+			resUsingTextualSurroundings=resultUsingTextualSurroundings,\
+			resUsingAttrNames=resultUsingAttrNames,\
+			resUsingAttrExtensions=resultUsingAttrExtensions\
+		).classify(\
+			useTextualSurroundings=useTextualSurroundings,\
+			textualSurroundingsWeighting=textualSurroundingsWeighting,\
+			useAttrNames=useAttrNames,\
+			attrNamesWeighting=attrNamesWeighting,\
+			useAttrExtensions=useAttrExtensions,\
+			attrExtensionsWeighting=attrExtensionsWeighting,\
+			normalizeApproaches=normalizeApproaches\
 		)
-
-		return combinedResult
 
 	def classifyUsingTextualSurroundings(self) -> Dict[WikidataItem, float]:
 		"""
@@ -958,6 +1296,15 @@ def main():
     	returned for which the entity type searched for was the best guess.""",
     	metavar='K')
 
+	parser.add_argument('--stats-max-k',
+    	type=int,
+    	default=5,
+    	help="""This K is relevant when using the --stats flag only.
+    	It essentially defines for how many values of k (1,2,3,...,K)
+    	the statistics shall be computed and printed.
+    	Default value: 5""",
+    	metavar='K')
+
 	parser.add_argument('--threshold',
     	type=float,
     	default=0.0,
@@ -1180,6 +1527,9 @@ def main():
 	print("[PREPARING] Done.")
 	# </preparation>
 
+	USER_INPUT_Q00000_REGEX = re.compile(r"Q\d+")
+	USER_INPUT_NUMBER_REGEX = re.compile(r"\d+")
+
 	if args.stats and args.entityTypes == []:
 		# (1) Corpus supplied, statistics requested (evaluation feature):
 		#   * Program has to ask user (with the help of pretty_print())
@@ -1199,41 +1549,55 @@ def main():
 		#   * The --co-occurring-keywords and --attribute-cond parameters
 		#     (the "narrative parameters") are ignored in this case as they
 		#     make no sense when no entity types are specified.
-		print("This combination of parameters is not yet implemented.")  # ToDo!
 
 		tables_with_classif_result_and_correct_entity_type_specified_by_user:\
-			List[Tuple[Table, List[Tuple[float, WikidataItem]],  WikidataItem]]\
-			= []
+			List[Tuple[Table, ClassificationResult,  WikidataItem]]\
+			= []  # ToDo: shorten name
 
 		for table in Table.parseCorpus(args.corpus):
 			# Clear terminal:
 			clear_terminal()
+
 			# Pretty-print table:
 			print(table.pretty_print())
 			print("")
+
 			# Print surrounding text associated with table:
 			print(f"Surrounding text: '{table.surroundingText}'")
 			print("")
+
 			# Print classification result:
-			classification_result: List[Tuple[float, WikidataItem]] =\
-				table.classify(\
+			classification_result_generic: ClassificationResult =\
+				table.classifyGenerically(\
 				 useSBERT=args.sbert,\
 				 useBing=args.bing,\
 				 useWebIsAdb=args.webisadb,\
+				 printProgressTo=sys.stdout)
+			classification_result: List[Tuple[float, WikidataItem]] =\
+				classification_result_generic.classify(\
 				 useTextualSurroundings=not args.dont_use_textual_surroundings,\
 				 textualSurroundingsWeighting=args.textual_surroundings_weight,\
 				 useAttrNames=not args.dont_use_attr_names,\
 				 attrNamesWeighting=args.attr_names_weight,\
 				 useAttrExtensions=not args.dont_use_attr_extensions,\
 				 attrExtensionsWeighting=args.attr_extensions_weight,\
-				 normalizeApproaches=args.normalize,\
-				 printProgressTo=sys.stdout)
+				 normalizeApproaches=args.normalize\
+				)
 			classification_result_len: int = len(classification_result)
+			classification_result_printable: str = ""
+			for i in range(0, classification_result_len):
+				score: float = classification_result[i][0]
+				wikidata_item: WikidataItem = classification_result[i][1]
+				classification_result_printable +=\
+					f"({i+1}) {score:10.4f} {wikidata_item.entity_id} " +\
+					f"({wikidata_item.get_label()}; " +\
+					f"{wikidata_item.get_description()[:20]})\n"
 			if classification_result_len <= 20:  # list classification results:
-				pass  # ToDo: print
+				print(classification_result_printable)
 			else:  # list classification results in two columns:
-				pass # ToDo: print
-			print("")
+				print(print_as_two_columns(classification_result_printable))
+			#print("")  # (should not be necessary)
+
 			# Ask user to say which of the entity types is the correct one:
 			print("Please enter which of the above entity types is the " +\
 				"correct one, as a number ('1', '2', '3', etc.). " +\
@@ -1242,22 +1606,47 @@ def main():
 				"the correct Wikidata ID using the 'Q00000' syntax. " +\
 				"When no entity type is applicable at all, enter 'NA'. " +\
 				"Enter 'finish' to stop annotating.")
-			print("ENTER > ", flush=True)
-			user_answer: str = input()
+			user_answer: str = ""
+			while user_answer.lower() != "finish"\
+				and user_answer.upper() != "NA"\
+				and not USER_INPUT_Q00000_REGEX.fullmatch(user_answer)\
+				and not USER_INPUT_NUMBER_REGEX.fullmatch(user_answer):
+				# Keep asking for input as long as user answer is invalid:
+				print("ENTER > ", flush=True)
+				user_answer: str = input()
+
+			# User gave a valid answer:
 			if user_answer.lower() == "finish":
 				break  # exit loop, the user wants to finish.
 			elif user_answer.upper() == "NA":
-				pass  # ToDo: what to do?
-			elif False: # ToDo: match against 'Q00000' regex
-				pass  # ToDo: update tables_with_classif_result_and_correct_entity_type_specified_by_user
-			elif False: # ToDo: match against numeric regex
-				pass  # ToDo: update tables_with_classif_result_and_correct_entity_type_specified_by_user
-			else:
-				pass  # ToDo: handle accidental incorrect answer
+				continue  # skip this invalid (non-relational) table
+			elif USER_INPUT_Q00000_REGEX.fullmatch(user_answer):
+				user_specified_wikidata_item: WikidataItem =\
+					WikidataItem(user_answer)
+				tables_with_classif_result_and_correct_entity_type_specified_by_user\
+					.append((table,\
+						classification_result_generic,\
+						user_specified_wikidata_item))
+			elif USER_INPUT_NUMBER_REGEX.fullmatch(user_answer):
+				user_specified_wikidata_item: WikidataItem =\
+					classification_result[int(user_answer)-1][1]
+				tables_with_classif_result_and_correct_entity_type_specified_by_user\
+					.append((table,\
+						classification_result_generic,\
+						user_specified_wikidata_item))
+
+		# The set of all (correct) entity types occuring in the given corpus:
+		all_correct_entity_types_annotated: Set[WikidataItem] =\
+			set(correct_entity_type\
+				for table, classification_result, correct_entity_type in\
+				tables_with_classif_result_and_correct_entity_type_specified_by_user)
 
 		# Compute statistics and print them:
-		# ToDo: use tables_with_classif_result_and_correct_entity_type_specified_by_user
-		#       to compute and print statistics
+		clear_terminal()
+		ClassificationResult.print_statistics(\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user=\
+			tables_with_classif_result_and_correct_entity_type_specified_by_user,\
+			stats_max_k=args.stats_max_k)		
 	elif args.stats and args.entityTypes != []:
 		# (2) Corpus and entity types supplied, statistics requested
 		#     (evaluation feature):
