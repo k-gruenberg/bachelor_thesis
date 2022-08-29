@@ -13,6 +13,8 @@ from numpy import transpose
 from WikidataItem import WikidataItem
 from ClassificationResult import ClassificationResult
 
+import attr_names_to_ontology_class
+
 class Table:
 	def __init__(self, surroundingText: str, headerRow: List[str],\
 				 columns: List[List[str]]):
@@ -631,6 +633,124 @@ class Table:
 			# (returns a Dict[WikidataItem, int])
 
 
+	def fulfills_attribute_condition(self, attribute_cond: str,\
+		useSBERT: bool = True, strictness: float = 1.0,\
+		DEBUG: bool = False) -> bool:
+		"""
+		Check whether this Table
+		(a) has the attribute named in `attribute_cond`
+		    (name doesn't have to be exactly equal, SBERT/Jaccard is used for
+		    attribute name similarity here again), and
+		(b) all (or less, when strictness < 1.0) values in the corresponding
+		    column of this Table fulfill the specified `attribute_cond`.
+		Returns either True or False.
+
+		(a) and (b) are used in conjunction, i.e. when a column fulfills the
+		requirement in (b) it is considered a more likely match for (a) !
+
+		Example:
+		Only look for tables containing heavy vehicles or super sports cars:
+		table.fulfills_attribute_condition("horsepower >= 500", useSBERT=True)
+
+		Arguments:
+		attribute_cond -- a string, boolean condition in Python syntax:
+                          "[attribute name] [<=,>=,<,>,==,!=,in,not in]
+                           [value, value range or value list]", e.g.
+                          "horsepower >= 500" or
+                          "year in range(1980,2000)" or
+                          "firstName not in ['Alex', 'Alexander']"
+        useSBERT -- whether to use SBERT to match the attribute name given
+                    in the `attribute_cond` parameter to this tables headers;
+                    otherwise Jaccard trigram similarity is used
+		strictness -- a value between 0.0 (least strict)
+		              and 1.0 (most strict, default); the fraction of cells
+		              in the column that have to fulfill the condition
+		              (by default, every cell has to fulfill the condition)
+		"""
+
+		# (0) When this table has no header, no meaningful matching is possible:
+		if self.headerRow == []:
+			return False
+
+		# (0) The similarity function used:
+		def similarity(attrName1: str, attrName2: str) -> float:
+			return attr_names_to_ontology_class.similarity(\
+				attrName1=attrName1, attrName2=attrName2, USE_SBERT=useSBERT)
+
+		# (1) Extract the attribute name from the given attribute condition:
+		attribute_name: str = attribute_cond.split()[0]
+
+		# (2) Turn the condition into a Python lambda (for individual cells):
+		attribute_cond_lambda =\
+			eval(f"lambda {attribute_name}: {attribute_cond}")
+		def attribute_cond_lambda_type_safe(cell_value):
+			try:
+				# First, try to insert the cell value as the string that it is:
+				return attribute_cond_lambda(cell_value)
+			except:
+				try:
+					# Second, try to cast the cell value to a float:
+					return attribute_cond_lambda(float(cell_value))
+				except:
+					# Third, try to turn the cell value to a bool,
+					#   else return False:
+					try:
+						if cell_value.lower() == "true":
+							return attribute_cond_lambda(True)
+						elif cell_value.lower() == "false":
+							return attribute_cond_lambda(False)
+						else:
+							return False
+					except:
+						return False  # (give up)
+
+
+		# (3) Turn the condition into a Python lambda (for entire columns):
+		attribute_cond_lambda_column =\
+			lambda column: len([cell for cell in column\
+				if attribute_cond_lambda_type_safe(cell)])\
+				>= strictness * len(column)
+
+		# (4) Do the first (a) matching:
+		a_matching: Dict[str, float] = {column_name:\
+			similarity(column_name, attribute_name)\
+			for column_name in self.headerRow}
+		if DEBUG: print(f"[DEBUG] first (a) matching: {a_matching}")
+
+		# (5) Do the (b) matching:
+		b_matching: Dict[str, bool] = {self.headerRow[x]:\
+			attribute_cond_lambda_column(self.columns[x])\
+			for x in range(0, len(self.columns))}
+		if DEBUG: print(f"[DEBUG] (b) matching: {b_matching}")
+
+		# (6) When there are no (b) matches at all, return False:
+		if not any(b_matching.values()):
+			if DEBUG: print("[DEBUG] no (b) matches at all => ret False")
+			return False
+
+		# (7) When the best (a) match is also a (b) match, return True:
+		best_a_match: str = max(a_matching, key=a_matching.get)
+		if DEBUG: print(f"[DEBUG] best (a) match = '{best_a_match}'")
+		if b_matching[best_a_match]:
+			if DEBUG: print("[DEBUG] best (a) match is (b) match => ret True")
+			return True
+
+		# (8) Increase the (a) scores (by 0.1) where there's a (b) match.
+		#     If the best (a) match *then* is also a (b) match, return True,
+		#     otherwise False:
+		a_matching = {k : v + (0.1 if b_matching[k] else 0.0)\
+			for k, v in a_matching.items()}
+		if DEBUG: print(f"[DEBUG] second (a) matching: {a_matching}")
+		best_a_match: str = max(a_matching, key=a_matching.get)
+		if DEBUG: print(f"[DEBUG] best (a) match = '{best_a_match}'")
+		if b_matching[best_a_match]:
+			if DEBUG: print("[DEBUG] best (a) match is (b) match => ret True")
+			return True
+		else:
+			if DEBUG: print("[DEBUG] best (a) match no (b) match => ret False")
+			return False
+
+
 	@classmethod
 	def identifyCSVdialect(cls, csv_str: str) -> Dialect:
 		return csv.Sniffer().sniff(csv_str)
@@ -802,7 +922,7 @@ class Table:
 						tar.extract(tarinfo, path=temp_path)
 						# Parse that temporary .xlsx file:
 						table = Table.parseXLSX(xlsxPath=temp_path)
-				table.file_name = tarinfo.name
+				if table is not None: table.file_name = tarinfo.name
 				yield table
 				# All other file types in the TAR archive are ignored.
 
@@ -820,16 +940,16 @@ class Table:
 						# (newline='' is required by the CSV library)
 						table = Table.parseCSV(csv_str=csv_file.read(),\
 							dialect=csv_dialect)
-						table.file_name = folder_item
+						if table is not None: table.file_name = folder_item
 						yield table
 				elif file_extension in [".xlsx", ".xls"]:
 					table = Table.parseXLSX(xlsxPath=folder_item)
-					table.file_name = folder_item
+					if table is not None: table.file_name = folder_item
 					yield table
 				elif file_extension == ".json":
 					with open(folder_item, 'r') as json_file:
 						table = Table.parseJSON(json_str=json_file.read())
-						table.file_name = folder_item
+						if table is not None: table.file_name = folder_item
 						yield table
 				elif file_extension == ".tar":
 					for table in Table.parseTAR(tarPath=folder_item):
