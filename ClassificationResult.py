@@ -163,34 +163,45 @@ class ClassificationResult:
 		#                     w1=0.0 w1=0.1 w1=0.2 ... w1=1.0
 		#       w2=0.0 w3=0.0
 		#       w2=0.0 w3=0.1      ...top-K coverage/top-K recall...
-		#       w2=0.0 w3=0.2      ...normalized/un-normalized...
+		#       w2=0.0 w3=0.2      ...normalized/non-normalized...
 		#       ...
 		#
 		#       For 2 approaches, a 3D table like this:
 		#                  w1=0.0 w1=0.1 w1=0.2 ... w1=1.0
 		#       k=1 w2=0.0
 		#       k=1 w2=0.1      ...top-k coverage/top-k recall...
-		#       k=1 w2=0.2      ...normalized/un-normalized...
+		#       k=1 w2=0.2      ...normalized/non-normalized...
 		#       ...
 		if useTextualSurroundings and useAttrNames and useAttrExtensions:
-			print("Top-1 coverage for different weightings of the 3 approaches:")
-			# ToDo
-			print("Recall, macro-avg. for diff. weightings of the 3 approaches:")
+			print("Top-1 coverage for different weightings of the 3 approaches"+\
+				" (normalized/non-normalized):")
+			print(Table.Table.create3DStatisticalTable(\
+				_lambda=lambda w1, w2, w3: "ToDo / ToDo",\
+				x_var_name="w1", left_y_var_name="w2", right_y_var_name="w3"
+				).pretty_print())
+			print("Recall, macro-avg. for diff. weightings of the 3 approaches"+\
+				" (normalized/non-normalized):")
 			# ToDo
 		elif useAttrNames and useAttrExtensions:
-			print("Top-k coverage for different weightings of the 2 approaches:")
+			print("Top-k coverage for different weightings of the 2 approaches"+\
+				" (normalized/non-normalized):")
 			# ToDo
-			print("Recall, macro-avg. for diff. weightings of the 2 approaches:")
+			print("Recall, macro-avg. for diff. weightings of the 2 approaches"+\
+				" (normalized/non-normalized):")
 			# ToDo
 		elif useTextualSurroundings and useAttrExtensions:
-			print("Top-k coverage for different weightings of the 2 approaches:")
+			print("Top-k coverage for different weightings of the 2 approaches"+\
+				" (normalized/non-normalized):")
 			# ToDo
-			print("Recall, macro-avg. for diff. weightings of the 2 approaches:")
+			print("Recall, macro-avg. for diff. weightings of the 2 approaches"+\
+				" (normalized/non-normalized):")
 			# ToDo
 		elif useTextualSurroundings and useAttrNames:
-			print("Top-k coverage for different weightings of the 2 approaches:")
+			print("Top-k coverage for different weightings of the 2 approaches"+\
+				" (normalized/non-normalized):")
 			# ToDo
-			print("Recall, macro-avg. for diff. weightings of the 2 approaches:")
+			print("Recall, macro-avg. for diff. weightings of the 2 approaches"+\
+				" (normalized/non-normalized):")
 			# ToDo
 		# (for 1 approach, it makes no sense to consider different weightings)
 

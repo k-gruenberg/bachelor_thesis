@@ -856,3 +856,37 @@ class Table:
 			return filter(lambda table: yieldNones or table is not None,\
 				Table.parseFolder(folderPath=corpusPath, recursive=recursive,\
 					csv_dialect=csv_dialect))
+
+	@classmethod
+	def create3DStatisticalTable(cls,\
+		_lambda: Callable[[float, float, float], str],\
+		x_var_name: str = "x",\
+		left_y_var_name: str = "y1",\
+		right_y_var_name: str = "y2",\
+		x_range: List[float] =\
+			[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],\
+		left_y_range: List[float] =\
+			[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],\
+		right_y_range: List[float] =\
+			[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]\
+		) -> Table:
+		"""
+		This function is for creating statistical tables to then print them out
+		using the pretty_print() function.
+		This has nothing to do with corpus tables directly.
+
+		Example:
+
+		            w1=0.0 w1=0.1 w1=0.2 ... w1=1.0
+		k=1 w2=0.0  foo    foo    foo    ... foo
+		k=1 w2=0.1  bar    bar    bar    ... bar
+		k=1 w2=0.2  baz    baz    baz    ... baz
+		...
+		"""
+
+		return Table(\
+			surroundingText="",\
+			headerRow = ["", ""] + [f"{x_var_name}={x}" for x in x_range],\
+			columns=None  # ToDo!!!!!
+			)
+
