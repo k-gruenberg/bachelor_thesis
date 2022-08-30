@@ -77,7 +77,7 @@ class ClassificationResult:
 				 useTextualSurroundings=True, textualSurroundingsWeighting=1.0,\
 				 useAttrNames=True, attrNamesWeighting=1.0,\
 				 useAttrExtensions=True, attrExtensionsWeighting=1.0,\
-				 normalizeApproaches=False)\
+				 normalizeApproaches=False, DEBUG=False)\
 				-> List[Tuple[float, WikidataItem]]:
 
 		resultUsingTextualSurroundings: Dict[WikidataItem, float] =\
@@ -89,15 +89,22 @@ class ClassificationResult:
 		resultUsingAttrExtensions: Dict[WikidataItem, float] =\
 			self.resUsingAttrExtensions
 
+		if DEBUG:
+			print("[DEBUG] Classifying using " +\
+				f"{len(resultUsingTextualSurroundings)} results from using " +\
+				f"textual surroundings, {len(resultUsingAttrNames)} results " +\
+				"from using attribute names and " +\
+				f"{len(resultUsingAttrExtensions)} results from using " +\
+				"attribute extensions.")
+
 		if normalizeApproaches:
 			resultUsingTextualSurroundings =\
 				normalize(resultUsingTextualSurroundings)
 			resultUsingAttrNames = normalize(resultUsingAttrNames)
 			resultUsingAttrExtensions = normalize(resultUsingAttrExtensions)
 
-		combinedResult: List[Tuple[float, WikidataItem]] = []
-
-		combinedResult = combine3(\
+		combinedResult: List[Tuple[float, WikidataItem]] =\
+			combine3(\
 			dct1=resultUsingTextualSurroundings\
 				if useTextualSurroundings else {},\
 			weight1=textualSurroundingsWeighting,\

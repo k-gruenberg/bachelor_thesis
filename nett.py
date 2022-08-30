@@ -453,7 +453,8 @@ def main():
 				 attrNamesWeighting=args.attr_names_weight,\
 				 useAttrExtensions=not args.dont_use_attr_extensions,\
 				 attrExtensionsWeighting=args.attr_extensions_weight,\
-				 normalizeApproaches=args.normalize\
+				 normalizeApproaches=args.normalize,\
+				 DEBUG=args.debug
 				)
 			classification_result_len: int = len(classification_result)
 			classification_result_printable: str = ""

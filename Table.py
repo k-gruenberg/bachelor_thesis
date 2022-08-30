@@ -596,7 +596,8 @@ class Table:
 			attrNamesWeighting=attrNamesWeighting,\
 			useAttrExtensions=useAttrExtensions,\
 			attrExtensionsWeighting=attrExtensionsWeighting,\
-			normalizeApproaches=normalizeApproaches\
+			normalizeApproaches=normalizeApproaches,
+			DEBUG=DEBUG\
 		)
 
 	def classifyUsingTextualSurroundings(self) -> Dict[WikidataItem, float]:
