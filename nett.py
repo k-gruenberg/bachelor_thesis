@@ -429,6 +429,12 @@ def main():
 			# Clear terminal:
 			clear_terminal()
 
+			# Print (annotation) progress at the top:
+			print("[" +\
+				f"{len(tables_with_classif_result_and_correct_entity_type_specified_by_user)}"\
+				+ " tables annotated so far]")
+			print("")
+
 			# Pretty-print table:
 			print(table_.pretty_print())
 			print("")
