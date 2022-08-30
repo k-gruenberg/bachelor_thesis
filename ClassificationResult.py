@@ -21,13 +21,23 @@ def combine3(dct1: Dict[WikidataItem, float], weight1: float,\
 
 def normalize(dct: Dict[WikidataItem, float])\
 	-> Dict[WikidataItem, float]:
-	if dct is not None:
+	"""
+	Normalizes the values of the input dictionary into the [0.0, 1.0] range.
+	"""
+	if dct is None:
+		return None
+	elif dct == {}:
+		# Would otherwise raise a 'ValueError: min() arg is an empty sequence':
+		return {}
+	elif len(dct) == 1:
+		# Would otherwise raise a 'ZeroDivisionError: float division by zero'
+		#   (since max_value - min_value == 0 when there's only 1 item):
+		return {w: 1.0 for w, f in dct.items()}
+	else:
 		min_value: float = min(dct.values())
 		max_value: float = max(dct.values())
 		return {w: (f - min_value) / (max_value - min_value)\
 				for w, f in dct.items()}
-	else:
-		return None
 
 def top_k_coverage(k: int, ranks: List[float]) -> float:
 	return len([rank for rank in ranks if rank <= k]) / len(ranks)
@@ -88,11 +98,14 @@ class ClassificationResult:
 		combinedResult: List[Tuple[float, WikidataItem]] = []
 
 		combinedResult = combine3(\
-			dct1=resultUsingTextualSurroundings,\
+			dct1=resultUsingTextualSurroundings\
+				if useTextualSurroundings else {},\
 			weight1=textualSurroundingsWeighting,\
-			dct2=resultUsingAttrNames,\
+			dct2=resultUsingAttrNames\
+				if useAttrNames else {},\
 			weight2=attrNamesWeighting,\
-			dct3=resultUsingAttrExtensions,\
+			dct3=resultUsingAttrExtensions\
+				if useAttrExtensions else {},\
 			weight3=attrExtensionsWeighting,\
 		)
 
