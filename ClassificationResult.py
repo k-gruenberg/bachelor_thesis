@@ -4,6 +4,31 @@ from typing import List, Dict, Any, Iterator, Set
 from WikidataItem import WikidataItem
 import Table
 
+def combine3(dct1: Dict[WikidataItem, float], weight1: float,\
+			dct2: Dict[WikidataItem, float], weight2: float,\
+			dct3: Dict[WikidataItem, float], weight3: float)\
+			-> List[Tuple[float, WikidataItem]]:
+	allWikidataItems = set(dct1.keys())\
+						.union(set(dct2.keys()))\
+						.union(set(dct3.keys()))
+	result: List[Tuple[float, WikidataItem]] =\
+		[(weight1 * dct1.get(wi, 0.0) +\
+		 weight2 * dct2.get(wi, 0.0) +\
+		 weight3 * dct3.get(wi, 0.0),\
+		 wi) for wi in allWikidataItems]
+	result.sort(key=lambda tuple: tuple[0], reverse=True)
+	return result
+
+def normalize(dct: Dict[WikidataItem, float])\
+	-> Dict[WikidataItem, float]:
+	if dct is not None:
+		min_value: float = min(dct.values())
+		max_value: float = max(dct.values())
+		return {w: (f - min_value) / (max_value - min_value)\
+				for w, f in dct.items()}
+	else:
+		return None
+
 def top_k_coverage(k: int, ranks: List[float]) -> float:
 	return len([rank for rank in ranks if rank <= k]) / len(ranks)
 

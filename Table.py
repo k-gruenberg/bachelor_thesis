@@ -13,7 +13,42 @@ from numpy import transpose
 from WikidataItem import WikidataItem
 from ClassificationResult import ClassificationResult
 
-import attr_names_to_ontology_class
+# Import the fundamental approaches
+#     #1 "Using Textual Surroundings"
+#     #2 "Using Attribute Names"
+#     #3 "Using Attribute Extensions"
+# from the respective Python files:
+from filter_nouns_with_heuristics import filter_nouns_with_heuristics_as_dict
+from attr_names_to_ontology_class import attr_names_to_ontology_class
+from attr_extension_to_ontology_class import attr_extension_to_ontology_class
+from attr_extension_to_ontology_class_web_search import\
+	attr_extension_to_ontology_class_web_search_list_onto_as_dict
+
+from nett_map_dbpedia_classes_to_wikidata import\
+	get_dbpedia_classes_mapped_to_wikidata
+from nett_map_dbpedia_properties_to_sbert_vectors import\
+	initalize_dbpedia_properties_mapped_to_SBERT_vector,\
+	get_dbpedia_properties_mapped_to_SBERT_vector
+
+
+def debug_dict_sorted(d: Dict[WikidataItem, float]) -> str:
+	"""
+	A debug-printable short string representation of a
+	Dict[WikidataItem, float] dictionary, where the floats are to be
+	interpreted as match scores (bigger score = better match).
+	"""
+	if len(d) <= 2:  # empy dictionary or dictionary with <= 2 key value pairs:
+		return str(d)
+	else:
+		max_key: WikidataItem = None
+		max_value: float = float('-inf')
+		for key in d:
+			value: float = d[key]
+			if value > max_value:
+				max_key = key
+				max_value = value
+		return "{" + str(max_key) + ": " + str(max_value) + ", ...}"
+
 
 class Table:
 	def __init__(self, surroundingText: str, headerRow: List[str],\
@@ -410,7 +445,8 @@ class Table:
 
 	def classifyGenerically(self,\
 				 useSBERT:bool, useBing=False, useWebIsAdb=False,\
-				 printProgressTo=sys.stdout) -> ClassificationResult:
+				 printProgressTo=sys.stdout, DEBUG=False)\
+				 -> ClassificationResult:
 		"""
 		Just like classify(), only that the returned result is still generic,
 		i.e. one can still determine which of the 3 approaches to use, whether
@@ -463,7 +499,8 @@ class Table:
 				 useAttrNames=True, attrNamesWeighting=1.0,\
 				 useAttrExtensions=True, attrExtensionsWeighting=1.0,\
 				 normalizeApproaches=False,
-				 printProgressTo=sys.stdout)\
+				 printProgressTo=sys.stdout,\
+				 DEBUG=False)\
 				-> List[Tuple[float, WikidataItem]]:
 		"""
 		Classify this table semantically.
@@ -695,9 +732,9 @@ class Table:
 					# Third, try to turn the cell value to a bool,
 					#   else return False:
 					try:
-						if cell_value.lower() == "true":
+						if cell_value.lower() in ["true", "y", "yes"]:
 							return attribute_cond_lambda(True)
-						elif cell_value.lower() == "false":
+						elif cell_value.lower() in ["false", "n", "no"]:
 							return attribute_cond_lambda(False)
 						else:
 							return False
@@ -808,7 +845,8 @@ class Table:
 
 	@classmethod
 	def parseJSON(cls, json_str: str, onlyRelational=False,\
-		onlyWithHeader=True, useAdditionalHeuristics=False) -> Optional[Table]: # ToDo: change to onlyRelational=True after testing!
+		onlyWithHeader=True, useAdditionalHeuristics=False,\
+		DEBUG=False) -> Optional[Table]: # ToDo: change to onlyRelational=True after testing!
 		"""
 		Parses a .JSON file of the format that's used in the
 		WDC Web Table Corpus (http://webdatacommons.org/webtables/2015/
@@ -899,7 +937,7 @@ class Table:
 			return None
 
 	@classmethod
-	def parseTAR(cls, tarPath: str, csv_dialect: Dialect = None)\
+	def parseTAR(cls, tarPath: str, csv_dialect: Dialect = None, DEBUG=False)\
 		-> Iterator[Table]:
 		# cf. https://docs.python.org/3/library/tarfile.html
 		tar = tarfile.open(tarPath)
@@ -909,7 +947,8 @@ class Table:
 				table: Table = None
 				if os.path.splitext(tarinfo.name)[1] == ".json":
 					table = Table.parseJSON(\
-						json_str=tar.extractfile(tarinfo).read())
+						json_str=tar.extractfile(tarinfo).read(),\
+						DEBUG=DEBUG)
 				elif os.path.splitext(tarinfo.name)[1] == ".csv":
 					table = Table.parseCSV(\
 						csv_str=tar.extractfile(tarinfo).read(),\
@@ -929,7 +968,7 @@ class Table:
 
 	@classmethod
 	def parseFolder(cls, folderPath: str, recursive=True,\
-		csv_dialect: Dialect = None) -> Iterator[Table]:
+		csv_dialect: Dialect = None, DEBUG=False) -> Iterator[Table]:
 		# Sorting is important such that the order is predictable to the user:
 		for folder_item in sorted(os.listdir(folderPath)):
 			folder_item = os.path.join(folderPath, folder_item)
@@ -948,34 +987,38 @@ class Table:
 					yield table
 				elif file_extension == ".json":
 					with open(folder_item, 'r') as json_file:
-						table = Table.parseJSON(json_str=json_file.read())
+						table = Table.parseJSON(json_str=json_file.read(),\
+							DEBUG=DEBUG)
 						if table is not None: table.file_name = folder_item
 						yield table
 				elif file_extension == ".tar":
-					for table in Table.parseTAR(tarPath=folder_item):
+					for table in Table.parseTAR(tarPath=folder_item,\
+						DEBUG=DEBUG):
 						yield table
 				# Skip files with any other filetype/extension.
 			elif recursive:
 				for table in Table.parseFolder(folderPath=folder_item,\
-					recursive=True):
+					recursive=True, csv_dialect=csv_dialect, DEBUG=DEBUG):
 					yield table
 			# When the item is a directory and recursive=False, skip it.
 
 	@classmethod
 	def parseCorpus(cls, corpusPath: str, recursive=True,\
-		yieldNones=False, csv_dialect: Dialect = None) -> Iterator[Table]:
+		yieldNones=False, csv_dialect: Dialect = None,\
+		DEBUG=False) -> Iterator[Table]:
 		if os.path.isfile(corpusPath):
 			file_name, file_extension = os.path.splitext(corpusPath)
 			if file_extension == ".tar":
 				return filter(lambda table: yieldNones or table is not None,\
-					Table.parseTAR(tarPath=corpusPath, csv_dialect=csv_dialect))
+					Table.parseTAR(tarPath=corpusPath,\
+						csv_dialect=csv_dialect, DEBUG=DEBUG))
 			else:
 				sys.exit("Error: --corpus supplied either has to be a "+\
 					" directory or a .TAR file.")
 		else:
 			return filter(lambda table: yieldNones or table is not None,\
 				Table.parseFolder(folderPath=corpusPath, recursive=recursive,\
-					csv_dialect=csv_dialect))
+					csv_dialect=csv_dialect, DEBUG=DEBUG))
 
 	@classmethod
 	def create3DStatisticalTable(cls,\

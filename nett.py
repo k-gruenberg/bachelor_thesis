@@ -55,50 +55,9 @@ from nett_map_dbpedia_properties_to_sbert_vectors import\
 
 DEBUG = True
 
-def normalize(dct: Dict[WikidataItem, float])\
-	-> Dict[WikidataItem, float]:
-	if dct is not None:
-		min_value: float = min(dct.values())
-		max_value: float = max(dct.values())
-		return {w: (f - min_value) / (max_value - min_value)\
-				for w, f in dct.items()}
-	else:
-		return None
 
-
-def combine3(dct1: Dict[WikidataItem, float], weight1: float,\
-			dct2: Dict[WikidataItem, float], weight2: float,\
-			dct3: Dict[WikidataItem, float], weight3: float)\
-			-> List[Tuple[float, WikidataItem]]:
-	allWikidataItems = set(dct1.keys())\
-						.union(set(dct2.keys()))\
-						.union(set(dct3.keys()))
-	result: List[Tuple[float, WikidataItem]] =\
-		[(weight1 * dct1.get(wi, 0.0) +\
-		 weight2 * dct2.get(wi, 0.0) +\
-		 weight3 * dct3.get(wi, 0.0),\
-		 wi) for wi in allWikidataItems]
-	result.sort(key=lambda tuple: tuple[0], reverse=True)
-	return result
-
-
-def debug_dict_sorted(d: Dict[WikidataItem, float]) -> str:
-	"""
-	A debug-printable short string representation of a
-	Dict[WikidataItem, float] dictionary, where the floats are to be
-	interpreted as match scores (bigger score = better match).
-	"""
-	if len(d) <= 2:  # empy dictionary or dictionary with <= 2 key value pairs:
-		return str(d)
-	else:
-		max_key: WikidataItem = None
-		max_value: float = float('-inf')
-		for key in d:
-			value: float = d[key]
-			if value > max_value:
-				max_key = key
-				max_value = value
-		return "{" + str(max_key) + ": " + str(max_value) + ", ...}"
+def clear_terminal():
+	os.system('cls' if os.name == 'nt' else 'clear')
 
 
 def print_as_two_columns(text: str, spacing: int = 4) -> str:
@@ -125,10 +84,6 @@ def print_as_two_columns(text: str, spacing: int = 4) -> str:
 		"\n"
 
 	return two_column_result
-
-
-def clear_terminal():
-	os.system('cls' if os.name == 'nt' else 'clear')
 
 
 def main():
@@ -354,7 +309,7 @@ def main():
 	# cf. https://stackoverflow.com/questions/7869345/
 	#     how-to-make-python-argparse-mutually-exclusive-
 	#     group-arguments-without-prefix:
-	group = parser.add_mutually_exclusive_group()
+	group = parser.add_mutually_exclusive_group(required=True)
 	group.add_argument('--jaccard', action='store_true',
 		help="Use Jaccard index for word similarity of column/attribute names.")
 	group.add_argument('--sbert', action='store_true',
@@ -437,9 +392,10 @@ def main():
 	DEBUG = args.debug
 
 	# <preparation>
-	print("[PREPARING] Mapping DBpedia properties to SBERT vectors...")
-	initalize_dbpedia_properties_mapped_to_SBERT_vector()
-	print("[PREPARING] Done.")
+	if args.sbert:  # Prepare SBERT vectors only when SBERT will be used:
+		print("[PREPARING] Mapping DBpedia properties to SBERT vectors...")
+		initalize_dbpedia_properties_mapped_to_SBERT_vector()
+		print("[PREPARING] Done.")
 	# </preparation>
 
 	USER_INPUT_Q00000_REGEX = re.compile(r"Q\d+")
@@ -469,25 +425,26 @@ def main():
 			List[Tuple[Table, ClassificationResult,  WikidataItem]]\
 			= []  # ToDo: shorten name
 
-		for table in Table.parseCorpus(args.corpus):
+		for table_ in Table.parseCorpus(args.corpus, DEBUG=args.debug):
 			# Clear terminal:
 			clear_terminal()
 
 			# Pretty-print table:
-			print(table.pretty_print())
+			print(table_.pretty_print())
 			print("")
 
 			# Print surrounding text associated with table:
-			print(f"Surrounding text: '{table.surroundingText}'")
+			print(f"Surrounding text: '{table_.surroundingText}'")
 			print("")
 
 			# Print classification result:
 			classification_result_generic: ClassificationResult =\
-				table.classifyGenerically(\
+				table_.classifyGenerically(\
 				 useSBERT=args.sbert,\
 				 useBing=args.bing,\
 				 useWebIsAdb=args.webisadb,\
-				 printProgressTo=sys.stdout)
+				 printProgressTo=sys.stdout,\
+				 DEBUG=args.debug)
 			classification_result: List[Tuple[float, WikidataItem]] =\
 				classification_result_generic.classify(\
 				 useTextualSurroundings=not args.dont_use_textual_surroundings,\
@@ -539,14 +496,14 @@ def main():
 				user_specified_wikidata_item: WikidataItem =\
 					WikidataItem(user_answer)
 				tables_with_classif_result_and_correct_entity_type_specified_by_user\
-					.append((table,\
+					.append((table_,\
 						classification_result_generic,\
 						user_specified_wikidata_item))
 			elif USER_INPUT_NUMBER_REGEX.fullmatch(user_answer):
 				user_specified_wikidata_item: WikidataItem =\
 					classification_result[int(user_answer)-1][1]
 				tables_with_classif_result_and_correct_entity_type_specified_by_user\
-					.append((table,\
+					.append((table_,\
 						classification_result_generic,\
 						user_specified_wikidata_item))
 
@@ -583,6 +540,7 @@ def main():
 		#   * The user is shown both tables that match this narrative knowledge
 		#     and tables that don't (for a better evaluation afterwards).
 		print("This combination of parameters is not yet implemented.")  # ToDo
+		# ToDo: supply args.sbert & args.debug to fulfills_attribute_condition()
 	elif not args.stats and args.entityTypes == []:
 		# (3) Corpus supplied, entity-type-mappings requested
 		#     (evaluation feature, sort of):
@@ -595,25 +553,27 @@ def main():
 		#     (the "narrative parameters") are ignored in this case as they
 		#     make no sense when no entity types are specified.
 		decreasing_counter: int = args.stop_after_n_tables  # default: 10000
-		for table in Table.parseCorpus(args.corpus):
+		for table_ in Table.parseCorpus(args.corpus, DEBUG=args.debug):
 			classification_result: List[Tuple[float, WikidataItem]] =\
-				table.classify(\
+				table_.classify(\
 				 useSBERT=args.sbert,\
 				 useBing=args.bing,\
 				 useWebIsAdb=args.webisadb,\
-				 printProgressTo=sys.stdout,\
 				 useTextualSurroundings=not args.dont_use_textual_surroundings,\
 				 textualSurroundingsWeighting=args.textual_surroundings_weight,\
 				 useAttrNames=not args.dont_use_attr_names,\
 				 attrNamesWeighting=args.attr_names_weight,\
 				 useAttrExtensions=not args.dont_use_attr_extensions,\
 				 attrExtensionsWeighting=args.attr_extensions_weight,\
-				 normalizeApproaches=args.normalize\
+				 normalizeApproaches=args.normalize,\
+				 printProgressTo=\
+				 	sys.stdout if args.verbose else open(os.devnull,"w"),\
+				 DEBUG=args.debug
 				)
 			classification_result: List[Tuple[float, str]] =\
 				list(map(lambda tuple: (tuple[0], tuple[1].entity_id),\
 					classification_result[:args.k]))
-			print(f"{table.file_name}: {classification_result}")
+			print(f"{table_.file_name}: {classification_result}")
 			decreasing_counter -= 1
 			if decreasing_counter == 0:
 				break
@@ -631,6 +591,7 @@ def main():
 		#     (i.e. highest possible precision, lowest possible recall).
 		#     For bigger k, the recall is higher but the precision lower.
 		print("This combination of parameters is not yet implemented.")  # ToDo!
+		# ToDo: supply args.sbert & args.debug to fulfills_attribute_condition()
 
 
 if __name__ == "__main__":
