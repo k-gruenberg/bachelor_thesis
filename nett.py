@@ -571,8 +571,9 @@ def main():
 				 	sys.stdout if args.verbose else open(os.devnull,"w"),\
 				 DEBUG=args.debug
 				)
-			classification_result: List[Tuple[float, str]] =\
-				list(map(lambda tuple: (tuple[0], tuple[1].entity_id),\
+			classification_result: List[Tuple[float, str, str]] =\
+				list(map(lambda tuple: (\
+					tuple[0], tuple[1].entity_id, tuple[1].get_label()),\
 					classification_result[:args.k]))
 			print(f"{table_.file_name}: {classification_result}")
 			decreasing_counter -= 1
