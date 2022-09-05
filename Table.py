@@ -26,9 +26,6 @@ from attr_extension_to_ontology_class_web_search import\
 
 from nett_map_dbpedia_classes_to_wikidata import\
 	get_dbpedia_classes_mapped_to_wikidata
-from nett_map_dbpedia_properties_to_sbert_vectors import\
-	initalize_dbpedia_properties_mapped_to_SBERT_vector,\
-	get_dbpedia_properties_mapped_to_SBERT_vector
 
 
 def debug_dict_sorted(d: Dict[WikidataItem, float]) -> str:
@@ -66,7 +63,7 @@ class Table:
 		self.surroundingText = surroundingText  # (1) Using Textual Surroundings
 		self.headerRow = headerRow  # (2) Using Attribute Names
 		self.columns = columns  # (3) Using Attribute Extensions
-		self.file_name = "???"  # ToDo: test!
+		self.file_name = "???"
 
 	def width(self) -> int:
 		"""
@@ -98,11 +95,12 @@ class Table:
 		return max(len(col) for col in self.columns) +\
 			(1 if includingHeaderRow and self.headerRow != [] else 0)
 
-	def min_dimension(self) -> int:  # ToDo: use to filter out <3x3 tables!!
+	def min_dimension(self, includingHeaderRow=True) -> int:  # ToDo: USE to filter out <3x3 tables!!
 		"""
 		Example: when this is a 4x10 table, returns 4.
 		"""
-		return min(self.width(), self.min_height())
+		return min(self.width(),\
+			self.min_height(includingHeaderRow=includingHeaderRow))
 
 	def pretty_print(self, maxNumberOfTuples=6, maxColWidth=25,\
 		maxTotalWidth=180) -> str:
@@ -671,10 +669,94 @@ class Table:
 			# (returns a Dict[WikidataItem, int])
 
 
+	def has_co_occurring_keywords(self, keywords: List[str], requireAll=False,\
+		lookInSurroundingText=True, lookInsideTable=True) -> bool: # ToDo: USE !!!
+		"""
+		Use narrative knowledge:
+
+		Check whether this table has at least one of the keywords specified
+		in `keywords` occuring in its surrounding text or inside its content.
+
+		Set `requireAll` to True to require all keywords specified in
+		`keywords` to occur in the surrounding text or table content
+		(note that setting `requireAll` to True makes this function slower!).
+
+		Set `lookInSurroundingText` or `lookInsideTable` to False to **only**
+		look into the surrounding text or table content.
+
+		Example:
+
+		t = Table("Hello world, this is the surrounding text!",
+		["header_foo", "header_bar", "header_baz"],
+		[["1", "2", "3"], ["one", "two", "three"], ["un", "dos", "tres"]])
+
+		>>> t.has_co_occurring_keywords(["world"])
+		True
+		>>> t.has_co_occurring_keywords(["foo"])
+		True
+		>>> t.has_co_occurring_keywords(["tres"])
+		True
+		>>> 
+		>>> 
+		>>> t.has_co_occurring_keywords(["4", "3", "0"])
+		True
+		>>> t.has_co_occurring_keywords(["4", "3", "0"], requireAll=True)
+		False
+		>>> t.has_co_occurring_keywords(["2", "3", "1"], requireAll=True)
+		True
+		>>> t.has_co_occurring_keywords(["2", "3", "1", "1"], requireAll=True)
+		True
+		>>> 
+		>>> 
+		>>> t.has_co_occurring_keywords(["2", "3", "1", "1"], requireAll=True,\
+		... lookInsideTable=False)
+		False
+		>>> t.has_co_occurring_keywords(["world"], lookInSurroundingText=False)
+		False
+		>>> t.has_co_occurring_keywords(["foo"], lookInsideTable=False)
+		False
+		>>> t.has_co_occurring_keywords(["tres"], lookInsideTable=False)
+		False
+		"""
+
+		# The set of all keywords in `keywords` that were found in the
+		#   surrounding text of this table and/or its content:
+		keywords_found_set: Set[str] = set()  # a subset of `keywords`
+
+		# (1) Look in self.surroundingText:
+		if lookInSurroundingText:
+			for keyword in keywords:
+				if keyword in self.surroundingText:
+					keywords_found_set.add(keyword)
+					if not requireAll:
+						# If finding one keyword is enough, we can immediately
+						#  terminate here:
+						return True
+
+		# (2) Look inside this table, i.e. self.headerRow and self.columns:
+		if lookInsideTable:
+			for keyword in keywords:
+				if any(keyword in header\
+						for header in self.headerRow) or\
+					any(keyword in cell\
+						for column in self.columns for cell in column):
+					keywords_found_set.add(keyword)
+					if not requireAll:
+						# If finding one keyword is enough, we can immediately
+						#  terminate here:
+						return True
+		
+		if requireAll:  # All keywords in `keywords` have to be found:
+			return len(keywords_found_set) == len(set(keywords))
+		else:  # At least one keyword in `keywords` has to be found:
+			return len(keywords_found_set) > 0
+
 	def fulfills_attribute_condition(self, attribute_cond: str,\
 		useSBERT: bool = True, strictness: float = 1.0,\
 		DEBUG: bool = False) -> bool:
 		"""
+		Use narrative knowledge:
+
 		Check whether this Table
 		(a) has the attribute named in `attribute_cond`
 		    (name doesn't have to be exactly equal, SBERT/Jaccard is used for
@@ -847,7 +929,7 @@ class Table:
 	@classmethod
 	def parseJSON(cls, json_str: str, onlyRelational=False,\
 		onlyWithHeader=True, useAdditionalHeuristics=False,\
-		DEBUG=False) -> Optional[Table]: # ToDo: change to onlyRelational=True after testing!
+		DEBUG=False) -> Optional[Table]: # ToDo: set onlyRelational according to cmd line flag!!
 		"""
 		Parses a .JSON file of the format that's used in the
 		WDC Web Table Corpus (http://webdatacommons.org/webtables/2015/
@@ -1021,7 +1103,61 @@ class Table:
 				Table.parseFolder(folderPath=corpusPath, recursive=recursive,\
 					csv_dialect=csv_dialect, DEBUG=DEBUG))
 
-	@classmethod
+	@classmethod  # ToDo: USE !!!
+	def create2DStatisticalTable(cls,\
+		_lambda: Callable[[float, float], str],\
+		x_var_name: str = "x",\
+		y_var_name: str = "y",\
+		x_range: List[float] =\
+			[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],\
+		y_range: List[float] =\
+			[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],\
+		) -> Table:
+		"""
+		This function is for creating statistical tables to then print them out
+		using the pretty_print() function.
+		This has nothing to do with corpus tables directly.
+
+		# Example:
+
+		t = Table.create2DStatisticalTable(lambda x, y: "{:6.3f}".format(x-y))
+
+		>>> print(t.pretty_print())
+		      | x=0.0  | x=0.1  | x=0.2  | x=0.3  | x=0.4  | x=0.5  | ... 
+		------------------------------------------------------------------
+		y=0.0 |  0.000 |  0.100 |  0.200 |  0.300 |  0.400 |  0.500 | ... 
+		y=0.1 | -0.100 |  0.000 |  0.100 |  0.200 |  0.300 |  0.400 | ... 
+		y=0.2 | -0.200 | -0.100 |  0.000 |  0.100 |  0.200 |  0.300 | ... 
+		y=0.3 | -0.300 | -0.200 | -0.100 |  0.000 |  0.100 |  0.200 | ... 
+		y=0.4 | -0.400 | -0.300 | -0.200 | -0.100 |  0.000 |  0.100 | ... 
+		y=0.5 | -0.500 | -0.400 | -0.300 | -0.200 | -0.100 |  0.000 | ... 
+		...   | ...    | ...    | ...    | ...    | ...    | ...    | ...   
+
+		# The same example with custom variable names:
+
+		t = Table.create2DStatisticalTable(lambda x, y: "{:6.3f}".format(x-y),
+		x_var_name="w1", y_var_name="w2")
+
+		>>> print(t.pretty_print())
+		       | w1=0.0 | w1=0.1 | w1=0.2 | w1=0.3 | w1=0.4 | w1=0.5 | ...
+		-------------------------------------------------------------------
+		w2=0.0 |  0.000 |  0.100 |  0.200 |  0.300 |  0.400 |  0.500 | ...
+		w2=0.1 | -0.100 |  0.000 |  0.100 |  0.200 |  0.300 |  0.400 | ...
+		w2=0.2 | -0.200 | -0.100 |  0.000 |  0.100 |  0.200 |  0.300 | ...
+		w2=0.3 | -0.300 | -0.200 | -0.100 |  0.000 |  0.100 |  0.200 | ...
+		w2=0.4 | -0.400 | -0.300 | -0.200 | -0.100 |  0.000 |  0.100 | ...
+		w2=0.5 | -0.500 | -0.400 | -0.300 | -0.200 | -0.100 |  0.000 | ...
+		...    | ...    | ...    | ...    | ...    | ...    | ...    | ...
+		"""
+
+		return Table(\
+			surroundingText="",\
+			headerRow = [""] + [f"{x_var_name}={x}" for x in x_range],\
+			columns=[[f"{y_var_name}={y}" for y in y_range]] +\
+				[[str(_lambda(x,y)) for y in y_range] for x in x_range]
+			)
+
+	@classmethod  # ToDo: USE !!!!!!
 	def create3DStatisticalTable(cls,\
 		_lambda: Callable[[float, float, float], str],\
 		x_var_name: str = "x",\
@@ -1041,16 +1177,42 @@ class Table:
 
 		Example:
 
-		            w1=0.0 w1=0.1 w1=0.2 ... w1=1.0
-		k=1 w2=0.0  foo    foo    foo    ... foo
-		k=1 w2=0.1  bar    bar    bar    ... bar
-		k=1 w2=0.2  baz    baz    baz    ... baz
-		...
+		t = Table.create3DStatisticalTable(lambda w1, k, w2:
+			"{:6.3f}".format(k*(w1-w2)),
+			x_var_name="w1",
+			left_y_var_name="k",
+			right_y_var_name="w2",
+			x_range=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5],
+			left_y_range = [1,2,3],
+			right_y_range = [0.0, 0.1, 0.2, 0.3])
+		
+		>>> print(t.pretty_print(3*4))
+		    |        | w1=0.0 | w1=0.1 | w1=0.2 | w1=0.3 | w1=0.4 | w1=0.5
+		------------------------------------------------------------------
+		k=1 | w2=0.0 |  0.000 |  0.100 |  0.200 |  0.300 |  0.400 |  0.500
+		k=1 | w2=0.1 | -0.100 |  0.000 |  0.100 |  0.200 |  0.300 |  0.400
+		k=1 | w2=0.2 | -0.200 | -0.100 |  0.000 |  0.100 |  0.200 |  0.300
+		k=1 | w2=0.3 | -0.300 | -0.200 | -0.100 |  0.000 |  0.100 |  0.200
+		k=2 | w2=0.0 |  0.000 |  0.200 |  0.400 |  0.600 |  0.800 |  1.000
+		k=2 | w2=0.1 | -0.200 |  0.000 |  0.200 |  0.400 |  0.600 |  0.800
+		k=2 | w2=0.2 | -0.400 | -0.200 |  0.000 |  0.200 |  0.400 |  0.600
+		k=2 | w2=0.3 | -0.600 | -0.400 | -0.200 |  0.000 |  0.200 |  0.400
+		k=3 | w2=0.0 |  0.000 |  0.300 |  0.600 |  0.900 |  1.200 |  1.500
+		k=3 | w2=0.1 | -0.300 |  0.000 |  0.300 |  0.600 |  0.900 |  1.200
+		k=3 | w2=0.2 | -0.600 | -0.300 |  0.000 |  0.300 |  0.600 |  0.900
+		k=3 | w2=0.3 | -0.900 | -0.600 | -0.300 |  0.000 |  0.300 |  0.600
 		"""
 
 		return Table(\
 			surroundingText="",\
 			headerRow = ["", ""] + [f"{x_var_name}={x}" for x in x_range],\
-			columns=None  # ToDo!!!!!
+			columns=[[f"{left_y_var_name}={y}" for y in left_y_range\
+						for i in range(len(right_y_range))]] +\
+				[[f"{right_y_var_name}={y}"\
+						for y in right_y_range] * len(left_y_range)] +\
+				[[str(_lambda(x, left_y, right_y))\
+					for left_y in left_y_range\
+					for right_y in right_y_range]\
+					for x in x_range]
 			)
 
