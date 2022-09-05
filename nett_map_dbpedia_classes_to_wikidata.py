@@ -7,7 +7,7 @@ from WikidataItem import WikidataItem
 # 97 out of 283 DBpedia classes could be mapped to Wikidata entries
 #   automatically using the code found in main() below:
 dbpediaClassesMappedToWikidata: Dict[str, str] =\
-{
+{  # ToDo: map to human (Q5) !!!!! !!!!! !!!!! !!!!! !!!!!
 	'Legislature': 'Q11204',
 	'GrandPrix': '',
 	'Athlete': '',

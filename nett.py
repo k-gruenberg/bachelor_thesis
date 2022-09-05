@@ -51,7 +51,7 @@ from attr_extension_to_ontology_class_web_search import\
 from nett_map_dbpedia_classes_to_wikidata import\
 	get_dbpedia_classes_mapped_to_wikidata
 from nett_map_dbpedia_properties_to_sbert_vectors import\
-	initialize_dbpedia_properties_mapped_to_SBERT_vector
+	prepare_dbpedia_properties_mapped_to_SBERT_vector
 
 
 def clear_terminal():
@@ -474,7 +474,7 @@ def main():
 	#   preparation is not deactivated:
 	if args.sbert and not args.dont_prepare_sbert_vectors:
 		print("[PREPARING] Mapping DBpedia properties to SBERT vectors...")
-		initialize_dbpedia_properties_mapped_to_SBERT_vector()
+		prepare_dbpedia_properties_mapped_to_SBERT_vector()
 		print("[PREPARING] Done.")
 	# </preparation>
 

@@ -64,12 +64,7 @@ from typing import Dict, List
 import xml.etree.ElementTree as ET
 import argparse
 
-# ===== SBERT variables: =====
-# Global variables necessary when the --sbert parameter is used:
-model = None
-sbert_encodings = {}  # each attribute name mapped to a vector (by SBERT)
-
-
+from nett_map_dbpedia_properties_to_sbert_vectors import sbert_similarity
 
 def initialize_sbert_model(VERBOSE: bool):
 	global model
@@ -101,25 +96,8 @@ def similarity(attrName1: str, attrName2: str,\
 		aUnionB = a.union(b)
 		return len(aIntersectB) / len(aUnionB)
 	else:  # Use SBERT('s cosine similarity) instead of Jaccard similarity:
-		from sentence_transformers import util
-		initialize_sbert_model(VERBOSE=False)
-		# *** For code below cf.
-		#     https://www.sbert.net/docs/quickstart.html ***	
-		# Sentences are encoded by calling model.encode():
-		emb1 = sbert_encodings[attrName1]\
-			if attrName1 in sbert_encodings\
-			else sbert_encodings.setdefault(attrName1,\
-				model.encode(attrName1))  # ToDo: serialize and cache !!!
-		emb2 = sbert_encodings[attrName2]\
-			if attrName2 in sbert_encodings\
-			else sbert_encodings.setdefault(attrName2,\
-				model.encode(attrName2))
-		# Compute Cosine-Similarity:
-		cos_sim = util.cos_sim(emb1, emb2)
-		return float(cos_sim)
-
-
-
+		return sbert_similarity(attrName1, attrName2)
+	
 # ===== DBpedia: =====
 
 # Each DBpedia class mapped to its properties:
