@@ -29,6 +29,7 @@ import csv  # https://docs.python.org/3/library/csv.html
 import tarfile  # https://docs.python.org/3/library/tarfile.html
 import tempfile  # https://docs.python.org/3/library/tempfile.html
 import math
+from datetime import datetime
 
 from numpy import transpose
 
@@ -50,10 +51,7 @@ from attr_extension_to_ontology_class_web_search import\
 from nett_map_dbpedia_classes_to_wikidata import\
 	get_dbpedia_classes_mapped_to_wikidata
 from nett_map_dbpedia_properties_to_sbert_vectors import\
-	initalize_dbpedia_properties_mapped_to_SBERT_vector,\
-	get_dbpedia_properties_mapped_to_SBERT_vector
-
-DEBUG = True
+	initialize_dbpedia_properties_mapped_to_SBERT_vector
 
 
 def clear_terminal():
@@ -245,7 +243,7 @@ def main():
 	# (Advanced) ToDo: if all weights are set to 0.0 try out ("learn") which
 	#   weights lead to the best results!
 
-	parser.add_argument('--csv-delimiter',
+	parser.add_argument('--csv-delimiter',  # ToDo: csv_dialect
     	type=str,
     	default='',
     	help="""
@@ -257,7 +255,7 @@ def main():
     	""",
     	metavar='CSV_DELIMITER')
 
-	parser.add_argument('--csv-quotechar',
+	parser.add_argument('--csv-quotechar',  # ToDo: csv_dialect
     	type=str,
     	default='',
     	help="""
@@ -320,6 +318,14 @@ def main():
 		or `python3 -m pip install -U sentence-transformers` first!
 		""")
 
+	parser.add_argument('--dont-prepare-sbert-vectors',  # ToDo !!!!!
+		action='store_true',
+		help="""Only makes sense in conjunction with the --sbert flag.
+		Do not prepare the SBERT vectors for all DBpedia property
+		names in advance. This should provide a speed-up for small corpora.
+		It is highly recommended in manual annotation mode however to NOT set
+		this flag and let the SBERT vectors be prepared instead!""")
+
 	# Narratives = "Taking Advantage of the Knowledge in the Narrative":
 
 	parser.add_argument('--co-occurring-keywords',
@@ -344,7 +350,7 @@ def main():
 
 	parser.add_argument('--attribute-cond',
     	type=str,
-    	default='',
+    	default='',  # ToDo: '' correct as default for nargs='*' ?!
     	help="""
     	List one or multiple attribute conditions of the form
     	"[attribute name] [<=,>=,<,>,==,!=,in,not in]
@@ -387,14 +393,88 @@ def main():
     	Default value: 10000""",
     	metavar='N')
 
+	parser.add_argument('--file-extension-csv',  # ToDo: TEST !!!
+    	type=str,
+    	help="""
+    	The extension(s) by which to recognize CSV files.
+    	Default: '.csv'
+    	""",
+    	nargs='*',
+    	metavar='EXTENSION_CSV')
+
+	parser.add_argument('--file-extension-xlsx',  # ToDo: TEST !!!
+    	type=str,
+    	help="""
+    	The extension(s) by which to recognize Excel files.
+    	Default: '.xlsx' and '.xls'
+    	""",
+    	nargs='*',
+    	metavar='EXTENSION_XLSX')
+
+		parser.add_argument('--file-extension-json',  # ToDo: TEST !!!
+    	type=str,
+    	help="""
+    	The extension(s) by which to recognize JSON files.
+    	Default: '.json'
+    	""",
+    	nargs='*',
+    	metavar='EXTENSION_JSON')
+
+	parser.add_argument('--file-extension-tar',  # ToDo: TEST !!!
+    	type=str,
+    	help="""
+    	The extension(s) by which to recognize TAR archives.
+    	Default: '.tar'
+    	""",
+    	nargs='*',
+    	metavar='EXTENSION_TAR')
+
+	parser.add_argument('--min-table-size',  # ToDo: TEST !!!
+    	type=int,
+    	default=3,
+    	help="""
+    	The minimum size a table from the input corpus must have in order to
+    	be considered. 3 by default, i.e. all tables smaller than 3x3 are
+    	rigorously filtered out (header included).
+    	The smallest dimension is considered, meaning that a 2x10 table will
+    	also be filtered out!
+    	Setting this value to 1 essentially deactivates this filter.
+    	""",
+    	metavar='MIN_TABLE_SIZE')
+
+	parser.add_argument('--relational-json-tables-only',  # ToDo: TEST !!!
+		action='store_true',
+		help="""
+		Only consider .json Tables with "tableType" set to "RELATION".
+		Note that this may also filter out relational tables falsely classified
+		as non-relational by the (WDC) corpus.
+		""")
+
+	parser.add_argument('--annotations-file',  # ToDo: TEST !!!
+    	type=str,
+    	default='',
+    	help="""
+    	Import your manual annotations again.
+    	When you previously exported your annotations as a .json file,
+    	you may re-import it using this argument to avoid having to manually
+    	reclassify all those tables again.
+    	""",
+    	metavar='ANNOTATIONS_JSON_FILE')
+
 	args = parser.parse_args()
 
-	DEBUG = args.debug
+	file_extensions: FileExtensions = FileExtensions(\
+		csv_extensions = args.file_extension_csv,\
+		xlsx_extensions = args.file_extension_xlsx,\
+		json_extensions = args.file_extension_json,\
+		tar_extensions = args.file_extension_tar)
 
 	# <preparation>
-	if args.sbert:  # Prepare SBERT vectors only when SBERT will be used:
+	# Prepare SBERT vectors only when SBERT will be used and only if 
+	#   preparation is not deactivated:
+	if args.sbert and not args.dont_prepare_sbert_vectors:
 		print("[PREPARING] Mapping DBpedia properties to SBERT vectors...")
-		initalize_dbpedia_properties_mapped_to_SBERT_vector()
+		initialize_dbpedia_properties_mapped_to_SBERT_vector()
 		print("[PREPARING] Done.")
 	# </preparation>
 
@@ -425,7 +505,37 @@ def main():
 			List[Tuple[Table, ClassificationResult,  WikidataItem]]\
 			= []  # ToDo: shorten name
 
-		for table_ in Table.parseCorpus(args.corpus, DEBUG=args.debug):
+		# The user specified a file containing annotations previously made:
+		if args.annotations_file != "":
+			with open(args.annotations_file, "r") as f:
+				parsed_annotations_file: List[Tuple[dict, dict, dict]] =\
+					json.loads(f.read())
+				# Turn the JSON dictionaries into Python classes again:
+				tables_with_classif_result_and_correct_entity_type_specified_by_user\
+					= [(Table(surroundingText=t["surroundingText"],\
+								headerRow=t["headerRow"],\
+								columns=t["columns"]),\
+						ClassificationResult(resUsingTextualSurroundings=\
+							cr["resUsingTextualSurroundings"],\
+							resUsingAttrNames=cr["resUsingAttrNames"],\
+							resUsingAttrExtensions=\
+							cr["resUsingAttrExtensions"]),\
+						WikidataItem(entity_id=wi["entity_id"],\
+							label=wi["label"],\
+							description=wi["description"]))\
+					for (t, cr, wi) in parsed_annotations_file]
+
+		for table_ in Table.parseCorpus(args.corpus,\
+			file_extensions=file_extensions, onlyRelationalJSON=\
+			args.relational_json_tables_only,\
+			min_table_size=args.min_table_size, DEBUG=args.debug):
+			# Skip table if it was already annotated (this only happens
+			#   when args.annotations_file != ""):
+			if args.annotations_file != "" and table_ in [t for (t, cr, wi) in\
+				tables_with_classif_result_and_correct_entity_type_specified_by_user\
+				]:
+				continue  # Skip table, it's already annotated.
+
 			# Clear terminal:
 			clear_terminal()
 
@@ -491,7 +601,7 @@ def main():
 				and not USER_INPUT_Q00000_REGEX.fullmatch(user_answer)\
 				and not USER_INPUT_NUMBER_REGEX.fullmatch(user_answer):
 				# Keep asking for input as long as user answer is invalid:
-				print("ENTER > ", flush=True)
+				print("ENTER > ", end="", flush=True)
 				user_answer: str = input()
 
 			# User gave a valid answer:
@@ -513,6 +623,21 @@ def main():
 					.append((table_,\
 						classification_result_generic,\
 						user_specified_wikidata_item))
+
+		clear_terminal()
+		annotations_json_file_path: str =\
+			"~/annotations_" + datetime.now().strftime("%d_%m_%Y_%H_%M_%S") +\
+			".json"  # e.g. "annotations_01_01_2022_12_00_00.json"
+		print("Do you wish to export your annotations to " +\
+			f"{annotations_json_file_path}? [Y/n] > ",\
+			end="", flush=True)
+		user_answer: str = input()
+		if user_answer.lower() != "n":
+			# Export user annotations as a JSON file:
+			with open(os.path.expanduser(annotations_json_file_path), 'x') as f:
+    			f.write(json.dumps(\
+    				tables_with_classif_result_and_correct_entity_type_specified_by_user\
+    				, default=vars))
 
 		# The set of all (correct) entity types occuring in the given corpus:
 		all_correct_entity_types_annotated: Set[WikidataItem] =\
@@ -560,7 +685,10 @@ def main():
 		#     (the "narrative parameters") are ignored in this case as they
 		#     make no sense when no entity types are specified.
 		decreasing_counter: int = args.stop_after_n_tables  # default: 10000
-		for table_ in Table.parseCorpus(args.corpus, DEBUG=args.debug):
+		for table_ in Table.parseCorpus(args.corpus, file_extensions=\
+			file_extensions, onlyRelationalJSON=\
+			args.relational_json_tables_only,\
+			min_table_size=args.min_table_size, DEBUG=args.debug):
 			classification_result: List[Tuple[float, WikidataItem]] =\
 				table_.classify(\
 				 useSBERT=args.sbert,\

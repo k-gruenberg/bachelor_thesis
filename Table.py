@@ -65,6 +65,18 @@ class Table:
 		self.columns = columns  # (3) Using Attribute Extensions
 		self.file_name = "???"
 
+	def __eq__(self, other):
+        if isinstance(other, Table):
+        	# Equality check should only matter when having parsed a file with
+			#   existing annotations (--annotations-file parameter).
+			# In that case, the tables should be exactly equal, so we can be
+			#   this strict:
+            return self.surroundingText == other.surroundingText\
+            	and self.headerRow == other.headerRow\
+            	and self.columns == other.columns\
+            	and self.file_name == other.file_name
+        return False
+
 	def width(self) -> int:
 		"""
 		Returns the width of this Table, i.e. the number of columns.
@@ -1020,7 +1032,8 @@ class Table:
 			return None
 
 	@classmethod
-	def parseTAR(cls, tarPath: str, csv_dialect: Dialect = None, DEBUG=False)\
+	def parseTAR(cls, tarPath: str, file_extensions: FileExtensions,\
+		csv_dialect: Dialect = None, onlyRelationalJSON=False, DEBUG=False)\
 		-> Iterator[Table]:
 		# cf. https://docs.python.org/3/library/tarfile.html
 		tar = tarfile.open(tarPath)
@@ -1028,15 +1041,19 @@ class Table:
 			# Skip directories and hidden files in the TAR archive:
 			if tarinfo.isfile() and tarinfo.name[:1] != ".":
 				table: Table = None
-				if os.path.splitext(tarinfo.name)[1] == ".json":
+				if os.path.splitext(tarinfo.name)[1]\
+					in file_extensions.JSON_extensions:
 					table = Table.parseJSON(\
 						json_str=tar.extractfile(tarinfo).read(),\
+						onlyRelational=onlyRelationalJSON,\
 						DEBUG=DEBUG)
-				elif os.path.splitext(tarinfo.name)[1] == ".csv":
+				elif os.path.splitext(tarinfo.name)[1]\
+					in file_extensions.CSV_extensions:
 					table = Table.parseCSV(\
 						csv_str=tar.extractfile(tarinfo).read(),\
 						dialect=csv_dialect)
-				elif os.path.splitext(tarinfo.name)[1] in [".xlsx", ".xls"]:
+				elif os.path.splitext(tarinfo.name)[1]\
+					in file_extensions.XLSX_extensions:
 					# Because parseXLSX() expects a path, we have to
 					#   temporarily extract the .xlsx file to the file system:
 					with tempfile.NamedTemporaryFile() as temp_path:
@@ -1050,31 +1067,33 @@ class Table:
 
 
 	@classmethod
-	def parseFolder(cls, folderPath: str, recursive=True,\
-		csv_dialect: Dialect = None, DEBUG=False) -> Iterator[Table]:
+	def parseFolder(cls, folderPath: str, file_extensions: FileExtensions,\
+		recursive=True, csv_dialect: Dialect = None, onlyRelationalJSON=False,\
+		DEBUG=False) -> Iterator[Table]:
 		# Sorting is important such that the order is predictable to the user:
 		for folder_item in sorted(os.listdir(folderPath)):
 			folder_item = os.path.join(folderPath, folder_item)
 			if os.path.isfile(folder_item):
 				file_name, file_extension = os.path.splitext(folder_item)
-				if file_extension == ".csv":
+				if file_extension in file_extensions.CSV_extensions:
 					with open(folder_item, 'r', newline='') as csv_file:
 						# (newline='' is required by the CSV library)
 						table = Table.parseCSV(csv_str=csv_file.read(),\
 							dialect=csv_dialect)
 						if table is not None: table.file_name = folder_item
 						yield table
-				elif file_extension in [".xlsx", ".xls"]:
+				elif file_extension in file_extensions.XLSX_extensions:
 					table = Table.parseXLSX(xlsxPath=folder_item)
 					if table is not None: table.file_name = folder_item
 					yield table
-				elif file_extension == ".json":
+				elif file_extension in file_extensions.JSON_extensions:
 					with open(folder_item, 'r') as json_file:
 						table = Table.parseJSON(json_str=json_file.read(),\
+							onlyRelational=onlyRelationalJSON,\
 							DEBUG=DEBUG)
 						if table is not None: table.file_name = folder_item
 						yield table
-				elif file_extension == ".tar":
+				elif file_extension in file_extensions.TAR_extensions:
 					for table in Table.parseTAR(tarPath=folder_item,\
 						DEBUG=DEBUG):
 						yield table
@@ -1086,21 +1105,29 @@ class Table:
 			# When the item is a directory and recursive=False, skip it.
 
 	@classmethod
-	def parseCorpus(cls, corpusPath: str, recursive=True,\
-		yieldNones=False, csv_dialect: Dialect = None,\
+	def parseCorpus(cls, corpusPath: str, file_extensions: FileExtensions,\
+		recursive=True, yieldNones=False, csv_dialect: Dialect = None,\
+		onlyRelationalJSON=False, min_table_size: int = 1,\
 		DEBUG=False) -> Iterator[Table]:
+		table_filter: Callable[Table, bool] =\
+			#lambda table: yieldNones or table is not None # (yieldNones only)
+			lambda table: (yieldNones or table is not None)\
+				and (table is None or table.min_dimension() >= min_table_size)
+
 		if os.path.isfile(corpusPath):
 			file_name, file_extension = os.path.splitext(corpusPath)
-			if file_extension == ".tar":
-				return filter(lambda table: yieldNones or table is not None,\
+			if file_extension in file_extensions.TAR_extensions:
+				return filter(table_filter,\
 					Table.parseTAR(tarPath=corpusPath,\
+						file_extensions=file_extensions,\
 						csv_dialect=csv_dialect, DEBUG=DEBUG))
 			else:
 				sys.exit("Error: --corpus supplied either has to be a "+\
 					" directory or a .TAR file.")
 		else:
-			return filter(lambda table: yieldNones or table is not None,\
-				Table.parseFolder(folderPath=corpusPath, recursive=recursive,\
+			return filter(table_filter,\
+				Table.parseFolder(folderPath=corpusPath,\
+					file_extensions=file_extensions, recursive=recursive,\
 					csv_dialect=csv_dialect, DEBUG=DEBUG))
 
 	@classmethod  # ToDo: USE !!!
