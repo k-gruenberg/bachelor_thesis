@@ -19,7 +19,8 @@ from ClassificationResult import ClassificationResult
 #     #3 "Using Attribute Extensions"
 # from the respective Python files:
 from filter_nouns_with_heuristics import filter_nouns_with_heuristics_as_dict
-from attr_names_to_ontology_class import attr_names_to_ontology_class
+from attr_names_to_ontology_class import\
+	attr_names_to_ontology_class, similarity
 from attr_extension_to_ontology_class import attr_extension_to_ontology_class
 from attr_extension_to_ontology_class_web_search import\
 	attr_extension_to_ontology_class_web_search_list_onto_as_dict
@@ -682,7 +683,8 @@ class Table:
 
 
 	def has_co_occurring_keywords(self, keywords: List[str], requireAll=False,\
-		lookInSurroundingText=True, lookInsideTable=True) -> bool: # ToDo: USE !!!
+		lookInSurroundingText=True, lookInsideTable=True, caseSensitive=False)\
+	-> bool:
 		"""
 		Use narrative knowledge:
 
@@ -731,6 +733,16 @@ class Table:
 		False
 		"""
 
+		self_surroundingText: str = self.surroundingText
+		self_headerRow: List[str] = self.headerRow
+		self_columns: List[List[str]] = self.columns
+		if not caseSensitive:  # case-insensitive mode (default):
+			keywords = [keyword.lower() for keyword in keywords]
+			self_surroundingText = self_surroundingText.lower()
+			self_headerRow = [header.lower() for header in self_headerRow]
+			self_columns =\
+				[[cell.lower() for cell in column] for column in self_columns]
+
 		# The set of all keywords in `keywords` that were found in the
 		#   surrounding text of this table and/or its content:
 		keywords_found_set: Set[str] = set()  # a subset of `keywords`
@@ -738,7 +750,7 @@ class Table:
 		# (1) Look in self.surroundingText:
 		if lookInSurroundingText:
 			for keyword in keywords:
-				if keyword in self.surroundingText:
+				if keyword in self_surroundingText:
 					keywords_found_set.add(keyword)
 					if not requireAll:
 						# If finding one keyword is enough, we can immediately
@@ -749,9 +761,9 @@ class Table:
 		if lookInsideTable:
 			for keyword in keywords:
 				if any(keyword in header\
-						for header in self.headerRow) or\
+						for header in self_headerRow) or\
 					any(keyword in cell\
-						for column in self.columns for cell in column):
+						for column in self_columns for cell in column):
 					keywords_found_set.add(keyword)
 					if not requireAll:
 						# If finding one keyword is enough, we can immediately
@@ -765,7 +777,7 @@ class Table:
 
 	def fulfills_attribute_condition(self, attribute_cond: str,\
 		useSBERT: bool = True, strictness: float = 1.0,\
-		DEBUG: bool = False) -> bool:
+		DEBUG: bool = False) -> bool:  # ToDo: improve!! ("population > 10")
 		"""
 		Use narrative knowledge:
 
@@ -805,8 +817,8 @@ class Table:
 			return False
 
 		# (0) The similarity function used:
-		def similarity(attrName1: str, attrName2: str) -> float:
-			return attr_names_to_ontology_class.similarity(\
+		def similarity_function(attrName1: str, attrName2: str) -> float:
+			return similarity(\
 				attrName1=attrName1, attrName2=attrName2, USE_SBERT=useSBERT)
 
 		# (1) Extract the attribute name from the given attribute condition:
@@ -845,7 +857,7 @@ class Table:
 
 		# (4) Do the first (a) matching:
 		a_matching: Dict[str, float] = {column_name:\
-			similarity(column_name, attribute_name)\
+			similarity_function(column_name, attribute_name)\
 			for column_name in self.headerRow}
 		if DEBUG: print(f"[DEBUG] first (a) matching: {a_matching}")
 

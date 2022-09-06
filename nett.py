@@ -3,17 +3,19 @@ NETT = Narrative Entity Type(s) to Tables
 
 This program takes as input:
 * a corpus of relational tables, either in CSV (or Excel)
-  or in a specific JSON format
+  or in a specific JSON format, the one used by the WDC Web Table Corpus
   (the files are allowed to be inside one or multiple .tar archives);
-  when no corpus is specified a small default corpus is being used
-  => note that all tables smaller than 3x3 are rigorously filtered out
+  => you may use the small 'test_corpus' in this repository for testing
+  => note that all tables smaller than 3x3 are rigorously filtered out;
+     this can be changed using the --min-table-size argument
 * optionally: a list of one or more entity types occuring in the narrative that
     is to be grounded (ideally as Wikidata ID's or DBpedia class names,
     otherwise as literal strings then being mapped to Wikidata ID's)
     => you may also supply ids/names of entities instead of entity types,
        in that case they are simply resolved to the entity type they're an
        instance of and the output tables restricted to those containing a
-       string equal or similar to that entity's name # ToDo: this feature!
+       string equal to that entity's name (more specifially: the name of the
+       entity is added to the --co-occurring-keywords)!
 * various settings as parameters, see --help, also for more details
   on the 4 different modes of NETT!
 """
@@ -94,10 +96,11 @@ def main():
 		with focus on the supplied entity types (specifying additional
 		narrative knowledge is possible)
 		(3) no ENTITY_TYPE(s) supplied => classify all tables in given corpus
-		(but max. 10,000 tables)
+		(and possibly use narrative knowledge, although this makes much more
+		sense in mode (4).)
 		(4) ENTITY_TYPE(s) supplied => main productive mode: search corpus
-        for tables based on given entity/-ies
-        (and possibly narrative knowledge)!!
+        for tables containing tuples of the given entity type(s)
+        (and possibly use narrative knowledge)!!
 		""")
 	# ToDo: list a few example calls in this description!!
 
@@ -273,8 +276,8 @@ def main():
 		help="""When this flag is set, the tables in the output are sorted by
 		how well they score. Beware that lazy output is lost which means that
 		this flag should not be used together with a very big corpus!
-		This flag only has an effect when in "productive mode" (4), i.e. when
-		entity types are supplied and --stats is *not* set.""")
+		This flag only has an effect when in modes (3) and (4), i.e. when
+		--stats is *not* set. It makes the most sense in mode (4) however.""")
 
 	parser.add_argument('--bing',
 		action='store_true',
@@ -327,6 +330,9 @@ def main():
     	List other words occurring in the narrative. The results are then
     	limited to those tables where at least one of these words occurs in
     	either the surrounding text of the table or inside the table.
+    	This will have the side benefit of speeding up the search for tables
+    	as tables without any of those keywords can be thrown out immediately,
+    	without the need to classify them.
     	""",
     	nargs='*',
     	metavar='KEYWORD')
@@ -339,6 +345,10 @@ def main():
 		of or inside each table.
 		(By default, one keyword occuring is regarded as being sufficient.)
 		""")
+
+	parser.add_argument('--co-occurring-keywords-case-sensitive',
+		action='store_true',
+		help="Activate case-sensitivity for --co-occurring-keywords.")
 
 	parser.add_argument('--attribute-cond',
     	type=str,
@@ -377,11 +387,12 @@ def main():
 
 	parser.add_argument('--stop-after-n-tables',
     	type=int,
-    	default=10000,
-    	help="""Stop after (at most) N tables.
-    	This only has an effect in mode (3),
-    	i.e. when neither --stats is specified nor any entity types.
-    	Default value: 10000""",
+    	default=-1,
+    	help="""
+    	Stop after having gone through (at most) N tables in the corpus.
+    	By default, this is set to -1 which means that it is deactivated.
+    	When activated, this only has an effect in modes (3) and (4),
+    	i.e. when the --stats flag is not specified.""",
     	metavar='N')
 
 	parser.add_argument('--file-extension-csv',
@@ -454,11 +465,69 @@ def main():
 
 	args = parser.parse_args()
 
+	USER_INPUT_Q00000_REGEX = re.compile(r"Q\d+")
+	USER_INPUT_NUMBER_REGEX = re.compile(r"\d+")
+
 	file_extensions: FileExtensions = FileExtensions(\
 		CSV_extensions = args.file_extension_csv,\
 		XLSX_extensions = args.file_extension_xlsx,\
 		JSON_extensions = args.file_extension_json,\
 		TAR_extensions = args.file_extension_tar)
+
+	# Parse the ENTITY_TYPE string(s) specified by the user as command line
+	#   arguments into a List of WikidataItem's:
+	entity_types: List[WikidataItem] = []
+	for entityType in args.entityTypes:
+		# (1) Parse a string like "Q00000" or "vehicle" to a WikidataItem:
+		wikidata_item: WikidataItem = None
+		if USER_INPUT_Q00000_REGEX.fullmatch(entityType):  # "Q00000" string:
+			wikidata_item = WikidataItem(entityType)
+		else:  # A textual string like "vehicle" for example:
+			# Search Wikidata with that string and present the user with
+			#   the possible WikidataItem canidates, to select the right one:
+			wikidata_item_candidates: List[WikidataItem] =\
+				WikidataItem.get_items_matching_search_string(entityType)
+			print("Which of the following Wikidata items best matches " +\
+				f"'{entityType}'?")
+			for idx, wi in enumerate(wikidata_item_candidates):
+				print(f"({idx}) {wi.entity_id} ({wi.get_label()})")
+			print("ENTER NUMBER > ", end="", flush=True)
+			user_chosen_index: int = int(input())
+			wikidata_item = wikidata_item_candidates[user_chosen_index]
+		# (2) When the wikidata_item is an instance of something, use its
+		#     class, when its a class in and of itself (i.e. it is a subclass
+		#     of another class) use itself, when it's neither, print an error:
+		# https://www.wikidata.org/wiki/Property:P31 ("instance of"):
+		instance_of_property: List[str] = wikidata_item.get_property("P31")
+		# https://www.wikidata.org/wiki/Property:P279 ("subclass of"):
+		subclass_of_property: List[str] = wikidata_item.get_property("P279")
+		# It's important to check the subclass-of property first, otherwise
+		#   Q5 (human) will be mapped to Q55983715 (organisms known by a
+		#   particular common name)...:
+		if subclass_of_property is not None and subclass_of_property != []:
+			# The WikidataItem is a subclass of something:
+			entity_types.append(wikidata_item)
+		elif instance_of_property is not None and instance_of_property != []:
+			# The WikidataItem is an instance of something:
+			class_: WikidataItem = WikidataItem(instance_of_property[0])
+			print(f"[INFO] {wikidata_item.entity_id} is an instance of " +\
+				f"{class_.entity_id} ({class_.get_label()}), NETT will be " +\
+				f"looking for tables containing {class_.entity_id} tuples, " +\
+				f"restricted to those containing the word '{entityType}' in " +\
+				"itself or its surrounding text...")
+			entity_types.append(class_)
+			# Important: When the user specified an entity instead of an entity
+			#            type, don't just map the entity to its entity type
+			#            but also add the name of the entity to the
+			#            --co-occurring-keywords such that only tables
+			#            (probably) containing that entity are returned!
+			if args.co_occurring_keywords is None:
+				args.co_occurring_keywords = []
+			args.co_occurring_keywords.append(entityType)
+		else:
+			print(f"[ERROR] '{entityType}', mapped to the WikidataItem " +\
+				f"{wikidata_item}, is neither an instance nor a subclass " +\
+				"of something, skipping it!", file=sys.stderr)
 
 	# <preparation>
 	# Prepare SBERT vectors only when SBERT will be used and only if 
@@ -470,10 +539,7 @@ def main():
 		print("[PREPARING] Done.")
 	# </preparation>
 
-	USER_INPUT_Q00000_REGEX = re.compile(r"Q\d+")
-	USER_INPUT_NUMBER_REGEX = re.compile(r"\d+")
-
-	if args.stats and args.entityTypes == []:
+	if args.stats and entity_types == []:
 		# (1) Corpus supplied, statistics requested (evaluation feature):
 		#   * Program has to ask user (with the help of pretty_print())
 		#     for every table which mapping is correct.
@@ -643,7 +709,7 @@ def main():
 			tables_with_classif_result_and_correct_entity_type_specified_by_user=\
 			tables_with_classif_result_and_correct_entity_type_specified_by_user,\
 			stats_max_k=args.stats_max_k)		
-	elif args.stats and args.entityTypes != []:
+	elif args.stats and entity_types != []:
 		# (2) Corpus and entity types supplied, statistics requested
 		#     (evaluation feature):
 		#   * Like the case (1) but this time, looking for one (or multiple)
@@ -664,8 +730,9 @@ def main():
 		#   * The user is shown both tables that match this narrative knowledge
 		#     and tables that don't (for a better evaluation afterwards).
 		print("This combination of parameters is not yet implemented.")  # ToDo
-		# ToDo: supply args.sbert & args.debug to fulfills_attribute_condition()
-	elif not args.stats and args.entityTypes == []:
+		# ToDo: supply args.sbert & args.debug & args.attribute_cond_strictness
+		#       to fulfills_attribute_condition()
+	elif not args.stats:
 		# (3) Corpus supplied, entity-type-mappings requested
 		#     (evaluation feature, sort of):
 		#   * Map all tables of the given corpus to the top-k entity types.
@@ -674,13 +741,76 @@ def main():
 		#   * For very big corpora, only the first 10,000 annotatable
 		#     relational tables are considered. Then, the program terminates.
 		#   * The --co-occurring-keywords and --attribute-cond parameters
-		#     (the "narrative parameters") are ignored in this case as they
-		#     make no sense when no entity types are specified.
-		decreasing_counter: int = args.stop_after_n_tables  # default: 10000
+		#     (the "narrative parameters") may be used but they make much more
+		#     sense in mode (4)!
+		#
+		# (4) Corpus and entity types supplied, tables requested
+		#     (the main productive feature!!!):
+		#   * Search the corpus for tables whose tuples represent one
+		#     of the given entity types, possibly making use of the narrative
+		#     knowledge provided with the --co-occurring-keywords and
+		#     --attribute-cond parameters (the "narrative parameters").
+		#   * Depending on your requirements for precision and recall, you may
+		#     want to change the -k parameter to a value other than 1.
+		#     With k=1, only tables are retured for which the entity type
+		#     searched for was the best match
+		#     (i.e. highest possible precision, lowest possible recall).
+		#     For bigger k, the recall is higher but the precision lower.
+
+		# Keep a decreasing counter, in case the --stop-after-n-tables argument
+		#   is set to a non-negative value:
+		decreasing_counter: int = args.stop_after_n_tables
+
+		# This list is only populated when the --ordered flag is set:
+		unordered_results: List[Tuple[str, List[Tuple[float, str, str]]]] = []
+		# (The 1st tuple item is the file name,
+		#  the 2nd one the classification result:
+		#  a list of (score, Wikidata ID, Wikidata label) triples.)
+
+		# For each Table in the corpus specified via the --corpus argument...:
 		for table_ in Table.parseCorpus(args.corpus, file_extensions=\
 			file_extensions, onlyRelationalJSON=\
 			args.relational_json_tables_only,\
 			min_table_size=args.min_table_size, DEBUG=args.debug):
+
+			# Stop iterating over the corpus after N tables, where N is
+			#   specified via the --stop-after-n-tables flag.
+			# If N is set to a negative value (-1 by default actually),
+			#   the following check will always be false, i.e. we will never
+			#   stop iterating before the corpus has been parsed completely:
+			if decreasing_counter == 0:
+				break
+			decreasing_counter -= 1
+
+			# ...check if it satisfies the narrative conditions specified
+			#    using the --co-occurring-keywords and --attribute-cond
+			#    parameters, when specified, ...:
+			# Do the --co-occurring-keywords check first as it should be faster
+			#   (only string search, no computation of similarity metrics
+			#    needed as with --attribute-cond):
+			if args.co_occurring_keywords is not None\
+				and args.co_occurring_keywords != []:
+				if not table_.has_co_occurring_keywords(\
+					keywords=args.co_occurring_keywords,\
+					requireAll=args.co_occurring_keywords_all,\
+					lookInSurroundingText=True,\
+					lookInsideTable=True,\
+					caseSensitive=args.co_occurring_keywords_case_sensitive):
+					continue  # Skip this table (before even classifying it).
+			if args.attribute_cond is not None and args.attribute_cond != []:
+				skip_this_table: bool = False
+				for attribute_condition in args.attribute_cond:
+					if not table_.fulfills_attribute_condition(\
+						attribute_cond=attribute_condition,\
+						useSBERT=args.sbert,\
+						strictness=args.attribute_cond_strictness,\
+						DEBUG=args.debug):
+						skip_this_table = True  # Skip this table.
+						break
+				if skip_this_table:
+					continue  # Skip this table (before even classifying it).
+
+			# ...classify the Table...:
 			classification_result: List[Tuple[float, WikidataItem]] =\
 				table_.classify(\
 				 useSBERT=args.sbert,\
@@ -697,29 +827,49 @@ def main():
 				 	sys.stdout if args.verbose else open(os.devnull,"w"),\
 				 DEBUG=args.debug
 				)
+
+			# Apply the --k parameter:
+			classification_result = classification_result[:args.k]
+
+			# When in mode (4), i.e. when entity_types != [],
+			#   skip Tables where none of the top-k entity types returned
+			#   by the classification is in the `entity_types` list:
+			if entity_types != []:  # mode (4):
+				if not any(wi in entity_types\
+					for score, wi in classification_result):
+					continue  # Skip this table, i.e. print nothing.  
+
+			# ...turn that classification into a human-readable form
+			#    and print it (or delay printing when --ordered flag is set):
 			classification_result: List[Tuple[float, str, str]] =\
-				list(map(lambda tuple: (\
-					tuple[0], tuple[1].entity_id, tuple[1].get_label()),\
-					classification_result[:args.k]))
-			print(f"{table_.file_name}: {classification_result}")
-			decreasing_counter -= 1
-			if decreasing_counter == 0:
-				break
-	elif not args.stats and args.entityTypes != []:
-		# (4) Corpus and entity types supplied, tables requested
-		#     (the main productive feature!!!):
-		#   * Search the corpus for tables whose tuples represent one
-		#     of the given entity types, possibly making use of the narrative
-		#     knowledge provided with the --co-occurring-keywords and
-		#     --attribute-cond parameters (the "narrative parameters").
-		#   * Depending on your requirements for precision and recall, you may
-		#     want to change the -k parameter to a value other than 1.
-		#     With k=1, only tables are retured for which the entity type
-		#     searched for was the best match
-		#     (i.e. highest possible precision, lowest possible recall).
-		#     For bigger k, the recall is higher but the precision lower.
-		print("This combination of parameters is not yet implemented.")  # ToDo!
-		# ToDo: supply args.sbert & args.debug to fulfills_attribute_condition()
+				[(score, wi.entity_id, wi.get_label())\
+				 for score, wi in classification_result]
+			if not args.ordered:
+				print(f"{table_.file_name}: {classification_result}")
+			else:
+				unordered_results.append(\
+					(table_.file_name, classification_result))
+
+		# The --ordered flag was set, which means that no results were printed
+		#   yet. Now, we shall return the collected results in descending
+		#   order:
+		if args.ordered:
+			print("[INFO] All results collected. Now sorting them...")
+			# First sort...:
+			if entity_types == []:  # mode (3):
+				# Sort by the score of the best match, in descending order:
+				unordered_results.sort(reverse=True,\
+					key=lambda tupl: tupl[1][0][0])
+			else:  # mode (4):
+				# Sort by the score of the best match, in descending order,
+				#   but only considering the entity types in entity_types:
+				unordered_results.sort(reverse=True,\
+					key=lambda tupl: [score\
+					for score, wikidata_id, wikidata_label in tupl[1]\
+					if WikidataItem(wikidata_id) in entity_types][0])
+			# ...then print:
+			for table_file_name, classification_result in unordered_results:
+				print(f"{table_file_name}: {classification_result}")
 
 
 if __name__ == "__main__":

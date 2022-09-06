@@ -174,7 +174,7 @@ class WikidataItem:
         return superclasses
 
     def is_subclass_of(self, _id: str) -> bool:
-        # https://www.wikidata.org/wiki/Property:P279
+        # https://www.wikidata.org/wiki/Property:P279 ("subclass of")
         return self.get_property("P279") is not None\
             and _id in self.get_property("P279")
 
