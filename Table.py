@@ -835,6 +835,7 @@ class Table:
 				try:
 					# Second, try to cast the cell value to a float:
 					return attribute_cond_lambda(float(cell_value))
+					# ToDo: more sophisticated parsing of "1,994" for example!!
 				except:
 					# Third, try to turn the cell value to a bool,
 					#   else return False:
