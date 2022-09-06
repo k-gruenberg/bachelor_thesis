@@ -66,16 +66,16 @@ class Table:
 		self.file_name = "???"
 
 	def __eq__(self, other):
-        if isinstance(other, Table):
-        	# Equality check should only matter when having parsed a file with
+		if isinstance(other, Table):
+			# Equality check should only matter when having parsed a file with
 			#   existing annotations (--annotations-file parameter).
 			# In that case, the tables should be exactly equal, so we can be
 			#   this strict:
-            return self.surroundingText == other.surroundingText\
-            	and self.headerRow == other.headerRow\
-            	and self.columns == other.columns\
-            	and self.file_name == other.file_name
-        return False
+			return self.surroundingText == other.surroundingText\
+				and self.headerRow == other.headerRow\
+				and self.columns == other.columns\
+				and self.file_name == other.file_name
+		return False
 
 	def width(self) -> int:
 		"""
@@ -1095,12 +1095,15 @@ class Table:
 						yield table
 				elif file_extension in file_extensions.TAR_extensions:
 					for table in Table.parseTAR(tarPath=folder_item,\
-						DEBUG=DEBUG):
+						file_extensions=file_extensions,\
+						csv_dialect=csv_dialect,\
+						onlyRelationalJSON=onlyRelationalJSON, DEBUG=DEBUG):
 						yield table
 				# Skip files with any other filetype/extension.
 			elif recursive:
 				for table in Table.parseFolder(folderPath=folder_item,\
-					recursive=True, csv_dialect=csv_dialect, DEBUG=DEBUG):
+					recursive=True, csv_dialect=csv_dialect,\
+					onlyRelationalJSON=onlyRelationalJSON, DEBUG=DEBUG):
 					yield table
 			# When the item is a directory and recursive=False, skip it.
 
@@ -1110,7 +1113,6 @@ class Table:
 		onlyRelationalJSON=False, min_table_size: int = 1,\
 		DEBUG=False) -> Iterator[Table]:
 		table_filter: Callable[Table, bool] =\
-			#lambda table: yieldNones or table is not None # (yieldNones only)
 			lambda table: (yieldNones or table is not None)\
 				and (table is None or table.min_dimension() >= min_table_size)
 
@@ -1120,7 +1122,8 @@ class Table:
 				return filter(table_filter,\
 					Table.parseTAR(tarPath=corpusPath,\
 						file_extensions=file_extensions,\
-						csv_dialect=csv_dialect, DEBUG=DEBUG))
+						csv_dialect=csv_dialect,\
+						onlyRelationalJSON=onlyRelationalJSON, DEBUG=DEBUG))
 			else:
 				sys.exit("Error: --corpus supplied either has to be a "+\
 					" directory or a .TAR file.")
@@ -1128,7 +1131,8 @@ class Table:
 			return filter(table_filter,\
 				Table.parseFolder(folderPath=corpusPath,\
 					file_extensions=file_extensions, recursive=recursive,\
-					csv_dialect=csv_dialect, DEBUG=DEBUG))
+					csv_dialect=csv_dialect,\
+					onlyRelationalJSON=onlyRelationalJSON, DEBUG=DEBUG))
 
 	@classmethod  # ToDo: USE !!!
 	def create2DStatisticalTable(cls,\

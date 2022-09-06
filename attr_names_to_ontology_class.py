@@ -85,6 +85,17 @@ def trigrams(word: str) -> List[str]:
 def similarity(attrName1: str, attrName2: str,\
 	USE_SBERT: bool) -> float:
 	"""
+	First, we need to define a metric for word/attribute name similarity.
+	For that, use...
+	(a) the Jaccard similarity of the character trigrams;
+	    as proposed by Pham et al.
+	    in "Semantic Labeling: A Domain-Independent Approach" (ISWC 2016)
+	(b) SBERT('s cosine similarity)
+	    Links: * Installation:
+	             https://www.sbert.net/
+	           * Comparing Sentence Similarities:
+	             https://www.sbert.net/docs/quickstart.html
+
 	E.g. similarity("horsepower", "enginePower", USE_SBERT=False) == 0.30769...
          similarity("horsepower", "modelStartYear", USE_SBERT=False) == 0.0
     i.e. when using Jaccard similarity of character trigrams.
@@ -187,20 +198,6 @@ def attr_names_to_ontology_class(inputAttrNames: List[str],\
 			" DBpedia classes mapped to " +\
 			str(sum(map(lambda lst: len(lst), dbpediaSuperclasses.values())))\
 			+ " superclasses")
-
-	# But first, we need to define a metric for word/attribute name similarity.
-	# For that, use...
-	# (a) the Jaccard similarity of the character trigrams;
-	#     as proposed by Pham et al.
-	#     in "Semantic Labeling: A Domain-Independent Approach" (ISWC 2016)
-	# (b) SBERT('s cosine similarity)
-	#     Links: * Installation:
-	#              https://www.sbert.net/
-	#            * Comparing Sentence Similarities:
-	#              https://www.sbert.net/docs/quickstart.html
-
-	if model is None and USE_SBERT_INSTEAD_OF_JACCARD:
-		initialize_sbert_model(VERBOSE=VERBOSE)
 
 	# Each DBpedia class mapped to a score measuring how close its attribute
 	#   names fit the `inputAttrNames`:

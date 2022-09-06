@@ -1,9 +1,4 @@
-# ToDo !!!!! !!!!!
-
 from typing import Dict, Any
-
-from attr_names_to_ontology_class import get_dbpedia_properties
-
 
 # SBERT encodings:
 # DBpedia properties (and other strings) mapped to SBERT vectores:
@@ -34,7 +29,12 @@ def prepare_dbpedia_properties_mapped_to_SBERT_vector():
 	similarites will be faster afterwards.
 
 	=> You should call this function once in the beginning, or you don't.
+	   However, if you don't, this preparation will take place implicitly
+	   once the SBERT vectors for all DBpedia property name will be requested,
+	   one after the other...
 	"""
+
+	from attr_names_to_ontology_class import get_dbpedia_properties
 
 	dbpediaProperties: Dict[str, List[str]] = get_dbpedia_properties()
 
@@ -55,11 +55,10 @@ def sbert_similarity(attrName1: str, attrName2: str) -> float:
 	prepare_dbpedia_properties_mapped_to_SBERT_vector() was called
 	beforehand.
 	If the respective vectors are not cached, they will be for the next
-	time this function is called!
+	time this function is called! (implicit preparation)
 
 	=> This is the main function you want to use!
 	"""
-	return None  # ToDo!
 
 	initialize_sbert_model()
 
@@ -74,6 +73,7 @@ def sbert_similarity(attrName1: str, attrName2: str) -> float:
 			model.encode(attrName2))
 
 	# Compute and return Cosine-Similarity:
+	from sentence_transformers import util
 	cos_sim = util.cos_sim(emb1, emb2)
 	return float(cos_sim)
 

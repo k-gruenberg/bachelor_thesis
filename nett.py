@@ -36,6 +36,7 @@ from numpy import transpose
 from WikidataItem import WikidataItem
 from Table import Table
 from ClassificationResult import ClassificationResult
+from FileExtensions import FileExtensions
 
 # Import the fundamental approaches
 #     #1 "Using Textual Surroundings"
@@ -318,19 +319,10 @@ def main():
 		or `python3 -m pip install -U sentence-transformers` first!
 		""")
 
-	parser.add_argument('--dont-prepare-sbert-vectors',  # ToDo !!!!!
-		action='store_true',
-		help="""Only makes sense in conjunction with the --sbert flag.
-		Do not prepare the SBERT vectors for all DBpedia property
-		names in advance. This should provide a speed-up for small corpora.
-		It is highly recommended in manual annotation mode however to NOT set
-		this flag and let the SBERT vectors be prepared instead!""")
-
 	# Narratives = "Taking Advantage of the Knowledge in the Narrative":
 
 	parser.add_argument('--co-occurring-keywords',
     	type=str,
-    	default='',
     	help="""
     	List other words occurring in the narrative. The results are then
     	limited to those tables where at least one of these words occurs in
@@ -350,7 +342,6 @@ def main():
 
 	parser.add_argument('--attribute-cond',
     	type=str,
-    	default='',  # ToDo: '' correct as default for nargs='*' ?!
     	help="""
     	List one or multiple attribute conditions of the form
     	"[attribute name] [<=,>=,<,>,==,!=,in,not in]
@@ -393,7 +384,7 @@ def main():
     	Default value: 10000""",
     	metavar='N')
 
-	parser.add_argument('--file-extension-csv',  # ToDo: TEST !!!
+	parser.add_argument('--file-extension-csv',
     	type=str,
     	help="""
     	The extension(s) by which to recognize CSV files.
@@ -402,7 +393,7 @@ def main():
     	nargs='*',
     	metavar='EXTENSION_CSV')
 
-	parser.add_argument('--file-extension-xlsx',  # ToDo: TEST !!!
+	parser.add_argument('--file-extension-xlsx',
     	type=str,
     	help="""
     	The extension(s) by which to recognize Excel files.
@@ -411,7 +402,7 @@ def main():
     	nargs='*',
     	metavar='EXTENSION_XLSX')
 
-		parser.add_argument('--file-extension-json',  # ToDo: TEST !!!
+	parser.add_argument('--file-extension-json',
     	type=str,
     	help="""
     	The extension(s) by which to recognize JSON files.
@@ -420,7 +411,7 @@ def main():
     	nargs='*',
     	metavar='EXTENSION_JSON')
 
-	parser.add_argument('--file-extension-tar',  # ToDo: TEST !!!
+	parser.add_argument('--file-extension-tar',
     	type=str,
     	help="""
     	The extension(s) by which to recognize TAR archives.
@@ -429,7 +420,7 @@ def main():
     	nargs='*',
     	metavar='EXTENSION_TAR')
 
-	parser.add_argument('--min-table-size',  # ToDo: TEST !!!
+	parser.add_argument('--min-table-size',
     	type=int,
     	default=3,
     	help="""
@@ -442,7 +433,7 @@ def main():
     	""",
     	metavar='MIN_TABLE_SIZE')
 
-	parser.add_argument('--relational-json-tables-only',  # ToDo: TEST !!!
+	parser.add_argument('--relational-json-tables-only',
 		action='store_true',
 		help="""
 		Only consider .json Tables with "tableType" set to "RELATION".
@@ -464,16 +455,17 @@ def main():
 	args = parser.parse_args()
 
 	file_extensions: FileExtensions = FileExtensions(\
-		csv_extensions = args.file_extension_csv,\
-		xlsx_extensions = args.file_extension_xlsx,\
-		json_extensions = args.file_extension_json,\
-		tar_extensions = args.file_extension_tar)
+		CSV_extensions = args.file_extension_csv,\
+		XLSX_extensions = args.file_extension_xlsx,\
+		JSON_extensions = args.file_extension_json,\
+		TAR_extensions = args.file_extension_tar)
 
 	# <preparation>
 	# Prepare SBERT vectors only when SBERT will be used and only if 
 	#   preparation is not deactivated:
-	if args.sbert and not args.dont_prepare_sbert_vectors:
-		print("[PREPARING] Mapping DBpedia properties to SBERT vectors...")
+	if args.sbert:
+		print("[PREPARING] Mapping DBpedia properties to SBERT vectors, " +\
+			"this may about a minute...")
 		prepare_dbpedia_properties_mapped_to_SBERT_vector()
 		print("[PREPARING] Done.")
 	# </preparation>
@@ -635,9 +627,9 @@ def main():
 		if user_answer.lower() != "n":
 			# Export user annotations as a JSON file:
 			with open(os.path.expanduser(annotations_json_file_path), 'x') as f:
-    			f.write(json.dumps(\
-    				tables_with_classif_result_and_correct_entity_type_specified_by_user\
-    				, default=vars))
+				f.write(json.dumps(\
+					tables_with_classif_result_and_correct_entity_type_specified_by_user\
+					, default=vars))
 
 		# The set of all (correct) entity types occuring in the given corpus:
 		all_correct_entity_types_annotated: Set[WikidataItem] =\

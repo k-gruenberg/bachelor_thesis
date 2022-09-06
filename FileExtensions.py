@@ -1,5 +1,7 @@
-class FileExtensions:  # ToDo: USE !!!!! !!!!!
-	def __init__(\
+from typing import List
+
+class FileExtensions:
+	def __init__(self,\
 		CSV_extensions: List[str] = None,\
 		XLSX_extensions: List[str] = None,\
 		JSON_extensions: List[str] = None,\
