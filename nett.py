@@ -782,6 +782,9 @@ def main():
 				break
 			decreasing_counter -= 1
 
+			if args.debug:
+				print(f"[DEBUG] Considering table '{table_.file_name}':")
+
 			# ...check if it satisfies the narrative conditions specified
 			#    using the --co-occurring-keywords and --attribute-cond
 			#    parameters, when specified, ...:
