@@ -62,6 +62,18 @@ def clear_terminal():
 
 
 def print_as_two_columns(text: str, spacing: int = 4) -> str:
+	"""
+	Halves the number of lines in a multiline string by printing it in two
+	columns. Returns a printable string (i.e. performs no printing itself).
+
+	Example:
+	>>> print(print_as_two_columns("111\n222\n333\n444\n555"))
+	111    444
+	222    555
+	333    
+
+	>>>
+	"""
 	lines: List[str] = text.splitlines()
 	no_of_lines: int = len(lines)
 
@@ -569,7 +581,7 @@ def main():
 			= []
 
 		# The user specified a file containing annotations previously made:
-		if args.annotations_file != "":
+		if args.annotations_file != "":  # ToDo: TEST !!!
 			with open(args.annotations_file, "r") as f:
 				parsed_annotations_file: List[Tuple[dict, dict, dict]] =\
 					json.loads(f.read())
@@ -595,8 +607,7 @@ def main():
 			# Skip table if it was already annotated (this only happens
 			#   when args.annotations_file != ""):
 			if args.annotations_file != "" and table_ in [t for (t, cr, wi) in\
-				tables_with_classif_result_and_correct_entity_type\
-				]:
+				tables_with_classif_result_and_correct_entity_type]:
 				continue  # Skip table, it's already annotated.
 
 			# Clear terminal:
@@ -617,6 +628,7 @@ def main():
 			print("")
 
 			# Print classification result:
+			print("Classification result (please wait...):")
 			classification_result_generic: ClassificationResult =\
 				table_.classifyGenerically(\
 				 useSBERT=args.sbert,\
@@ -635,7 +647,11 @@ def main():
 				 normalizeApproaches=args.normalize,\
 				 DEBUG=args.debug
 				)
-			classification_result_len: int = len(classification_result)
+			# The maximum number of classification results
+			#   to print to the user:
+			MAX_NUMBER_OF_RESULTS: int = 40
+			classification_result_len: int = min(MAX_NUMBER_OF_RESULTS,\
+				len(classification_result))
 			classification_result_printable: str = ""
 			for i in range(0, classification_result_len):
 				score: float = classification_result[i][0]
