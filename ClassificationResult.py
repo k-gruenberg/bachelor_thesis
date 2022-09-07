@@ -120,7 +120,7 @@ class ClassificationResult:
 
 	@classmethod
 	def print_statistics(cls,\
-		tables_with_classif_result_and_correct_entity_type_specified_by_user:\
+		tables_with_classif_result_and_correct_entity_type:\
 		List[Tuple[Table, ClassificationResult,  WikidataItem]],\
 		stats_max_k: int = 5) -> None:
 
@@ -131,7 +131,7 @@ class ClassificationResult:
 			 (True, False, False), (False, True, False), (False, False, True)]:
 
 			ClassificationResult.print_statistics_overall(\
-				tables_with_classif_result_and_correct_entity_type_specified_by_user,
+				tables_with_classif_result_and_correct_entity_type,
 				stats_max_k=stats_max_k,
 				useTextualSurroundings=useTextualSurroundings,
 				useAttrNames=useAttrNames,
@@ -139,7 +139,7 @@ class ClassificationResult:
 			)
 			print("")
 			ClassificationResult.print_statistics_entity_type_specific(\
-				tables_with_classif_result_and_correct_entity_type_specified_by_user,
+				tables_with_classif_result_and_correct_entity_type,
 				stats_max_k=stats_max_k,
 				useTextualSurroundings=useTextualSurroundings,
 				useAttrNames=useAttrNames,
@@ -150,17 +150,39 @@ class ClassificationResult:
 
 	@classmethod
 	def print_statistics_overall(cls,\
-		tables_with_classif_result_and_correct_entity_type_specified_by_user:\
+		tables_with_classif_result_and_correct_entity_type:\
 		List[Tuple[Table, ClassificationResult,  WikidataItem]],\
 		useTextualSurroundings: bool,\
 		useAttrNames: bool,\
-		useAttrExtensions: bool,
-		stats_max_k: int = 5) -> None:  # ToDo: missing parameters!!!!! => use weightings given or always 1.0 ?!
+		useAttrExtensions: bool,\
+		textualSurroundingsWeighting=1.0,\
+		attrNamesWeighting=1.0,\
+		attrExtensionsWeighting=1.0,\
+		normalizeApproaches=False,\
+		stats_max_k: int = 5) -> None:  # ToDo: use new default parameters!!!!!
+		"""
+		Print statistics on how well (measured in top-k coverage and recall)
+		the gives tables are classified, when
+		using different values of k (from 1 to stats_max_k, inclusive) and when
+		using different weightings of the used approaches.
+		Which (subset) of the 3 approaches to use is fixed and specified using
+		the `useTextualSurroundings`, `useAttrNames`, `useAttrExtensions`
+		parameters!
+
+		By default, all approaches are weighted equally and no normalization
+		is performed. Otherwise, supply custom values for the
+		`textualSurroundingsWeighting`, `attrNamesWeighting`,
+		`attrExtensionsWeighting` and `normalizeApproaches` parameters.
+		Beware however that statistics based on various choices of weightings
+		are **already** printed anyways!
+		=> ToDo: decide on whether to ignore the --weight and --normalize
+		         command line arguments or not!!!
+		"""
 
 		# Precomputations:
 
 		number_of_tables: int = len(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user)
+			tables_with_classif_result_and_correct_entity_type)
 
 		# (floats only to allow for infinity:)
 		ranks: List[float] = None  # ToDo!!!
@@ -254,7 +276,7 @@ class ClassificationResult:
 
 	@classmethod
 	def print_statistics_entity_type_specific(cls,\
-		tables_with_classif_result_and_correct_entity_type_specified_by_user:\
+		tables_with_classif_result_and_correct_entity_type:\
 		List[Tuple[Table, ClassificationResult,  WikidataItem]],\
 		useTextualSurroundings: bool,\
 		useAttrNames: bool,\
