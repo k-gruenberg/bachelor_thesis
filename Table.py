@@ -834,8 +834,10 @@ class Table:
 			except:
 				try:
 					# Second, try to cast the cell value to a float:
-					return attribute_cond_lambda(float(cell_value))
-					# ToDo: more sophisticated parsing of "1,994" for example!!
+					return attribute_cond_lambda(\
+						float(cell_value.replace(',', '')))
+					# (remove thousands separators ',' as Python's float() cast
+					#  doesn't like them!)
 				except:
 					# Third, try to turn the cell value to a bool,
 					#   else return False:

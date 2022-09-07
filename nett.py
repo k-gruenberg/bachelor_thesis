@@ -463,6 +463,9 @@ def main():
     	""",
     	metavar='ANNOTATIONS_JSON_FILE')
 
+	# ToDo: Virtuoso URL (for speed-up; once Wikidata has been set up @ifis...)
+	# ToDo: Database Export & Import (Future Work)
+
 	args = parser.parse_args()
 
 	USER_INPUT_Q00000_REGEX = re.compile(r"Q\d+")
