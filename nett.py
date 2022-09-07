@@ -562,9 +562,11 @@ def main():
 		#     (the "narrative parameters") are ignored in this case as they
 		#     make no sense when no entity types are specified.
 
-		tables_with_classif_result_and_correct_entity_type_specified_by_user:\
+		# Tables with classification result and correct entity type specified
+		#   by user:
+		tables_with_classif_result_and_correct_entity_type:\
 			List[Tuple[Table, ClassificationResult,  WikidataItem]]\
-			= []  # ToDo: shorten name
+			= []
 
 		# The user specified a file containing annotations previously made:
 		if args.annotations_file != "":
@@ -572,7 +574,7 @@ def main():
 				parsed_annotations_file: List[Tuple[dict, dict, dict]] =\
 					json.loads(f.read())
 				# Turn the JSON dictionaries into Python classes again:
-				tables_with_classif_result_and_correct_entity_type_specified_by_user\
+				tables_with_classif_result_and_correct_entity_type\
 					= [(Table(surroundingText=t["surroundingText"],\
 								headerRow=t["headerRow"],\
 								columns=t["columns"]),\
@@ -593,7 +595,7 @@ def main():
 			# Skip table if it was already annotated (this only happens
 			#   when args.annotations_file != ""):
 			if args.annotations_file != "" and table_ in [t for (t, cr, wi) in\
-				tables_with_classif_result_and_correct_entity_type_specified_by_user\
+				tables_with_classif_result_and_correct_entity_type\
 				]:
 				continue  # Skip table, it's already annotated.
 
@@ -602,7 +604,7 @@ def main():
 
 			# Print (annotation) progress at the top:
 			print("[" +\
-				f"{len(tables_with_classif_result_and_correct_entity_type_specified_by_user)}"\
+				f"{len(tables_with_classif_result_and_correct_entity_type)}"\
 				+ " tables annotated so far]")
 			print("")
 
@@ -673,14 +675,14 @@ def main():
 			elif USER_INPUT_Q00000_REGEX.fullmatch(user_answer):
 				user_specified_wikidata_item: WikidataItem =\
 					WikidataItem(user_answer)
-				tables_with_classif_result_and_correct_entity_type_specified_by_user\
+				tables_with_classif_result_and_correct_entity_type\
 					.append((table_,\
 						classification_result_generic,\
 						user_specified_wikidata_item))
 			elif USER_INPUT_NUMBER_REGEX.fullmatch(user_answer):
 				user_specified_wikidata_item: WikidataItem =\
 					classification_result[int(user_answer)-1][1]
-				tables_with_classif_result_and_correct_entity_type_specified_by_user\
+				tables_with_classif_result_and_correct_entity_type\
 					.append((table_,\
 						classification_result_generic,\
 						user_specified_wikidata_item))
@@ -697,20 +699,20 @@ def main():
 			# Export user annotations as a JSON file:
 			with open(os.path.expanduser(annotations_json_file_path), 'x') as f:
 				f.write(json.dumps(\
-					tables_with_classif_result_and_correct_entity_type_specified_by_user\
+					tables_with_classif_result_and_correct_entity_type\
 					, default=vars))
 
 		# The set of all (correct) entity types occuring in the given corpus:
 		all_correct_entity_types_annotated: Set[WikidataItem] =\
 			set(correct_entity_type\
 				for table, classification_result, correct_entity_type in\
-				tables_with_classif_result_and_correct_entity_type_specified_by_user)
+				tables_with_classif_result_and_correct_entity_type)
 
 		# Compute statistics and print them:
 		clear_terminal()
 		ClassificationResult.print_statistics(\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user=\
-			tables_with_classif_result_and_correct_entity_type_specified_by_user,\
+			tables_with_classif_result_and_correct_entity_type=\
+			tables_with_classif_result_and_correct_entity_type,\
 			stats_max_k=args.stats_max_k)		
 	elif args.stats and entity_types != []:
 		# (2) Corpus and entity types supplied, statistics requested
