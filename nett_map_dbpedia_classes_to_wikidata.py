@@ -117,14 +117,14 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'SnookerPlayer': '',
 	'Race': '',
 	'Instrument': '',
-	'Language': 'Q315Q34770',
+	'Language': 'Q34770',  # 2 candidates: 'Q315' and 'Q34770'
 	'Galaxy': 'Q318',
 	'Constellation': 'Q8928',
 	'SoccerLeagueSeason': '',
 	'BaseballPlayer': '',
 	'Ship': '',
 	'Opera': 'Q1344',
-	'Letter': 'Q133492Q9788',
+	'Letter': 'Q9788',  # 2 candidates: 'Q133492' (msg) and 'Q9788' (grapheme)
 	'Brain': '',
 	'ChemicalElement': '',
 	'StatedResolution': '',
