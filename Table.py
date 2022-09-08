@@ -654,7 +654,8 @@ class Table:
 				USE_BETTER_SUM_FORMULA=True,
 				USE_SBERT_INSTEAD_OF_JACCARD=useSBERT,
 				VERBOSE=False
-			).items()}
+			).items()\
+			if get_dbpedia_classes_mapped_to_wikidata()[dbpediaClass] != ""}
 
 	def classifyUsingAttrExtensions(self, useBing=False, useWebIsAdb=False)\
 		 -> Dict[WikidataItem, float]:
