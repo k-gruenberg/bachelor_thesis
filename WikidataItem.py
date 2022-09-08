@@ -11,6 +11,7 @@ from itertools import takewhile, chain
 import base64
 import os
 from os.path import exists
+import re
 
 DEBUG = False
 
@@ -94,9 +95,24 @@ def get_cached_wikidata_entity(entity_id: str) -> str:  # returns JSON
         return json_result  # return content of JSON file
 
 
+Q00000_REGEX = re.compile(r"Q\d+")
+
+
 class WikidataItem:
 
     def __init__(self, entity_id: str, label="", description=""):
+        if entity_id == "":
+            raise Exception(\
+                "Tried to construct a WikidataItem with an empty entity ID!")
+        elif entity_id[0] != "Q":
+            raise Exception(\
+                "Tried to construct a WikidataItem with an entity ID " +\
+                "not beginning with a 'Q'!")
+        elif not Q00000_REGEX.fullmatch(entity_id):
+            raise Exception(\
+                "Tried to construct a WikidataItem with an invalid " +\
+                f"entity ID: '{entity_id}'")
+
         self.entity_id = entity_id
         self.label = label
         self.description = description
