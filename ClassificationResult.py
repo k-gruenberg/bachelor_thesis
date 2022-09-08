@@ -48,6 +48,15 @@ def recall_macro_avg(k: int,\
 			 for entityType, ranks in ranks_per_entity_type.items())\
 			 / len(ranks_per_entity_type)
 
+def index(lst, element) -> float:
+	"""
+	A generalization of the ["a", "b", "c"].index("b") function
+	that returns float('inf') when the element is not found in the list:
+	index(["a", "b", "c"], "b") == 1
+	index(["a", "b", "c"], "d") == float('inf')
+	"""
+	return lst.index(element) if element in lst else float('inf')
+
 class ClassificationResult:
 	"""
 	This is a class particularly useful for generating statistics
@@ -151,7 +160,7 @@ class ClassificationResult:
 	@classmethod
 	def print_statistics_overall(cls,\
 		tables_with_classif_result_and_correct_entity_type:\
-		List[Tuple[Table, ClassificationResult,  WikidataItem]],\
+		List[Tuple[Table, ClassificationResult, WikidataItem]],\
 		useTextualSurroundings: bool,\
 		useAttrNames: bool,\
 		useAttrExtensions: bool,\
@@ -159,7 +168,8 @@ class ClassificationResult:
 		attrNamesWeighting=1.0,\
 		attrExtensionsWeighting=1.0,\
 		normalizeApproaches=False,\
-		stats_max_k: int = 5) -> None:  # ToDo: use new default parameters!!!!!
+		stats_max_k: int = 5,\
+		DEBUG=False) -> None:  # ToDo: use new default parameters!!!!!
 		"""
 		Print statistics on how well (measured in top-k coverage and recall)
 		the gives tables are classified, when
@@ -176,18 +186,54 @@ class ClassificationResult:
 		Beware however that statistics based on various choices of weightings
 		are **already** printed anyways!
 		=> ToDo: decide on whether to ignore the --weight and --normalize
-		         command line arguments or not!!!
+		         command line arguments or not, i.e. whether to supply
+		         non-default parameters to THIS function (currently not)!!!
 		"""
 
 		# Precomputations:
 
-		number_of_tables: int = len(\
-			tables_with_classif_result_and_correct_entity_type)
+		tables_with_classif_fixed_params:\
+			List[Tuple[Table, List[Tuple[float, WikidataItem]], WikidataItem]]\
+			= [(tab,\
+				classification_result.classify(\
+					useTextualSurroundings=useTextualSurroundings,\
+					textualSurroundingsWeighting=textualSurroundingsWeighting,\
+				 	useAttrNames=useAttrNames,\
+				 	attrNamesWeighting=attrNamesWeighting,\
+				 	useAttrExtensions=useAttrExtensions,\
+				 	attrExtensionsWeighting=attrExtensionsWeighting,\
+				 	normalizeApproaches=normalizeApproaches,\
+				 	DEBUG=DEBUG),\
+				wikidata_item)\
+				for tab, classification_result, wikidata_item\
+				in tables_with_classif_result_and_correct_entity_type]
 
-		# (floats only to allow for infinity:)
-		ranks: List[float] = None  # ToDo!!!
+		number_of_tables: int = len(tables_with_classif_fixed_params)
 
-		ranks_per_entity_type: Dict[WikidataItem, List[float]] = None  # ToDo!!!
+		# The rank of the correct entity type for each classified table,
+		#   or infinity when none of the entity types in the list returned
+		#   by the classification was correct:
+		ranks: List[float] = []  # (floats only to allow for infinity)
+		for table, classification, wikid_itm\
+			in tables_with_classif_fixed_params:
+			ranks.append(index([wi for score, wi in classification], wikid_itm))
+
+		# All the wikidata entity types annotated by the user
+		#   as the correct ones:
+		all_correct_wikidata_types: Set[WikidataItem] = set(wikidata_item\
+			for tab, classification_result, wikidata_item\
+			in tables_with_classif_fixed_params)
+
+		# Each entity table mapped to the list of rankings it received
+		#   (when it was the correct one!):
+		ranks_per_entity_type: Dict[WikidataItem, List[float]] =\
+			{wikidata_entity_type:\
+				[index([wi for score, wi in classification], wikid_itm)\
+				for table, classification, wikid_itm\
+				in tables_with_classif_fixed_params\
+				if wikid_itm == wikidata_entity_type]\
+				for wikidata_entity_type in all_correct_wikidata_types\
+			}
 
 		# Compute overall statistics and print them:
 		if useTextualSurroundings and useAttrNames and useAttrExtensions:
@@ -226,27 +272,30 @@ class ClassificationResult:
 
 		# At last, print tables showing the effects of varying the
 		# weightings (with and without normalization):
-		#       For 3 approaches and a fixed k=K, a 3D table like this:
-		#                     w1=0.0 w1=0.1 w1=0.2 ... w1=1.0
-		#       w2=0.0 w3=0.0
-		#       w2=0.0 w3=0.1      ...top-K coverage/top-K recall...
-		#       w2=0.0 w3=0.2      ...normalized/non-normalized...
-		#       ...
-		#
-		#       For 2 approaches, a 3D table like this:
+		#       For 3 approaches, a 3D table like this:
 		#                  w1=0.0 w1=0.1 w1=0.2 ... w1=1.0
 		#       k=1 w2=0.0
-		#       k=1 w2=0.1      ...top-k coverage/top-k recall...
-		#       k=1 w2=0.2      ...normalized/non-normalized...
+		#       k=1 w2=0.1      ...either top-k coverage or top-k recall...
+		#       k=1 w2=0.2      in "normalized / non-normalized" format...
+		#
+		#       (w3 always such that w1+w2+w3 == 1.0)
+		#
+		#       For 2 approaches, a 2D table like this:
+		#           w1=0.0 w1=0.1 w1=0.2 ... w1=1.0
+		#       k=1 
+		#       k=1     ...either top-k coverage or top-k recall...
+		#       k=1     in "normalized / non-normalized" format...
 		#       ...
-		# => ToDo: overkill: let w1+w2+w3 = 1 (constant) (Denis) !!!!!!!!
+		# 
+		#       (w2 always such that w1+w2 == 1.0)
 		if useTextualSurroundings and useAttrNames and useAttrExtensions:
-			print("Top-1 coverage for different weightings of the 3 approaches"+\
+			print("Top-k coverage for different weightings of the 3 approaches"+\
 				" (normalized/non-normalized):")
 			print(Table.Table.create3DStatisticalTable(\
-				_lambda=lambda w1, w2, w3: "ToDo / ToDo",\
-				x_var_name="w1", left_y_var_name="w2", right_y_var_name="w3"
+				_lambda=lambda w1, k, w2: f"ToDo / ToDo",\
+				x_var_name="w1", left_y_var_name="k", right_y_var_name="w2"
 				).pretty_print())
+
 			print("Recall, macro-avg. for diff. weightings of the 3 approaches"+\
 				" (normalized/non-normalized):")
 			# ToDo
@@ -254,6 +303,7 @@ class ClassificationResult:
 			print("Top-k coverage for different weightings of the 2 approaches"+\
 				" (normalized/non-normalized):")
 			# ToDo
+
 			print("Recall, macro-avg. for diff. weightings of the 2 approaches"+\
 				" (normalized/non-normalized):")
 			# ToDo
@@ -261,6 +311,7 @@ class ClassificationResult:
 			print("Top-k coverage for different weightings of the 2 approaches"+\
 				" (normalized/non-normalized):")
 			# ToDo
+
 			print("Recall, macro-avg. for diff. weightings of the 2 approaches"+\
 				" (normalized/non-normalized):")
 			# ToDo
@@ -268,10 +319,14 @@ class ClassificationResult:
 			print("Top-k coverage for different weightings of the 2 approaches"+\
 				" (normalized/non-normalized):")
 			# ToDo
+
 			print("Recall, macro-avg. for diff. weightings of the 2 approaches"+\
 				" (normalized/non-normalized):")
 			# ToDo
-		# (for 1 approach, it makes no sense to consider different weightings)
+		else:
+			# For 1 approach, it makes no sense to consider different
+			#   weightings, so print/do nothing here:
+			pass
 
 
 	@classmethod
