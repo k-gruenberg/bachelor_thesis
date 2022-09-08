@@ -577,7 +577,7 @@ def main():
 		# Tables with classification result and correct entity type specified
 		#   by user:
 		tables_with_classif_result_and_correct_entity_type:\
-			List[Tuple[Table, ClassificationResult,  WikidataItem]]\
+			List[Tuple[Table, ClassificationResult, WikidataItem]]\
 			= []
 
 		# The user specified a file containing annotations previously made:
@@ -657,9 +657,9 @@ def main():
 				score: float = classification_result[i][0]
 				wikidata_item: WikidataItem = classification_result[i][1]
 				classification_result_printable +=\
-					f"({i+1}) {score:10.4f} {wikidata_item.entity_id} " +\
-					f"({wikidata_item.get_label()}; " +\
-					f"{wikidata_item.get_description()[:20]})\n"
+					f"({(i+1):2d}) {score:9.4f} {wikidata_item.entity_id} " +\
+					f"({wikidata_item.get_label()[:25]}; " +\
+					f"{wikidata_item.get_description()[:25]})\n"
 			if classification_result_len <= 20:  # list classification results:
 				print(classification_result_printable)
 			else:  # list classification results in two columns:
@@ -712,7 +712,7 @@ def main():
 			end="", flush=True)
 		user_answer: str = input()
 		if user_answer.lower() != "n":
-			# Export user annotations as a JSON file:
+			# Export user annotations as a JSON file:  # ToDo: FIX !!!!!
 			with open(os.path.expanduser(annotations_json_file_path), 'x') as f:
 				f.write(json.dumps(\
 					tables_with_classif_result_and_correct_entity_type\
