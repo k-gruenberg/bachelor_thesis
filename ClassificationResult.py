@@ -44,7 +44,7 @@ def top_k_coverage(k: int, ranks: List[float]) -> float:
 
 def recall_macro_avg(k: int,\
 	ranks_per_entity_type: Dict[WikidataItem, List[float]]) -> float:
-	return sum(len(rank for rank in ranks if rank <= k) / len(ranks)\
+	return sum(len([rank for rank in ranks if rank <= k]) / len(ranks)\
 			 for entityType, ranks in ranks_per_entity_type.items())\
 			 / len(ranks_per_entity_type)
 
@@ -133,6 +133,11 @@ class ClassificationResult:
 		List[Tuple[Table, ClassificationResult,  WikidataItem]],\
 		stats_max_k: int = 5) -> None:
 
+		print("========== Statistics (based on " +\
+			f"{len(tables_with_classif_result_and_correct_entity_type)}" +\
+			" manual classifications): ==========")
+		print("")
+
 		# 3 of 3 approaches, then 2 of 3, then 1 of 3:
 		for useTextualSurroundings, useAttrNames, useAttrExtensions in\
 			[(True, True, True),\
@@ -216,7 +221,10 @@ class ClassificationResult:
 		ranks: List[float] = []  # (floats only to allow for infinity)
 		for table, classification, wikid_itm\
 			in tables_with_classif_fixed_params:
-			ranks.append(index([wi for score, wi in classification], wikid_itm))
+			ranks.append(\
+				index([wi for score, wi in classification], wikid_itm) + 1)
+			# Adding 1 is important to avoid a ZeroDivisionError below.
+			#   An index of 0 means a rank of 1.
 
 		# All the wikidata entity types annotated by the user
 		#   as the correct ones:
@@ -237,13 +245,22 @@ class ClassificationResult:
 
 		# Compute overall statistics and print them:
 		if useTextualSurroundings and useAttrNames and useAttrExtensions:
-			print("===== Overall stats (using all 3 approaches): =====")
+			print(f"===== Overall stats (using all 3 approaches with " +\
+				  f"w1={textualSurroundingsWeighting}, " +\
+				  f"w2={attrNamesWeighting}, " +\
+				  f"w3={attrExtensionsWeighting}): =====")
 		elif useAttrNames and useAttrExtensions:
-			print("===== Overall stats (using attr. names & ext.): =====")
+			print("===== Overall stats (using attr. names " +\
+				  f"(w2={attrNamesWeighting}) & "+\
+				  f"attr. ext. (w3={attrExtensionsWeighting})): =====")
 		elif useTextualSurroundings and useAttrExtensions:
-			print("===== Overall stats (using text. surr. & attr. ext.): =====")
+			print("===== Overall stats (using text. surr. " +\
+				  f"(w1={textualSurroundingsWeighting}) & " +\
+				  f"attr. ext. (w3={attrExtensionsWeighting})): =====")
 		elif useTextualSurroundings and useAttrNames:
-			print("===== Overall stats (using text. surr. & attr. names): =====")
+			print("===== Overall stats (using text. surr. " +\
+				  f"(w1={textualSurroundingsWeighting}) & " + \
+				  f"attr. names (w2={attrNamesWeighting})): =====")
 		elif useTextualSurroundings:
 			print("===== Overall stats (using text. surr. only): =====")
 		elif useAttrNames:
@@ -268,7 +285,7 @@ class ClassificationResult:
 			["{:8.4f}".format(100.0 * recall_macro_avg(k=k,\
 				ranks_per_entity_type=ranks_per_entity_type))\
 			 for k in range(1, stats_max_k+1)]\
-			]).pretty_print())
+			]).pretty_print(maxNumberOfTuples=stats_max_k))
 
 		# At last, print tables showing the effects of varying the
 		# weightings (with and without normalization):
@@ -278,7 +295,7 @@ class ClassificationResult:
 		#       k=1 w2=0.1      ...either top-k coverage or top-k recall...
 		#       k=1 w2=0.2      in "normalized / non-normalized" format...
 		#
-		#       (w3 always such that w1+w2+w3 == 1.0)
+		#       (w3 always such that w1+w2+w3 == 2.0)
 		#
 		#       For 2 approaches, a 2D table like this:
 		#           w1=0.0 w1=0.1 w1=0.2 ... w1=1.0
@@ -290,14 +307,15 @@ class ClassificationResult:
 		#       (w2 always such that w1+w2 == 1.0)
 		if useTextualSurroundings and useAttrNames and useAttrExtensions:
 			print("Top-k coverage for different weightings of the 3 approaches"+\
-				" (normalized/non-normalized):")
+				" (normalized/non-normalized; w3 such that w1+w2+w3 == 2.0):")
 			print(Table.Table.create3DStatisticalTable(\
 				_lambda=lambda w1, k, w2: f"ToDo / ToDo",\
-				x_var_name="w1", left_y_var_name="k", right_y_var_name="w2"
-				).pretty_print())
+				x_var_name="w1", left_y_var_name="k", right_y_var_name="w2",\
+				left_y_range=list(range(1, stats_max_k+1))
+				).pretty_print(maxNumberOfTuples=100000000))
 
 			print("Recall, macro-avg. for diff. weightings of the 3 approaches"+\
-				" (normalized/non-normalized):")
+				" (normalized/non-normalized; w3 such that w1+w2+w3 == 2.0):")
 			# ToDo
 		elif useAttrNames and useAttrExtensions:
 			print("Top-k coverage for different weightings of the 2 approaches"+\
@@ -336,14 +354,36 @@ class ClassificationResult:
 		useTextualSurroundings: bool,\
 		useAttrNames: bool,\
 		useAttrExtensions: bool,\
+		textualSurroundingsWeighting=1.0,\
+		attrNamesWeighting=1.0,\
+		attrExtensionsWeighting=1.0,\
+		normalizeApproaches=False,\
 		stats_max_k: int = 5) -> None:  # ToDo!!!!!
-		# Compute entity type-specific statistics and print them:
+		"""
+		Compute entity type-specific statistics and print them.
+		"""
+
+		# The set of all (correct) entity types occuring in the given corpus:
+		all_correct_entity_types_annotated: Set[WikidataItem] =\
+			set(correct_entity_type\
+				for table, classification_result, correct_entity_type in\
+				tables_with_classif_result_and_correct_entity_type)
+
 		print("===== Entity type-specific recalls " +\
-			"(using parameters given): =====")
+			f"(using {'' if useTextualSurroundings else 'no '}text. surr., " +\
+			f"{'' if useAttrNames else 'no '}attr. names and " +\
+			f"{'' if useAttrExtensions else 'no '}attr. ext.): =====")
+
 		print(Table.Table(surroundingText="",\
-			headerRow=["Entity type"] +\
+			headerRow=["Entity type", "# of occurrences"] +\
 				[f"k={k}" for k in range(1, stats_max_k+1)],\
-			columns=[[enityType for enityType\
-			in all_correct_entity_types_annotated]] +\
-			[[None] for k in range(0, stats_max_k)]\
-			).pretty_print()) # ToDo
+			columns=[[f"{entityType.entity_id} ({entityType.get_label()})"\
+			for entityType in all_correct_entity_types_annotated]] +\
+			[[str(len([None for tab, cl_res, corr_ent_type\
+				in tables_with_classif_result_and_correct_entity_type\
+				if corr_ent_type == entityType]))\
+			 for entityType in all_correct_entity_types_annotated]] +\
+			[["ToDo" for entityType in all_correct_entity_types_annotated]\
+			 for k in range(1, stats_max_k+1)]\
+			).pretty_print(maxNumberOfTuples=\
+				len(all_correct_entity_types_annotated)))

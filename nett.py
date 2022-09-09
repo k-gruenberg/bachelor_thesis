@@ -99,6 +99,59 @@ def print_as_two_columns(text: str, spacing: int = 4) -> str:
 	return two_column_result
 
 
+def annotations_to_json(\
+	annotations: List[Tuple[Table, ClassificationResult, WikidataItem]])\
+	-> str:
+	"""
+	Export the user-made annotations in --stats mode as JSON.
+	"""
+
+	# Doesn't work: return json.dumps(annotations, default=vars)
+
+	json_dumpable_annotations: List[Tuple[dict, dict, dict]] =\
+		[(vars(table),\
+		  {key_string: {key_wikidata_item.entity_id: value_float\
+		  				for key_wikidata_item, value_float
+		  				in value_dict.items()}
+		  	for key_string, value_dict\
+		  	in vars(classification_result).items()},\
+		  vars(wikidata_item))\
+		 for table, classification_result, wikidata_item in annotations]
+
+	return json.dumps(json_dumpable_annotations)
+
+
+def json_to_annotations(json_str: str)\
+	-> List[Tuple[Table, ClassificationResult, WikidataItem]]:
+	"""
+	Import the user-made annotations in JSON format again,
+	exported using the annotations_to_json() function.
+	"""
+	parsed_annotations_file: List[Tuple[dict, dict, dict]] =\
+		json.loads(json_str)
+	# Turn the JSON dictionaries into Python classes again:
+	tables_with_classif_result_and_correct_entity_type\
+		= [(Table(surroundingText=t["surroundingText"],\
+				headerRow=t["headerRow"],\
+				columns=t["columns"],
+				file_name=t["file_name"]),\
+			ClassificationResult(resUsingTextualSurroundings=\
+				{WikidataItem(k): v\
+				 for k, v in cr["resUsingTextualSurroundings"].items()},\
+				resUsingAttrNames=\
+				{WikidataItem(k): v\
+				 for k, v in cr["resUsingAttrNames"].items()},\
+				resUsingAttrExtensions=\
+				{WikidataItem(k): v\
+				 for k, v in cr["resUsingAttrExtensions"].items()}),\
+			WikidataItem(entity_id=wi["entity_id"],\
+				label=wi["label"],\
+				description=wi["description"],\
+				properties=wi["properties"]))\
+			for (t, cr, wi) in parsed_annotations_file]
+	return tables_with_classif_result_and_correct_entity_type
+
+
 def main():
 	parser = argparse.ArgumentParser(
 		description="""NETT - Narrative Entity Type(s) to Tables.
@@ -464,7 +517,7 @@ def main():
 		as non-relational by the (WDC) corpus.
 		""")
 
-	parser.add_argument('--annotations-file',  # ToDo: TEST !!!
+	parser.add_argument('--annotations-file',
     	type=str,
     	default='',
     	help="""
@@ -573,6 +626,10 @@ def main():
 		#   * The --co-occurring-keywords and --attribute-cond parameters
 		#     (the "narrative parameters") are ignored in this case as they
 		#     make no sense when no entity types are specified.
+		#   * The --textual-surroundings-weight, --attr-names-weight,
+		#     --attr-extensions-weight and --normalize parameters only
+		#     have an effect for the 1st manual annoation part but not for
+		#     the 2nd part where the statistics are printed!
 
 		# Tables with classification result and correct entity type specified
 		#   by user:
@@ -581,24 +638,10 @@ def main():
 			= []
 
 		# The user specified a file containing annotations previously made:
-		if args.annotations_file != "":  # ToDo: TEST !!!
+		if args.annotations_file != "":
 			with open(args.annotations_file, "r") as f:
-				parsed_annotations_file: List[Tuple[dict, dict, dict]] =\
-					json.loads(f.read())
-				# Turn the JSON dictionaries into Python classes again:
-				tables_with_classif_result_and_correct_entity_type\
-					= [(Table(surroundingText=t["surroundingText"],\
-								headerRow=t["headerRow"],\
-								columns=t["columns"]),\
-						ClassificationResult(resUsingTextualSurroundings=\
-							cr["resUsingTextualSurroundings"],\
-							resUsingAttrNames=cr["resUsingAttrNames"],\
-							resUsingAttrExtensions=\
-							cr["resUsingAttrExtensions"]),\
-						WikidataItem(entity_id=wi["entity_id"],\
-							label=wi["label"],\
-							description=wi["description"]))\
-					for (t, cr, wi) in parsed_annotations_file]
+				tables_with_classif_result_and_correct_entity_type =\
+					json_to_annotations(f.read())
 
 		for table_ in Table.parseCorpus(args.corpus,\
 			file_extensions=file_extensions, onlyRelationalJSON=\
@@ -623,8 +666,13 @@ def main():
 			print(table_.pretty_print())
 			print("")
 
-			# Print surrounding text associated with table:
-			print(f"Surrounding text: '{table_.surroundingText}'")
+			# Print surrounding text associated with table
+			#   (limited to 1250 chars; 1500 also possible but it's close!):
+			if len(table_.surroundingText) <= 1250:
+				print(f"Surrounding text: '{table_.surroundingText}'")
+			else:
+				print(f"Surrounding text: '{table_.surroundingText[:625]}' " +\
+					f"[...] '{table_.surroundingText[-625:]}'")
 			print("")
 
 			# Print classification result:
@@ -712,17 +760,10 @@ def main():
 			end="", flush=True)
 		user_answer: str = input()
 		if user_answer.lower() != "n":
-			# Export user annotations as a JSON file:  # ToDo: FIX !!!!!
+			# Export user annotations as a JSON file:
 			with open(os.path.expanduser(annotations_json_file_path), 'x') as f:
-				f.write(json.dumps(\
-					tables_with_classif_result_and_correct_entity_type\
-					, default=vars))
-
-		# The set of all (correct) entity types occuring in the given corpus:
-		all_correct_entity_types_annotated: Set[WikidataItem] =\
-			set(correct_entity_type\
-				for table, classification_result, correct_entity_type in\
-				tables_with_classif_result_and_correct_entity_type)
+				f.write(annotations_to_json(\
+					tables_with_classif_result_and_correct_entity_type))
 
 		# Compute statistics and print them:
 		clear_terminal()

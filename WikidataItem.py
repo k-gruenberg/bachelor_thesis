@@ -100,7 +100,8 @@ Q00000_REGEX = re.compile(r"Q\d+")
 
 class WikidataItem:
 
-    def __init__(self, entity_id: str, label="", description=""):
+    def __init__(self, entity_id: str, label="", description="",\
+        properties: Dict[str, List[str]] = None):
         if entity_id == "":
             raise Exception(\
                 "Tried to construct a WikidataItem with an empty entity ID!")
@@ -116,7 +117,7 @@ class WikidataItem:
         self.entity_id = entity_id
         self.label = label
         self.description = description
-        self.properties = dict()
+        self.properties = dict() if properties is None else properties
 
     def get_property(self, _property: str) -> List[str]:
         """

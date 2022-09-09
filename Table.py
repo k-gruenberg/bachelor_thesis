@@ -50,7 +50,7 @@ def debug_dict_sorted(d: Dict[WikidataItem, float]) -> str:
 
 class Table:
 	def __init__(self, surroundingText: str, headerRow: List[str],\
-				 columns: List[List[str]]):
+				 columns: List[List[str]], file_name: str = "???"):
 		"""
 		Initalize a new Table that has already been parsed.
 
@@ -64,7 +64,7 @@ class Table:
 		self.surroundingText = surroundingText  # (1) Using Textual Surroundings
 		self.headerRow = headerRow  # (2) Using Attribute Names
 		self.columns = columns  # (3) Using Attribute Extensions
-		self.file_name = "???"
+		self.file_name = file_name
 
 	def __eq__(self, other):
 		if isinstance(other, Table):
