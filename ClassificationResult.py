@@ -44,13 +44,32 @@ def normalize(dct: Dict[WikidataItem, float])\
 				for w, f in dct.items()}
 
 def top_k_coverage(k: int, ranks: List[float]) -> float:
+	"""
+	Top-k coverage.
+	Returns what fraction of ranks in `ranks` is <= k.
+	"""
 	return len([rank for rank in ranks if rank <= k]) / len(ranks)
 
 def recall_macro_avg(k: int,\
 	ranks_per_entity_type: Dict[WikidataItem, List[float]]) -> float:
+	"""
+	The macro-average computes the recall first for each entity type
+	independently and then returns the average over all of those recalls.
+	"""
 	return sum(len([rank for rank in ranks if rank <= k]) / len(ranks)\
 			 for entityType, ranks in ranks_per_entity_type.items())\
 			 / len(ranks_per_entity_type)
+
+def entity_type_specific_recall(k: int,\
+	ranks_per_entity_type: Dict[WikidataItem, List[float]],\
+	entity_type: WikidataItem) -> float:
+	"""
+	This function computes the (k-)recall for one specific entity type.
+	With k-recall, we mean the recall when drawing all the top-k results
+	and demanding one of them to be the correct one.
+	"""
+	ranks: List[float] = ranks_per_entity_type[entity_type]
+	return len([rank for rank in ranks if rank <= k]) / len(ranks)
 
 def index(lst, element) -> float:
 	"""
@@ -135,7 +154,7 @@ class ClassificationResult:
 	def print_statistics(cls,\
 		tables_with_classif_result_and_correct_entity_type:\
 		List[Tuple[Table, ClassificationResult,  WikidataItem]],\
-		stats_max_k: int = 5) -> None:
+		stats_max_k: int = 5, DEBUG=False) -> None:
 
 		print("========== Statistics (based on " +\
 			f"{len(tables_with_classif_result_and_correct_entity_type)}" +\
@@ -153,7 +172,8 @@ class ClassificationResult:
 				stats_max_k=stats_max_k,
 				useTextualSurroundings=useTextualSurroundings,
 				useAttrNames=useAttrNames,
-				useAttrExtensions=useAttrExtensions
+				useAttrExtensions=useAttrExtensions,
+				DEBUG=DEBUG
 			)
 			print("")
 			ClassificationResult.print_statistics_entity_type_specific(\
@@ -161,7 +181,8 @@ class ClassificationResult:
 				stats_max_k=stats_max_k,
 				useTextualSurroundings=useTextualSurroundings,
 				useAttrNames=useAttrNames,
-				useAttrExtensions=useAttrExtensions
+				useAttrExtensions=useAttrExtensions,
+				DEBUG=DEBUG
 			)
 			print("")
 		
@@ -178,7 +199,7 @@ class ClassificationResult:
 		attrExtensionsWeighting=1.0,\
 		normalizeApproaches=False,\
 		stats_max_k: int = 5,\
-		DEBUG=False) -> None:  # ToDo: use new default parameters!!!!!
+		DEBUG=False) -> None:
 		"""
 		Print statistics on how well (measured in top-k coverage and recall)
 		the gives tables are classified, when
@@ -231,7 +252,8 @@ class ClassificationResult:
 			#   An index of 0 means a rank of 1.
 
 		# All the wikidata entity types annotated by the user
-		#   as the correct ones:
+		#   as the correct ones, i.e. the set of all (correct) entity types
+		#   occuring in the given corpus:
 		all_correct_wikidata_types: Set[WikidataItem] = set(wikidata_item\
 			for tab, classification_result, wikidata_item\
 			in tables_with_classif_fixed_params)
@@ -362,16 +384,47 @@ class ClassificationResult:
 		attrNamesWeighting=1.0,\
 		attrExtensionsWeighting=1.0,\
 		normalizeApproaches=False,\
-		stats_max_k: int = 5) -> None:  # ToDo!!!!!
+		stats_max_k: int = 5,\
+		DEBUG=False) -> None:  # ToDo!!!!!
 		"""
 		Compute entity type-specific statistics and print them.
 		"""
 
-		# The set of all (correct) entity types occuring in the given corpus:
-		all_correct_entity_types_annotated: Set[WikidataItem] =\
-			set(correct_entity_type\
-				for table, classification_result, correct_entity_type in\
-				tables_with_classif_result_and_correct_entity_type)
+		# Precomputations:
+
+		tables_with_classif_fixed_params:\
+			List[Tuple[Table, List[Tuple[float, WikidataItem]], WikidataItem]]\
+			= [(tab,\
+				classification_result.classify(\
+					useTextualSurroundings=useTextualSurroundings,\
+					textualSurroundingsWeighting=textualSurroundingsWeighting,\
+				 	useAttrNames=useAttrNames,\
+				 	attrNamesWeighting=attrNamesWeighting,\
+				 	useAttrExtensions=useAttrExtensions,\
+				 	attrExtensionsWeighting=attrExtensionsWeighting,\
+				 	normalizeApproaches=normalizeApproaches,\
+				 	DEBUG=DEBUG),\
+				wikidata_item)\
+				for tab, classification_result, wikidata_item\
+				in tables_with_classif_result_and_correct_entity_type]
+
+		# All the wikidata entity types annotated by the user
+		#   as the correct ones, i.e. the set of all (correct) entity types
+		#   occuring in the given corpus:
+		all_correct_wikidata_types: Set[WikidataItem] = set(wikidata_item\
+			for tab, classification_result, wikidata_item\
+			in tables_with_classif_fixed_params)
+
+		# Each entity table mapped to the list of rankings it received
+		#   (when it was the correct one!):
+		ranks_per_entity_type: Dict[WikidataItem, List[float]] =\
+			{wikidata_entity_type:\
+				[index([wi for score, wi in classification], wikid_itm)\
+				for table, classification, wikid_itm\
+				in tables_with_classif_fixed_params\
+				if wikid_itm == wikidata_entity_type]\
+				for wikidata_entity_type in all_correct_wikidata_types\
+			}
 
 		print("===== Entity type-specific recalls " +\
 			f"(using {'' if useTextualSurroundings else 'no '}text. surr., " +\
@@ -382,12 +435,15 @@ class ClassificationResult:
 			headerRow=["Entity type", "# of occurrences"] +\
 				[f"k={k}" for k in range(1, stats_max_k+1)],\
 			columns=[[f"{entityType.entity_id} ({entityType.get_label()})"\
-			for entityType in all_correct_entity_types_annotated]] +\
+			for entityType in all_correct_wikidata_types]] +\
 			[[str(len([None for tab, cl_res, corr_ent_type\
 				in tables_with_classif_result_and_correct_entity_type\
 				if corr_ent_type == entityType]))\
-			 for entityType in all_correct_entity_types_annotated]] +\
-			[["ToDo" for entityType in all_correct_entity_types_annotated]\
+			 for entityType in all_correct_wikidata_types]] +\
+			[["{:8.4f}%".format(100.0 * entity_type_specific_recall(k=k,\
+						ranks_per_entity_type=ranks_per_entity_type,\
+						entity_type=entityType))\
+			  for entityType in all_correct_wikidata_types]\
 			 for k in range(1, stats_max_k+1)]\
 			).pretty_print(maxNumberOfTuples=\
-				len(all_correct_entity_types_annotated)))
+				len(all_correct_wikidata_types)))

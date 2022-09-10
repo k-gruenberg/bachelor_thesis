@@ -219,7 +219,8 @@ def main():
     	default=1,
     	help="""Only return tables for which the entity type searched for was
     	in the top-k results. By default, k=1 which means that only tables are
-    	returned for which the entity type searched for was the best guess.""",
+    	returned for which the entity type searched for was the best guess.
+    	See also: --stats-max-k""",
     	metavar='K')
 
 	parser.add_argument('--stats-max-k',
@@ -770,7 +771,8 @@ def main():
 		ClassificationResult.print_statistics(\
 			tables_with_classif_result_and_correct_entity_type=\
 			tables_with_classif_result_and_correct_entity_type,\
-			stats_max_k=args.stats_max_k)		
+			stats_max_k=args.stats_max_k,\
+			DEBUG=args.debug)		
 	elif args.stats and entity_types != []:
 		# (2) Corpus and entity types supplied, statistics requested
 		#     (evaluation feature):
