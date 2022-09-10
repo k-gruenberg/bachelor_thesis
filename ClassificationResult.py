@@ -16,7 +16,11 @@ def combine3(dct1: Dict[WikidataItem, float], weight1: float,\
 		 weight2 * dct2.get(wi, 0.0) +\
 		 weight3 * dct3.get(wi, 0.0),\
 		 wi) for wi in allWikidataItems]
-	result.sort(key=lambda tuple: tuple[0], reverse=True)
+	# Sort, first by score (descending) and then by
+	#   Wikidata entity ID for equal scores (ascending); this is to ensure
+	#   deterministic(!) results (especially deterministic --stats):
+	result.sort(key=lambda tuple:\
+		(tuple[0], 1.0/float(tuple[1].entity_id[1:])), reverse=True)
 	return result
 
 def normalize(dct: Dict[WikidataItem, float])\
