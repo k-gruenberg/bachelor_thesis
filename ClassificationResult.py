@@ -46,9 +46,11 @@ def normalize(dct: Dict[WikidataItem, float])\
 def top_k_coverage(k: int, ranks: List[float]) -> float:
 	"""
 	Top-k coverage.
-	Returns what fraction of ranks in `ranks` is <= k.
+	Returns what fraction of ranks in `ranks` is < k.
+	It's important that it's "<" and not "<=" since ranks begin at 0 but
+	k begins at 1!
 	"""
-	return len([rank for rank in ranks if rank <= k]) / len(ranks)
+	return len([rank for rank in ranks if rank < k]) / len(ranks)
 
 def recall_macro_avg(k: int,\
 	ranks_per_entity_type: Dict[WikidataItem, List[float]]) -> float:
@@ -56,7 +58,7 @@ def recall_macro_avg(k: int,\
 	The macro-average computes the recall first for each entity type
 	independently and then returns the average over all of those recalls.
 	"""
-	return sum(len([rank for rank in ranks if rank <= k]) / len(ranks)\
+	return sum(len([rank for rank in ranks if rank < k]) / len(ranks)\
 			 for entityType, ranks in ranks_per_entity_type.items())\
 			 / len(ranks_per_entity_type)
 
@@ -69,7 +71,7 @@ def entity_type_specific_recall(k: int,\
 	and demanding one of them to be the correct one.
 	"""
 	ranks: List[float] = ranks_per_entity_type[entity_type]
-	return len([rank for rank in ranks if rank <= k]) / len(ranks)
+	return len([rank for rank in ranks if rank < k]) / len(ranks)
 
 def index(lst, element) -> float:
 	"""
@@ -385,7 +387,7 @@ class ClassificationResult:
 		attrExtensionsWeighting=1.0,\
 		normalizeApproaches=False,\
 		stats_max_k: int = 5,\
-		DEBUG=False) -> None:  # ToDo!!!!!
+		DEBUG=False) -> None:
 		"""
 		Compute entity type-specific statistics and print them.
 		"""
