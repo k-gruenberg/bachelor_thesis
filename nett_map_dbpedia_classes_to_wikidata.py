@@ -14,6 +14,17 @@ from WikidataItem import WikidataItem
 #      generic Q5 one (the reason being that the "Using Attribute Extensions"
 #      approach will also yield only Q5 for humans, no matter their profession);
 #      see "replaced automatic '...' with 'Q5'" comments.
+# * There are 20 further "(manual)" mappings, the rest is deemed unimportant
+#   enough to save the manual effort. When mapping, we paid attention to use
+#   the Wikidata classes which are actually being used for the instance-of
+#   relationships, so that this approach of "Using Attribute Names" works well
+#   together with the approach of "Using Attribute Extensions"!
+# * In total, there are -  82=97-15 automatic mappings, left as they were
+#                       -  15 automatic mappings generified to 'Q5' (human)
+#                       -  29 manual mappings to 'Q5' (human)
+#                       -  20 further manual mappings
+#                       - 137 DBpedia classes w/o Wikidata mappings (48.4%)
+#                   SUM = 283 DBpedia classes
 dbpediaClassesMappedToWikidata: Dict[str, str] =\
 {
 	'Legislature': 'Q11204',
@@ -21,7 +32,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Athlete': 'Q5',  # (manual)
 	'Person': 'Q5',  # replaced automatic 'Q215627' with 'Q5'
 	'Settlement': 'Q486972',
-	'PopulatedPlace': '',  # ToDo!!!
+	'PopulatedPlace': 'Q486972',  # Q486972 = "human settlement"  # (manual)
 	'SpaceMission': '',
 	'Organisation': 'Q43229',
 	'Species': '',
@@ -30,7 +41,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'FormulaOneRacer': 'Q5',  # (manual)
 	'Planet': 'Q634',
 	'PokerPlayer': 'Q5',  # (manual)
-	'WrittenWork': '',
+	'WrittenWork': 'Q47461344',  # Q47461344 = "written work"  # (manual)
 	'Department': '',
 	'Canal': '',
 	'Reference': '',
@@ -76,8 +87,8 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'GridironFootballPlayer': 'Q5',  # (manual)
 	'Road': 'Q34442',
 	'Work': 'Q386724',
-	'MeanOfTransportation': '',  # ToDo!!!
-	'Company': '',
+	'MeanOfTransportation': 'Q29048322',  # Q29048322 = "vehicle model"  # (manual)  # Not based on any instances or any of the other main approaches; it's simply the superclass of automobile model (Q3231690), just like "MeanOfTransportation" is the superclass of "Automobile" in DBpedia!
+	'Company': 'Q4830453',  # Q4830453 = "business"  # (manual)  # Note that Wikidata distinguishes between enterprise, business and corporation! Apple, Microsoft, Tesla and Unilever are all instances of "business" however (Unilever recursively via 1 step)!
 	'Memorial': '',
 	'Museum': 'Q33506',
 	'Sales': 'Q194189',
@@ -87,10 +98,10 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Aircraft': 'Q11436',
 	'Album': 'Q482994',
 	'Saint': 'Q5',  # replaced automatic 'Q43115' with 'Q5'
-	'AutomobileEngine': '',  # ToDo!!!
+	'AutomobileEngine': 'Q106708186',  # Q106708186 = "automobile engine"  # (manual)  # Could not find any instances but Q106708186 is a subclass of engine (Q44167)!
 	'PowerStation': '',
 	'Actor': 'Q5',  # replaced automatic 'Q33999' with 'Q5'
-	'MusicalWork': '',  # ToDo!!!
+	'MusicalWork': 'Q105543609',  # Q105543609 = "musical work/composition"  # (manual)  # Instances tested: Billie Jean, Paradise City, We Will Rock You, Smells Like Teen Spirit ("Hot Stuff" doesn't work though!)
 	'SoccerPlayer': 'Q5',  # (manual)
 	'RouteOfTransportation': '',
 	'RomaniaSettlement': '',
@@ -98,13 +109,13 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Mill': 'Q44494',
 	'AdministrativeRegion': '',
 	'CollegeCoach': 'Q5',  # (manual)
-	'Project': '',
+	'Project': 'Q170584',  # Q170584 = "Q170584"  # (manual)  # Not based on any instances but solely on a mapping provided by one of the other main approaches!!
 	'ProtectedArea': '',
 	'Family': 'Q8436',
 	'Openswarm': '',
 	'Criminal': 'Q5',  # replaced automatic 'Q2159907' with 'Q5'
 	'RadioStation': '',
-	'CelestialBody': '',
+	'CelestialBody': 'Q6999',  # Q6999 = "astronomical object"  # (manual)  # Instances tested: Jupiter (Q319), Milky Way (Q321)  # According to https://dbpedia.org/ontology/CelestialBody, both planets and galaxies are CelestialBodies in DBpedia.
 	'IceHockeyPlayer': 'Q5',  # (manual)
 	'Agent': 'Q24229398',
 	'Statistic': 'Q1949963',
@@ -114,7 +125,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'TelevisionShow': '',
 	'Hotel': 'Q27686',
 	'FictionalCharacter': '',
-	'Automobile': '',
+	'Automobile': 'Q3231690',  # Q3231690 = "automobile model"  # (manual)  # Instances tested: Plymouth Satellite (Q1808628), Fiat Multipla (Q223621), Škoda Roomster (Q392071)  # Using `grep "<http://dbpedia.org/ontology/Automobile>" instance_types_en.ttl`, we can see that DBpedia means automobile *model* with "Automobile".
 	'NorwaySettlement': '',
 	'Scientist': 'Q5',  # replaced automatic 'Q901' with 'Q5'
 	'FigureSkater': 'Q5',  # (manual)
@@ -134,7 +145,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Opera': 'Q1344',
 	'Letter': 'Q9788',  # 2 candidates: 'Q133492' (msg) and 'Q9788' (grapheme)
 	'Brain': '',
-	'ChemicalElement': '',
+	'ChemicalElement': 'Q11344',  # Q11344 = "chemical element"  # (manual)  # Instances tested: bromine (Q879), potassium (Q703)
 	'StatedResolution': '',
 	'PersonFunction': '',
 	'Weapon': 'Q728',
@@ -155,10 +166,10 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Man': 'Q5',  # (manual)
 	'Building': 'Q41176',
 	'MemberResistanceMovement': 'Q5',  # (manual)
-	'SportsTeam': '',
+	'SportsTeam': 'Q12973014',  # Q12973014 = "sports team"  # (manual)  # Both Wikidata and DBpedia differentiate between SportsTeam and SportsClub, a common superclass would be Q4438121 (sports organization) or "Organization" in DBpedia!
 	'ResearchProject': 'Q1298668',
 	'Architect': 'Q5',  # (manual)
-	'Currency': '',
+	'Currency': 'Q8142',  # Q8142 = "currency"  # (manual)  # Instances tested: euro (Q4916), Argentine peso (Q199578)
 	'SportCompetitionResult': '',
 	'Blazon': '',
 	'Software': 'Q7397',
@@ -166,7 +177,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'LawFirm': '',
 	'Rocket': 'Q41291',
 	'ChemicalSubstance': '',
-	'SoccerClub': '',
+	'SoccerClub': 'Q476028',  # Q476028 = "association football club"  # (manual)  # Instances tested: FC Bayern Munich (Q15789), Real Madrid CF (Q8682)
 	'Attack': '',
 	'Activity': 'Q1914636',
 	'Biomolecule': 'Q206229',
@@ -198,7 +209,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Cleric': 'Q5',  # (manual)
 	'TermOfOffice': '',
 	'Train': 'Q870',
-	'Colour': '',
+	'Colour': 'Q1075',  # Q1075 = "color"  # (manual)  # Instances tested: red (Q3142), blue (Q1088)
 	'BelgiumSettlement': '',
 	'Sport': 'Q349',
 	'Stream': 'Q47521',
@@ -236,7 +247,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'VolleyballPlayer': 'Q5',  # (manual)
 	'AdultActor': 'Q5',  # (manual)
 	'Organisation,_Parish': '',
-	'WorldHeritageSite': '',
+	'WorldHeritageSite': '',  # There appears to be no Wikidata class for this, at least when looking at Acropolis of Athens (Q131013) and Temples of Abu Simbel (Q134140).
 	'City': 'Q515',
 	'Wrestler': 'Q5',  # replaced automatic 'Q13474373' with 'Q5'
 	'core#Concept': '',
@@ -248,9 +259,9 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'ChemicalCompound': '',
 	'MusicalArtist': 'Q5',  # (manual)
 	'TelevisionStation': '',
-	'Law': '',
+	'Law': 'Q820655',  # Q820655 = "statute" (both Wikidata's "statue" and DBpedia's "Law" are translated into German as "Gesetz")  # (manual)  # Derived from these two instances: Civil Rights Act of 1964 (Q585962) => Act of Congress in the United States (Q476068) => federal law (Q1006612) => statute (Q820655) ; transgender rights in Germany / Transsexuellengesetz (Q1777996) => federal act (Q1006079) =>  federal law (Q1006612) => statute (Q820655)
 	'Astronaut': 'Q5',  # replaced automatic 'Q11631' with 'Q5'
-	'Continent': '',
+	'Continent': 'Q5107',  # Q5107 = "continent"  # (manual)  # Instances tested: Europe (Q46), Asia (Q48), Africa (Q15)
 	'Lake': 'Q23397',
 	'Volcano': 'Q8072',
 	'SwitzerlandSettlement': '',
@@ -274,7 +285,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Artery': '',
 	'Gene': 'Q7187',
 	'GraveMonument': '',
-	'Organization': '',
+	'Organization': 'Q43229',  # Q43229 = "organization"  # (manual)  # Instances tested: NATO (Q7184), FAO (Q82151); business (Q4830453) is also a subclass of Q43229!
 	'CyclingTeam': '',
 	'PoliticalFunction': '',
 	'Musical': 'Q2743',
@@ -289,7 +300,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'ClericalAdministrativeRegion': '',
 	'CityDistrict': '',
 	'SpaceStation': '',
-	'Engine': '',  # ToDo!!!
+	'Engine': 'Q44167',  # Q44167 = "engine"  # (manual)  # Could not find any instances but Q44167 does have a subclass-of property!
 	'HistoricBuilding': '',
 	'RailwayTunnel': '',
 	'GolfCourse': '',
@@ -297,8 +308,8 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Escalator': '',
 	'ConveyorSystem': '',
 	'MovingWalkway': '',
-	'GeopoliticalOrganisation': '',
-	'LunarCrater': '',
+	'GeopoliticalOrganisation': 'Q43229',  # Simply using the same mapping as for 'Organization' here.  # (manual)
+	'LunarCrater': 'Q55818',  # Q55818 = "impact crater"  # (manual)  # Of Webb (Q1131919), Moltke (Q620980), Eratosthenes (Q1345034) and Copernicus (Q1131154), only Moltke is an instance of the more specific lunar crater (Q1348589) class!
 }
 
 
