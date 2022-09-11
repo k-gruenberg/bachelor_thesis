@@ -670,6 +670,14 @@ def main():
 			List[Tuple[Table, ClassificationResult, WikidataItem]]\
 			= []
 
+		# Only used in mode (2):  # ToDo: populate these tables !!!!!
+		tables_filtered_using_narrative_restrictions:\
+			List[Tuple[Table, ClassificationResult, WikidataItem]]\
+			= []
+		tables_rejected_using_narrative_restrictions:\
+			List[Tuple[Table, ClassificationResult, WikidataItem]]\
+			= []
+
 		# The user specified a file containing annotations previously made:
 		if args.annotations_file != "":
 			with open(args.annotations_file, "r") as f:
@@ -816,16 +824,26 @@ def main():
 			print(f"...and fulfilling the following attribute conditions " +\
 				f"(strictness {args.attribute_cond_strictness}): " +\
 				f"{args.attribute_cond}")
-			total_no_of_annotated_tables: int = None  # ToDo !!!!!
-			no_of_tables_annotated_with_entity_type: int = None  # ToDo !!!!!
+
+			total_no_of_annotated_tables: int =\
+				len(tables_with_classif_result_and_correct_entity_type)
+			no_of_tables_annotated_with_entity_type: int =\
+				len([table for table, classification_result, wikidata_item\
+					in tables_with_classif_result_and_correct_entity_type\
+					if wikidata_item in entity_types])
 			print(f"Out of the {total_no_of_annotated_tables} tables " +\
 				f"manually annotated, " +\
 				f"{no_of_tables_annotated_with_entity_type} were annotated " +\
-				f"with one of the entity types from {entity_types}")
+				f"with one of the entity types from {entity_types}.")
 			print("")
 
-			no_of_correct_rejections: int = None  # ToDo !!!!!
-			no_of_incorrect_rejections: int = None  # ToDo !!!!!
+			no_of_correct_rejections: int =\
+				len([table for table, classification_result, wikidata_item\
+					in tables_rejected_using_narrative_restrictions\
+					if wikidata_item not in entity_types])
+			no_of_incorrect_rejections: int =\
+				len(tables_rejected_using_narrative_restrictions) -\
+				no_of_correct_rejections
 			print(f"In total, there were {no_of_correct_rejections} " +\
 				f"correct and {no_of_incorrect_rejections} incorrect " +\
 				"rejections using the narrative restrictions.")
