@@ -526,6 +526,12 @@ def main():
     	When you previously exported your annotations as a .json file,
     	you may re-import it using this argument to avoid having to manually
     	reclassify all those tables again.
+    	BEWARE: The --jaccard, --sbert, --bing & --webisadb flags had an impact
+    	on the exported data but they don't have one on the data imported with
+    	this argument! When you exported your data with the --jaccard flag
+    	but now want to generate statistics for the --sbert flag for example,
+    	you shall **NOT** specify --annotations-file. You instead have to
+    	re-annotate your data again!!!
     	""",
     	metavar='ANNOTATIONS_JSON_FILE')
 
