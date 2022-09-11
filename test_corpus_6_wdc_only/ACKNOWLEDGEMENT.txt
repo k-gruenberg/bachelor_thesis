@@ -1,0 +1,4 @@
+These tables are from
+
+(a) the WDC Web Table Corpus, created at the University of Mannheim:
+http://webdatacommons.org/webtables/2015/downloadInstructions.html
