@@ -260,17 +260,20 @@ def main():
 	parser.add_argument('--prefer-textual-surroundings',
 		action='store_true',
 		help="""Use textual surroundings only, unless this approach yields no
-		results whatsoever, then use the other ones.""")
+		results whatsoever, then use the other ones.
+		THIS FEATURE IS NOT IMPLEMENTED!""")
 
 	parser.add_argument('--prefer-attr-names',
 		action='store_true',
 		help="""Use attribute/column names only, unless this approach yields no
-		results whatsoever, then use the other ones.""")
+		results whatsoever, then use the other ones.
+		THIS FEATURE IS NOT IMPLEMENTED!""")
 
 	parser.add_argument('--prefer-attr-extensions',
 		action='store_true',
 		help="""Use attribute extensions only, unless this approach yields no
-		results whatsoever, then use the other ones.""")
+		results whatsoever, then use the other ones.
+		THIS FEATURE IS NOT IMPLEMENTED!""")
 
 	parser.add_argument('--require-textual-surroundings',
 		action='store_true',
