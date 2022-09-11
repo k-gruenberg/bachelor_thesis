@@ -21,7 +21,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Athlete': 'Q5',  # (manual)
 	'Person': 'Q5',  # replaced automatic 'Q215627' with 'Q5'
 	'Settlement': 'Q486972',
-	'PopulatedPlace': '',
+	'PopulatedPlace': '',  # ToDo!!!
 	'SpaceMission': '',
 	'Organisation': 'Q43229',
 	'Species': '',
@@ -76,7 +76,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'GridironFootballPlayer': 'Q5',  # (manual)
 	'Road': 'Q34442',
 	'Work': 'Q386724',
-	'MeanOfTransportation': '',
+	'MeanOfTransportation': '',  # ToDo!!!
 	'Company': '',
 	'Memorial': '',
 	'Museum': 'Q33506',
@@ -87,10 +87,10 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Aircraft': 'Q11436',
 	'Album': 'Q482994',
 	'Saint': 'Q5',  # replaced automatic 'Q43115' with 'Q5'
-	'AutomobileEngine': '',
+	'AutomobileEngine': '',  # ToDo!!!
 	'PowerStation': '',
 	'Actor': 'Q5',  # replaced automatic 'Q33999' with 'Q5'
-	'MusicalWork': '',
+	'MusicalWork': '',  # ToDo!!!
 	'SoccerPlayer': 'Q5',  # (manual)
 	'RouteOfTransportation': '',
 	'RomaniaSettlement': '',
@@ -267,7 +267,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'TimePeriod': '',
 	'Election': 'Q40231',
 	'VideoGame': 'Q7889',
-	'Mountain,Volcano': '',
+	'Mountain,Volcano': '',  # common attributes: ['firstAscent']
 	'Painting': '',
 	'Intercommunality': 'Q3153117',
 	'MilitaryConflict_,_Attack': '',  # common attributes: ['weapon']
@@ -289,7 +289,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'ClericalAdministrativeRegion': '',
 	'CityDistrict': '',
 	'SpaceStation': '',
-	'Engine': '',
+	'Engine': '',  # ToDo!!!
 	'HistoricBuilding': '',
 	'RailwayTunnel': '',
 	'GolfCourse': '',
