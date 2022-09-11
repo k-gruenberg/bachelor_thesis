@@ -74,8 +74,9 @@ class Table:
 			#   this strict:
 			return self.surroundingText == other.surroundingText\
 				and self.headerRow == other.headerRow\
-				and self.columns == other.columns\
-				and self.file_name == other.file_name
+				and self.columns == other.columns
+				#and self.file_name == other.file_name
+				#(This is too strict when importing using a renamed corpus!)
 		return False
 
 	def width(self) -> int:
