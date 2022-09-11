@@ -4,14 +4,22 @@ from attr_names_to_ontology_class import get_dbpedia_properties
 from WikidataItem import WikidataItem
 
 
-# 97 out of 283 DBpedia classes could be mapped to Wikidata entries
-#   automatically using the code found in main() below:
+# * 97 out of 283 DBpedia classes could be mapped to Wikidata entries
+#   automatically using the code found in main() below.
+# * All 44 mappings to "Q5" (human) were done manually.
+#   -> 29 of those Q5 mappings were to DBpedia classes that had no
+#      automatic mapping (see "(manual)" comments).
+#   -> 15 of those Q5 mapping were to DBpedia classes that already
+#      **had** a more specific automatic mapping that we replaced with the more
+#      generic Q5 one (the reason being that the "Using Attribute Extensions"
+#      approach will also yield only Q5 for humans, no matter their profession);
+#      see "replaced automatic '...' with 'Q5'" comments.
 dbpediaClassesMappedToWikidata: Dict[str, str] =\
-{  # ToDo: map to human (Q5) !!!!! !!!!! !!!!! !!!!! !!!!!
+{
 	'Legislature': 'Q11204',
 	'GrandPrix': '',
-	'Athlete': '',
-	'Person': 'Q215627',
+	'Athlete': 'Q5',  # (manual)
+	'Person': 'Q5',  # replaced automatic 'Q215627' with 'Q5'
 	'Settlement': 'Q486972',
 	'PopulatedPlace': '',
 	'SpaceMission': '',
@@ -19,22 +27,22 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Species': '',
 	'Place': 'Q17334923',
 	'Station': 'Q12819564',
-	'FormulaOneRacer': '',
+	'FormulaOneRacer': 'Q5',  # (manual)
 	'Planet': 'Q634',
-	'PokerPlayer': '',
+	'PokerPlayer': 'Q5',  # (manual)
 	'WrittenWork': '',
 	'Department': '',
 	'Canal': '',
 	'Reference': '',
 	'SkiResort': '',
-	'Comedian': '',
+	'Comedian': 'Q5',  # (manual)
 	'Disease': 'Q12136',
 	'LaunchPad': '',
 	'River': 'Q4022',
 	'Film': 'Q11424',
 	'Spacecraft': 'Q40218',
 	'Island': 'Q23442',
-	'GolfPlayer': 'Q11303721',
+	'GolfPlayer': 'Q5',  # replaced automatic 'Q11303721' with 'Q5'
 	'Region': 'Q3455524',
 	'Broadcaster': 'Q15265344',
 	'File': '',
@@ -46,14 +54,14 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'MilitaryAircraft': '',
 	'Food': 'Q2095',
 	'ChristianDoctrine': '',
-	'MilitaryPerson': '',
+	'MilitaryPerson': 'Q5',  # (manual)
 	'TelevisionEpisode': '',
 	'Event': 'Q1656682',
 	'Olympics': '',
-	'Woman': '',
+	'Woman': 'Q5',  # (manual)
 	'MilitaryUnit': '',
 	'Regency': '',
-	'Boxer': '',
+	'Boxer': 'Q5',  # (manual)
 	'PoliticalParty': '',
 	'Play': 'Q25379',
 	'Airline': 'Q46970',
@@ -61,11 +69,11 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'MusicGenre': '',
 	'ReligiousBuilding': '',
 	'AnatomicalStructure': '',
-	'TennisPlayer': '',
+	'TennisPlayer': 'Q5',  # (manual)
 	'Airport': 'Q1248784',
 	'Mountain': 'Q8502',
 	'ArchitecturalStructure': '',
-	'GridironFootballPlayer': '',
+	'GridironFootballPlayer': 'Q5',  # (manual)
 	'Road': 'Q34442',
 	'Work': 'Q386724',
 	'MeanOfTransportation': '',
@@ -75,53 +83,53 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Sales': 'Q194189',
 	'Country': 'Q6256',
 	'MilitaryConflict': '',
-	'Artist': 'Q483501',
+	'Artist': 'Q5',  # replaced automatic 'Q483501' with 'Q5'
 	'Aircraft': 'Q11436',
 	'Album': 'Q482994',
-	'Saint': 'Q43115',
+	'Saint': 'Q5',  # replaced automatic 'Q43115' with 'Q5'
 	'AutomobileEngine': '',
 	'PowerStation': '',
-	'Actor': 'Q33999',
+	'Actor': 'Q5',  # replaced automatic 'Q33999' with 'Q5'
 	'MusicalWork': '',
-	'SoccerPlayer': '',
+	'SoccerPlayer': 'Q5',  # (manual)
 	'RouteOfTransportation': '',
 	'RomaniaSettlement': '',
 	'Grape': 'Q10978',
 	'Mill': 'Q44494',
 	'AdministrativeRegion': '',
-	'CollegeCoach': '',
+	'CollegeCoach': 'Q5',  # (manual)
 	'Project': '',
 	'ProtectedArea': '',
 	'Family': 'Q8436',
 	'Openswarm': '',
-	'Criminal': 'Q2159907',
+	'Criminal': 'Q5',  # replaced automatic 'Q2159907' with 'Q5'
 	'RadioStation': '',
 	'CelestialBody': '',
-	'IceHockeyPlayer': '',
+	'IceHockeyPlayer': 'Q5',  # (manual)
 	'Agent': 'Q24229398',
 	'Statistic': 'Q1949963',
 	'FormerMunicipality': '',
 	'Municipality': '',
-	'Organisation,_PopulatedPlace': '',
+	'Organisation,_PopulatedPlace': '',  # ToDo!!!
 	'TelevisionShow': '',
 	'Hotel': 'Q27686',
 	'FictionalCharacter': '',
 	'Automobile': '',
 	'NorwaySettlement': '',
-	'Scientist': 'Q901',
-	'FigureSkater': '',
+	'Scientist': 'Q5',  # replaced automatic 'Q901' with 'Q5'
+	'FigureSkater': 'Q5',  # (manual)
 	'Animal': 'Q729',
 	'Infrastructure': '',
 	'Cemetery': 'Q39614',
 	'HistoricPlace': '',
-	'SnookerPlayer': '',
+	'SnookerPlayer': 'Q5',  # (manual)
 	'Race': '',
 	'Instrument': '',
 	'Language': 'Q34770',  # 2 candidates: 'Q315' and 'Q34770'
 	'Galaxy': 'Q318',
 	'Constellation': 'Q8928',
 	'SoccerLeagueSeason': '',
-	'BaseballPlayer': '',
+	'BaseballPlayer': 'Q5',  # (manual)
 	'Ship': '',
 	'Opera': 'Q1344',
 	'Letter': 'Q9788',  # 2 candidates: 'Q133492' (msg) and 'Q9788' (grapheme)
@@ -144,12 +152,12 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'AcademicJournal': '',
 	'Beverage': '',
 	'PublicTransitSystem': '',
-	'Man': '',
+	'Man': 'Q5',  # (manual)
 	'Building': 'Q41176',
-	'MemberResistanceMovement': '',
+	'MemberResistanceMovement': 'Q5',  # (manual)
 	'SportsTeam': '',
 	'ResearchProject': 'Q1298668',
-	'Architect': '',
+	'Architect': 'Q5',  # (manual)
 	'Currency': '',
 	'SportCompetitionResult': '',
 	'Blazon': '',
@@ -166,20 +174,20 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Outbreak': '',
 	'Single': 'Q134556',
 	'Song': '',
-	'Writer': 'Q36180',
+	'Writer': 'Q5',  # replaced automatic 'Q36180' with 'Q5'
 	'company': '',
 	'Artwork': '',
 	'SkiArea': '',
-	'ChessPlayer': '',
+	'ChessPlayer': 'Q5',  # (manual)
 	'College': '',
 	'Globularswarm': '',
-	'Cricketer': '',
+	'Cricketer': 'Q5',  # (manual)
 	'OlympicResult': '',
 	'GermanSettlement': '',
 	'Document': '',
 	'RestArea': '',
 	'Band': 'Q215380',
-	'Athlete,_CareerStation': '',
+	'Athlete,_CareerStation': '',  # ToDo!!!
 	'SoccerTournament': '',
 	'ShoppingMall': 'Q31374404',
 	'Magazine': 'Q41298',
@@ -187,7 +195,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Library': 'Q7075',
 	'HungarySettlement': '',
 	'GeneLocation': '',
-	'Cleric': '',
+	'Cleric': 'Q5',  # (manual)
 	'TermOfOffice': '',
 	'Train': 'Q870',
 	'Colour': '',
@@ -224,37 +232,37 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Theatre': 'Q24354',
 	'Monastry': '',
 	'Plant': 'Q756',
-	'MilitaryConflict_,_NaturalEvent_,_Attack': '',
-	'VolleyballPlayer': '',
-	'AdultActor': '',
+	'MilitaryConflict_,_NaturalEvent_,_Attack': '',  # ToDo!!!
+	'VolleyballPlayer': 'Q5',  # (manual)
+	'AdultActor': 'Q5',  # (manual)
 	'Organisation,_Parish': '',
 	'WorldHeritageSite': '',
 	'City': 'Q515',
-	'Wrestler': 'Q13474373',
+	'Wrestler': 'Q5',  # replaced automatic 'Q13474373' with 'Q5'
 	'core#Concept': '',
 	'MountainRange': '',
-	'OfficeHolder': '',
+	'OfficeHolder': 'Q5',  # (manual)
 	'Diocese,_Parish': '',
-	'Monarch': 'Q116',
+	'Monarch': 'Q5',  # replaced automatic 'Q116' with 'Q5'
 	'MilitaryConflict,_AdministrativeRegion': '',
 	'ChemicalCompound': '',
-	'MusicalArtist': '',
+	'MusicalArtist': 'Q5',  # (manual)
 	'TelevisionStation': '',
 	'Law': '',
-	'Astronaut': 'Q11631',
+	'Astronaut': 'Q5',  # replaced automatic 'Q11631' with 'Q5'
 	'Continent': '',
 	'Lake': 'Q23397',
 	'Volcano': 'Q8072',
 	'SwitzerlandSettlement': '',
-	'Swimmer': 'Q10843402',
+	'Swimmer': 'Q5',  # replaced automatic 'Q10843402' with 'Q5'
 	'WaterwayTunnel': '',
-	'Mayor': 'Q30185',
+	'Mayor': 'Q5',  # replaced automatic 'Q30185' with 'Q5'
 	'SupremeCourtOfTheUnitedStatesCase': '',
-	'Coach': '',
+	'Coach': 'Q5',  # (manual)
 	'LebanonSettlement': '',
-	'SportsTeamMember': '',
+	'SportsTeamMember': 'Q5',  # (manual)
 	'NuclearPowerStation': '',
-	'Bishop': '',
+	'Bishop': 'Q5',  # (manual)
 	'District': '',
 	'TimePeriod': '',
 	'Election': 'Q40231',
@@ -262,7 +270,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Mountain,Volcano': '',
 	'Painting': '',
 	'Intercommunality': 'Q3153117',
-	'MilitaryConflict_,_Attack': '',
+	'MilitaryConflict_,_Attack': '',  # ToDo!!!
 	'Artery': '',
 	'Gene': 'Q7187',
 	'GraveMonument': '',
@@ -270,12 +278,12 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'CyclingTeam': '',
 	'PoliticalFunction': '',
 	'Musical': 'Q2743',
-	'Priest': 'Q42603',
+	'Priest': 'Q5',  # replaced automatic 'Q42603' with 'Q5'
 	'Muscle': 'Q7365',
 	'RoadJunction': '',
 	'Cave': 'Q35509',
-	'Politician': 'Q82955',
-	'NationalCollegiateAthleticAssociationAthlete': '',
+	'Politician': 'Q5',  # replaced automatic 'Q82955' with 'Q5'
+	'NationalCollegiateAthleticAssociationAthlete': 'Q5',  # (manual)
 	'SingleList': '',
 	'GivenName': '',
 	'ClericalAdministrativeRegion': '',
