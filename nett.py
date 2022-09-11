@@ -278,17 +278,20 @@ def main():
 	parser.add_argument('--require-textual-surroundings',
 		action='store_true',
 		help="""Skip tables without textual surroundings entirely.
-		This has the effect of only considering JSON files in the corpus.""")
+		This has the effect of only considering JSON files in the corpus.
+		THIS FEATURE IS NOT IMPLEMENTED!""")
 
 	parser.add_argument('--require-attr-names',
 		action='store_true',
-		help='Skip tables without attribute names entirely.')
+		help="""Skip tables without attribute names entirely.
+		THIS FEATURE IS NOT IMPLEMENTED!""")
 
 	parser.add_argument('--require-attr-extensions',
 		action='store_true',
-		help='Skip tables without an identifying/unique column entirely.')
+		help="""Skip tables without an identifying/unique column entirely.
+		THIS FEATURE IS NOT IMPLEMENTED!""")
 
-	# ToDo: how to implement --prefer and --require parameters?! -> remove?!
+	# (ToDo: implement --prefer-... and --require-... parameters)
 
 	parser.add_argument('--normalize',
 		action='store_true',
@@ -617,7 +620,7 @@ def main():
 		print("[PREPARING] Done.")
 	# </preparation>
 
-	if args.stats and entity_types == []:
+	if args.stats:
 		# (1) Corpus supplied, statistics requested (evaluation feature):
 		#   * Program has to ask user (with the help of pretty_print())
 		#     for every table which mapping is correct.
@@ -640,6 +643,26 @@ def main():
 		#     --attr-extensions-weight and --normalize parameters only
 		#     have an effect for the 1st manual annoation part but not for
 		#     the 2nd part where the statistics are printed!
+		#
+		# (2) Corpus and entity types supplied, statistics requested
+		#     (evaluation feature):
+		#   * Like the case (1) but this time, looking for one (or multiple)
+		#     specific entity types.
+		#   * Tables for which NETT believes their tuples definitely do not
+		#     belong to any of these entity types, are skipped and not
+		#     presented to the user at all.
+		#   * Tables for which NETT believes their tuples might belong to any
+		#     of these entity types, are presented to the user in the same way
+		#     as in case (1).
+		#   * In the end, statistics are printed (just as in case (1));
+		#     beware however that the statistics may not be entirely accurate
+		#     when NETT wrongly skipped tables it thought definitely do not
+		#     represent any of the entity types searched for.
+		#   * Note that it also makes sense to use the --co-occurring-keywords
+		#     and --attribute-cond parameters here
+		#     (the "narrative parameters").
+		#   * The user is shown both tables that match this narrative knowledge
+		#     and tables that don't (for a better evaluation afterwards).
 
 		# Tables with classification result and correct entity type specified
 		#   by user:
@@ -777,34 +800,54 @@ def main():
 
 		# Compute statistics and print them:
 		clear_terminal()
-		ClassificationResult.print_statistics(\
-			tables_with_classif_result_and_correct_entity_type=\
-			tables_with_classif_result_and_correct_entity_type,\
-			stats_max_k=args.stats_max_k,\
-			DEBUG=args.debug)		
-	elif args.stats and entity_types != []:
-		# (2) Corpus and entity types supplied, statistics requested
-		#     (evaluation feature):
-		#   * Like the case (1) but this time, looking for one (or multiple)
-		#     specific entity types.
-		#   * Tables for which NETT believes their tuples definitely do not
-		#     belong to any of these entity types, are skipped and not
-		#     presented to the user at all.
-		#   * Tables for which NETT believes their tuples might belong to any
-		#     of these entity types, are presented to the user in the same way
-		#     as in case (1).
-		#   * In the end, statistics are printed (just as in case (1));
-		#     beware however that the statistics may not be entirely accurate
-		#     when NETT wrongly skipped tables it thought definitely do not
-		#     represent any of the entity types searched for.
-		#   * Note that it also makes sense to use the --co-occurring-keywords
-		#     and --attribute-cond parameters here
-		#     (the "narrative parameters").
-		#   * The user is shown both tables that match this narrative knowledge
-		#     and tables that don't (for a better evaluation afterwards).
-		print("This combination of parameters is not yet implemented.")  # ToDo
-		# ToDo: supply args.sbert & args.debug & args.attribute_cond_strictness
-		#       to fulfills_attribute_condition()
+		if entity_types == []:  # mode (1) (--stats w/o narrative knowledge):
+			ClassificationResult.print_statistics(\
+				tables_with_classif_result_and_correct_entity_type=\
+				tables_with_classif_result_and_correct_entity_type,\
+				stats_max_k=args.stats_max_k,\
+				DEBUG=args.debug)
+		else:  # mode (2) (--stats with narrative knowledge):  # ToDo !!!!!
+			print("Looked for tables containing one of the following " +\
+				f"entity types: {entity_types}")
+			print("...with " + \
+				f"{'all' if args.co_occurring_keywords_all else 'one'} of " +\
+				"the following co-occurring keywords: " +\
+				f"{args.co_occurring_keywords}")
+			print(f"...and fulfilling the following attribute conditions " +\
+				f"(strictness {args.attribute_cond_strictness}): " +\
+				f"{args.attribute_cond}")
+			print(f"Out of the {} tables manually annotated, {} were annotated with one of the entity types from {entity_types}")
+			print("")
+
+			no_of_correct_rejections: int = None  # ToDo !!!!!
+			no_of_incorrect_rejections: int = None  # ToDo !!!!!
+			print(f"In total, there were {no_of_correct_rejections} " +\
+				f"correct and {no_of_incorrect_rejections} incorrect " +\
+				"rejections using the narrative restrictions.")
+			print("")
+
+			for k in range(1, args.stats_max_k+1):
+				print(f"========== k={k}: ==========")
+
+				recall_without_narratives: float = None  # ToDo !!!!!
+				recall_with_narratives: float = None  # ToDo !!!!!
+				print(f"Recall for {entity_types}, w/o narrative " +\
+					f"conditions: {recall_without_narratives}")
+				print(f"Recall for {entity_types}, with narrative " +\
+					f"conditions: {recall_with_narratives}")
+				print(f"Δ Recall (by using narrative knowledge): " +\
+					f"{recall_with_narratives-recall_without_narratives}")
+				print("")
+
+				precision_without_narratives: float = None  # ToDo !!!!!
+				precision_with_narratives: float = None  # ToDo !!!!!
+				print(f"Precision for {entity_types}, w/o narrative " +\
+					f"conditions: {precision_without_narratives}")
+				print(f"Precision for {entity_types}, with narrative " +\
+					f"conditions: {precision_with_narratives}")
+				print(f"Δ Precision (by using narrative knowledge): " +\
+					f"{precision_with_narratives-precision_without_narratives}")
+				print("")
 	elif not args.stats:
 		# (3) Corpus supplied, entity-type-mappings requested
 		#     (evaluation feature, sort of):
