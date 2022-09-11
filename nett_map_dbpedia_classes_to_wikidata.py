@@ -110,7 +110,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Statistic': 'Q1949963',
 	'FormerMunicipality': '',
 	'Municipality': '',
-	'Organisation,_PopulatedPlace': '',  # ToDo!!!
+	'Organisation,_PopulatedPlace': '',  # common attributes: ['dissolutionDate', 'dissolutionYear']
 	'TelevisionShow': '',
 	'Hotel': 'Q27686',
 	'FictionalCharacter': '',
@@ -187,7 +187,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Document': '',
 	'RestArea': '',
 	'Band': 'Q215380',
-	'Athlete,_CareerStation': '',  # ToDo!!!
+	'Athlete,_CareerStation': '',  # common attributes: ['amateurYear', 'amateurTeam', 'leadTeam', 'cyclistGenre', 'leadYear', 'proTeam']
 	'SoccerTournament': '',
 	'ShoppingMall': 'Q31374404',
 	'Magazine': 'Q41298',
@@ -232,7 +232,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Theatre': 'Q24354',
 	'Monastry': '',
 	'Plant': 'Q756',
-	'MilitaryConflict_,_NaturalEvent_,_Attack': '',  # ToDo!!!
+	'MilitaryConflict_,_NaturalEvent_,_Attack': '',  # common attributes: ['casualties']
 	'VolleyballPlayer': 'Q5',  # (manual)
 	'AdultActor': 'Q5',  # (manual)
 	'Organisation,_Parish': '',
@@ -244,7 +244,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'OfficeHolder': 'Q5',  # (manual)
 	'Diocese,_Parish': '',
 	'Monarch': 'Q5',  # replaced automatic 'Q116' with 'Q5'
-	'MilitaryConflict,_AdministrativeRegion': '',
+	'MilitaryConflict,_AdministrativeRegion': '',  # common attributes: ['territory']
 	'ChemicalCompound': '',
 	'MusicalArtist': 'Q5',  # (manual)
 	'TelevisionStation': '',
@@ -270,7 +270,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Mountain,Volcano': '',
 	'Painting': '',
 	'Intercommunality': 'Q3153117',
-	'MilitaryConflict_,_Attack': '',  # ToDo!!!
+	'MilitaryConflict_,_Attack': '',  # common attributes: ['weapon']
 	'Artery': '',
 	'Gene': 'Q7187',
 	'GraveMonument': '',
