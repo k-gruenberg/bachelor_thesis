@@ -333,42 +333,150 @@ class ClassificationResult:
 		#       ...
 		# 
 		#       (w2 always such that w1+w2 == 1.0)
+		def top_k_coverage_w(k: int, normalize: bool, w1: float, w2: float, w3: float = None) -> str:
+			"""
+			Returns the top-k coverage, for the k and three weightings
+			specified, as a 4-character string (e.g. ' 42%').
+			The `useTextualSurroundings`, `useAttrNames` and
+			`useAttrExtensions` booleans are taken from the outer function.
+			"""
+			if w3 is None:
+				w3 = 1.0-w1-w2
+
+			# Precomputations:
+
+			tables_with_classif_fixed_params:\
+				List[Tuple[Table, List[Tuple[float, WikidataItem]], WikidataItem]]\
+				= [(tab,\
+					classification_result.classify(\
+						useTextualSurroundings=useTextualSurroundings,\
+						textualSurroundingsWeighting=w1,\
+					 	useAttrNames=useAttrNames,\
+					 	attrNamesWeighting=w2,\
+					 	useAttrExtensions=useAttrExtensions,\
+					 	attrExtensionsWeighting=w3,\
+					 	normalizeApproaches=normalize,\
+					 	DEBUG=DEBUG),\
+					wikidata_item)\
+					for tab, classification_result, wikidata_item\
+					in tables_with_classif_result_and_correct_entity_type]
+
+			number_of_tables: int = len(tables_with_classif_fixed_params)
+
+			# The rank of the correct entity type for each classified table,
+			#   or infinity when none of the entity types in the list returned
+			#   by the classification was correct:
+			ranks: List[float] = []  # (floats only to allow for infinity)
+			for table, classification, wikid_itm\
+				in tables_with_classif_fixed_params:
+				ranks.append(\
+					index([wi for score, wi in classification], wikid_itm) + 1)
+				# Adding 1 is important to avoid a ZeroDivisionError below.
+				#   An index of 0 means a rank of 1.
+
+			return "{:3.0f}%".format(100.0 * top_k_coverage(k=k, ranks=ranks))
+
+		def recall_macro_avg_w(k: int, normalize: bool, w1: float, w2: float, w3: float = None) -> str:
+			"""
+			Returns the recall (macro-average), for the k and three weightings
+			specified, as a 4-character string (e.g. ' 42%').
+			The `useTextualSurroundings`, `useAttrNames` and
+			`useAttrExtensions` booleans are taken from the outer function.
+			"""
+			if w3 is None:
+				w3 = 1.0-w1-w2
+
+			# Precomputations:
+
+			tables_with_classif_fixed_params:\
+				List[Tuple[Table, List[Tuple[float, WikidataItem]], WikidataItem]]\
+				= [(tab,\
+					classification_result.classify(\
+						useTextualSurroundings=useTextualSurroundings,\
+						textualSurroundingsWeighting=w1,\
+					 	useAttrNames=useAttrNames,\
+					 	attrNamesWeighting=w2,\
+					 	useAttrExtensions=useAttrExtensions,\
+					 	attrExtensionsWeighting=w3,\
+					 	normalizeApproaches=normalize,\
+					 	DEBUG=DEBUG),\
+					wikidata_item)\
+					for tab, classification_result, wikidata_item\
+					in tables_with_classif_result_and_correct_entity_type]
+
+			number_of_tables: int = len(tables_with_classif_fixed_params)
+
+			# All the wikidata entity types annotated by the user
+			#   as the correct ones, i.e. the set of all (correct) entity types
+			#   occuring in the given corpus:
+			all_correct_wikidata_types: Set[WikidataItem] = set(wikidata_item\
+				for tab, classification_result, wikidata_item\
+				in tables_with_classif_fixed_params)
+
+			# Each entity table mapped to the list of rankings it received
+			#   (when it was the correct one!):
+			ranks_per_entity_type: Dict[WikidataItem, List[float]] =\
+				{wikidata_entity_type:\
+					[index([wi for score, wi in classification], wikid_itm)\
+					for table, classification, wikid_itm\
+					in tables_with_classif_fixed_params\
+					if wikid_itm == wikidata_entity_type]\
+					for wikidata_entity_type in all_correct_wikidata_types\
+				}
+
+			return "{:3.0f}%".format(100.0 * recall_macro_avg(k=k,\
+				ranks_per_entity_type=ranks_per_entity_type))
+
 		if useTextualSurroundings and useAttrNames and useAttrExtensions:
+			# Use all 3 approaches:
 			print("Top-k coverage for different weightings of the 3 approaches"+\
 				" (normalized/non-normalized; w3 such that w1+w2+w3 == 2.0):")
 			print(Table.Table.create3DStatisticalTable(\
-				_lambda=lambda w1, k, w2: f"ToDo / ToDo",\
+				_lambda=lambda w1, k, w2:\
+				f"{top_k_coverage_w(k=k, w1=w1, w2=w2, w3=2.0-w1-w2, normalize=True)}"\
+				" / " +\
+				f"{top_k_coverage_w(k=k, w1=w1, w2=w2, w3=2.0-w1-w2, normalize=False)}",\
 				x_var_name="w1", left_y_var_name="k", right_y_var_name="w2",\
 				left_y_range=list(range(1, stats_max_k+1))
 				).pretty_print(maxNumberOfTuples=100000000))
 
 			print("Recall, macro-avg. for diff. weightings of the 3 approaches"+\
 				" (normalized/non-normalized; w3 such that w1+w2+w3 == 2.0):")
-			# ToDo
-		elif useAttrNames and useAttrExtensions:
+			print(Table.Table.create3DStatisticalTable(\
+				_lambda=lambda w1, k, w2:\
+				f"{recall_macro_avg_w(k=k, w1=w1, w2=w2, w3=2.0-w1-w2, normalize=True)}"\
+				" / " +\
+				f"{recall_macro_avg_w(k=k, w1=w1, w2=w2, w3=2.0-w1-w2, normalize=False)}",\
+				x_var_name="w1", left_y_var_name="k", right_y_var_name="w2",\
+				left_y_range=list(range(1, stats_max_k+1))
+				).pretty_print(maxNumberOfTuples=100000000))
+		elif (useAttrNames and useAttrExtensions)\
+			or (useTextualSurroundings and useAttrExtensions)\
+			or (useTextualSurroundings and useAttrNames):
+			# Use 2 of the 3 approaches:
 			print("Top-k coverage for different weightings of the 2 approaches"+\
 				" (normalized/non-normalized):")
-			# ToDo
+			print(Table.Table.create2DStatisticalTable(\
+				_lambda=lambda w, k:\
+				f"{top_k_coverage_w(k=k, w1=(w if useTextualSurroundings else 0.0), w2=(w if not useTextualSurroundings else (1.0-w if useAttrNames else 0.0)), normalize=True)}"\
+				" / " +\
+				f"{top_k_coverage_w(k=k, w1=(w if useTextualSurroundings else 0.0), w2=(w if not useTextualSurroundings else (1.0-w if useAttrNames else 0.0)), normalize=False)}",\
+				x_var_name=("w1" if useTextualSurroundings else "w2"),\
+				y_var_name="k",\
+				y_range=list(range(1, stats_max_k+1))
+				).pretty_print(maxNumberOfTuples=100000000))
 
 			print("Recall, macro-avg. for diff. weightings of the 2 approaches"+\
 				" (normalized/non-normalized):")
-			# ToDo
-		elif useTextualSurroundings and useAttrExtensions:
-			print("Top-k coverage for different weightings of the 2 approaches"+\
-				" (normalized/non-normalized):")
-			# ToDo
-
-			print("Recall, macro-avg. for diff. weightings of the 2 approaches"+\
-				" (normalized/non-normalized):")
-			# ToDo
-		elif useTextualSurroundings and useAttrNames:
-			print("Top-k coverage for different weightings of the 2 approaches"+\
-				" (normalized/non-normalized):")
-			# ToDo
-
-			print("Recall, macro-avg. for diff. weightings of the 2 approaches"+\
-				" (normalized/non-normalized):")
-			# ToDo
+			print(Table.Table.create2DStatisticalTable(\
+				_lambda=lambda w, k:\
+				f"{recall_macro_avg_w(k=k, w1=(w if useTextualSurroundings else 0.0), w2=(w if not useTextualSurroundings else (1.0-w if useAttrNames else 0.0)), normalize=True)}"\
+				" / " +\
+				f"{recall_macro_avg_w(k=k, w1=(w if useTextualSurroundings else 0.0), w2=(w if not useTextualSurroundings else (1.0-w if useAttrNames else 0.0)), normalize=False)}",\
+				x_var_name=("w1" if useTextualSurroundings else "w2"),\
+				y_var_name="k",\
+				y_range=list(range(1, stats_max_k+1))
+				).pretty_print(maxNumberOfTuples=100000000))
 		else:
 			# For 1 approach, it makes no sense to consider different
 			#   weightings, so print/do nothing here:
