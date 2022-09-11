@@ -816,7 +816,12 @@ def main():
 			print(f"...and fulfilling the following attribute conditions " +\
 				f"(strictness {args.attribute_cond_strictness}): " +\
 				f"{args.attribute_cond}")
-			print(f"Out of the {} tables manually annotated, {} were annotated with one of the entity types from {entity_types}")
+			total_no_of_annotated_tables: int = None  # ToDo !!!!!
+			no_of_tables_annotated_with_entity_type: int = None  # ToDo !!!!!
+			print(f"Out of the {total_no_of_annotated_tables} tables " +\
+				f"manually annotated, " +\
+				f"{no_of_tables_annotated_with_entity_type} were annotated " +\
+				f"with one of the entity types from {entity_types}")
 			print("")
 
 			no_of_correct_rejections: int = None  # ToDo !!!!!
