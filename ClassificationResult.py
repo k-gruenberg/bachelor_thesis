@@ -249,7 +249,7 @@ class ClassificationResult:
 		for table, classification, wikid_itm\
 			in tables_with_classif_fixed_params:
 			ranks.append(\
-				index([wi for score, wi in classification], wikid_itm) + 1)
+				index([wi for score, wi in classification], wikid_itm))
 			# Adding 1 is important to avoid a ZeroDivisionError below.
 			#   An index of 0 means a rank of 1.
 
@@ -298,7 +298,7 @@ class ClassificationResult:
 		else:
 			exit("Called print_statistics_overall() with " +\
 				"all approaches set to False")
-		mrr: float = sum(1/rank for rank in ranks) / len(ranks)
+		mrr: float = sum(1/(1+rank) for rank in ranks) / len(ranks)
 		print(f"MRR: {mrr}")
 		print(Table.Table(surroundingText="",\
 			headerRow=[\
@@ -370,7 +370,7 @@ class ClassificationResult:
 			for table, classification, wikid_itm\
 				in tables_with_classif_fixed_params:
 				ranks.append(\
-					index([wi for score, wi in classification], wikid_itm) + 1)
+					index([wi for score, wi in classification], wikid_itm))
 				# Adding 1 is important to avoid a ZeroDivisionError below.
 				#   An index of 0 means a rank of 1.
 
