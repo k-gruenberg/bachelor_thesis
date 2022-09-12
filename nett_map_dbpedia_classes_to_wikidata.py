@@ -22,8 +22,8 @@ from WikidataItem import WikidataItem
 # * In total, there are -  82=97-15 automatic mappings, left as they were
 #                       -  15 automatic mappings generified to 'Q5' (human)
 #                       -  29 manual mappings to 'Q5' (human)
-#                       -  22 further manual mappings
-#                       - 135 DBpedia classes w/o Wikidata mappings (47.7%)
+#                       -  23 further manual mappings
+#                       - 134 DBpedia classes w/o Wikidata mappings (47.3%)
 #                   SUM = 283 DBpedia classes
 dbpediaClassesMappedToWikidata: Dict[str, str] =\
 {
@@ -33,7 +33,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Person': 'Q5',  # replaced automatic 'Q215627' with 'Q5'
 	'Settlement': 'Q486972',
 	'PopulatedPlace': 'Q486972',  # Q486972 = "human settlement"  # (manual)
-	'SpaceMission': '',
+	'SpaceMission': 'Q2133344',  # Q2133344 = "space mission"  # (manual)  # Instance tested: Apollo 13 (Q182252) => human spaceflight (Q752783) => space mission (Q2133344)  # Q2133344.P1709 == "http://dbpedia.org/ontology/SpaceMission"
 	'Organisation': 'Q43229',
 	'Species': '',
 	'Place': 'Q17334923',
@@ -230,7 +230,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'WrestlingEvent': '',
 	'SiteOfSpecialScientificInterest': '',
 	'MultiVolumePublication': '',
-	'MythologicalFigure': 'Q4271324',  # Q4271324 = "mythical character" (or "mythological figure")  # (manual)  # Instances tested: Thor (Q42952) => Norse deity (Q16513881) => Norse mythical character (Q16513904) => mythical character (Q4271324) ; Poseidon (Q41127) => Greek deity (Q22989102) => mythological Greek character (Q22988604) => mythical character (Q4271324)
+	'MythologicalFigure': 'Q4271324',  # Q4271324 = "mythical character" (or "mythological figure")  # (manual)  # Instances tested: Thor (Q42952) => Norse deity (Q16513881) => Norse mythical character (Q16513904) => mythical character (Q4271324) ; Poseidon (Q41127) => Greek deity (Q22989102) => mythological Greek character (Q22988604) => mythical character (Q4271324)  # Q4271324.P1709 == "http://dbpedia.org/ontology/MythologicalFigure"
 	'Flag': 'Q14660',
 	'RouteStop': '',
 	'Restaurant': 'Q11707',
@@ -351,7 +351,7 @@ def main():
 				print("[INFO] Found equivalent classes for Wikidata " +\
 					f"item/class '{matching_wikidata_item}' " +\
 					"(found by searching "+\
-					f"for DBpedia class name '{dbpedia_class_name}''): " +\
+					f"for DBpedia class name '{dbpedia_class_name}'): " +\
 					f"{equivalent_classes}")
 				for equivalent_class in equivalent_classes:
 					if equivalent_class\
