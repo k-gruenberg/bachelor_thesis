@@ -22,8 +22,8 @@ from WikidataItem import WikidataItem
 # * In total, there are -  82=97-15 automatic mappings, left as they were
 #                       -  15 automatic mappings generified to 'Q5' (human)
 #                       -  29 manual mappings to 'Q5' (human)
-#                       -  20 further manual mappings
-#                       - 137 DBpedia classes w/o Wikidata mappings (48.4%)
+#                       -  21 further manual mappings
+#                       - 136 DBpedia classes w/o Wikidata mappings (48.1%)
 #                   SUM = 283 DBpedia classes
 dbpediaClassesMappedToWikidata: Dict[str, str] =\
 {
@@ -230,7 +230,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'WrestlingEvent': '',
 	'SiteOfSpecialScientificInterest': '',
 	'MultiVolumePublication': '',
-	'MythologicalFigure': '',
+	'MythologicalFigure': 'Q4271324',  # Q4271324 = "mythical character" (or "mythological figure")  # (manual)  # Instances tested: Thor (Q42952) => Norse deity (Q16513881) => Norse mythical character (Q16513904) => mythical character (Q4271324) ;  Poseidon (Q41127) => Greek deity (Q22989102) => mythological Greek character (Q22988604) => mythical character (Q4271324)
 	'Flag': 'Q14660',
 	'RouteStop': '',
 	'Restaurant': 'Q11707',
