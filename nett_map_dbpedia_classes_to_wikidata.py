@@ -22,8 +22,8 @@ from WikidataItem import WikidataItem
 # * In total, there are -  82=97-15 automatic mappings, left as they were
 #                       -  15 automatic mappings generified to 'Q5' (human)
 #                       -  29 manual mappings to 'Q5' (human)
-#                       -  24 further manual mappings
-#                       - 133 DBpedia classes w/o Wikidata mappings (47.0%)
+#                       -  25 further manual mappings
+#                       - 132 DBpedia classes w/o Wikidata mappings (46.6%)
 #                   SUM = 283 DBpedia classes
 dbpediaClassesMappedToWikidata: Dict[str, str] =\
 {
@@ -78,7 +78,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Airline': 'Q46970',
 	'ChartsPlacements': '',
 	'MusicGenre': '',
-	'ReligiousBuilding': '',
+	'ReligiousBuilding': 'Q24398318',  # Q24398318 = "religious building"  # (manual)  # Instances tested: Church of Our Lady (Q157229) => church building (Q16970) => religious building (Q24398318) ; Westminster Abbey (Q5933) => Anglican or episcopal cathedral (Q56242250) => protestant cathedral (Q58079064) => religious building (Q24398318)
 	'AnatomicalStructure': '',
 	'TennisPlayer': 'Q5',  # (manual)
 	'Airport': 'Q1248784',
