@@ -816,7 +816,7 @@ def main():
 				tables_with_classif_result_and_correct_entity_type,\
 				stats_max_k=args.stats_max_k,\
 				DEBUG=args.debug)
-		else:  # mode (2) (--stats with narrative knowledge):  # ToDo: test !!!!
+		else:  # mode (2) (--stats with narrative knowledge):
 			print("===== Statistics (with and without narrative knowledge): " +\
 				"=====")
 
