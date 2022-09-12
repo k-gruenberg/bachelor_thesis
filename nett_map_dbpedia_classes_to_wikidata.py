@@ -22,8 +22,8 @@ from WikidataItem import WikidataItem
 # * In total, there are -  82=97-15 automatic mappings, left as they were
 #                       -  15 automatic mappings generified to 'Q5' (human)
 #                       -  29 manual mappings to 'Q5' (human)
-#                       -  26 further manual mappings
-#                       - 131 DBpedia classes w/o Wikidata mappings (46.3%)
+#                       -  27 further manual mappings
+#                       - 130 DBpedia classes w/o Wikidata mappings (45.9%)
 #                   SUM = 283 DBpedia classes
 dbpediaClassesMappedToWikidata: Dict[str, str] =\
 {
@@ -141,7 +141,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Constellation': 'Q8928',
 	'SoccerLeagueSeason': '',
 	'BaseballPlayer': 'Q5',  # (manual)
-	'Ship': '',
+	'Ship': 'Q11446',  # Q11446 = "ship"  # (manual)  # Instances tested: Titanic (Q25173) => steamship (Q12859788) => ship (Q11446) ; USS Gerald R. Ford (Q1351895) => supercarrier (Q1186981) => aircraft carrier (Q17205) => warship (Q3114762) => naval vessel (Q177597) => ship (Q11446)
 	'Opera': 'Q1344',
 	'Letter': 'Q9788',  # 2 candidates: 'Q133492' (msg) and 'Q9788' (grapheme)
 	'Brain': '',
