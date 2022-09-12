@@ -22,8 +22,8 @@ from WikidataItem import WikidataItem
 # * In total, there are -  82=97-15 automatic mappings, left as they were
 #                       -  15 automatic mappings generified to 'Q5' (human)
 #                       -  29 manual mappings to 'Q5' (human)
-#                       -  23 further manual mappings
-#                       - 134 DBpedia classes w/o Wikidata mappings (47.3%)
+#                       -  24 further manual mappings
+#                       - 133 DBpedia classes w/o Wikidata mappings (47.0%)
 #                   SUM = 283 DBpedia classes
 dbpediaClassesMappedToWikidata: Dict[str, str] =\
 {
@@ -43,7 +43,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'PokerPlayer': 'Q5',  # (manual)
 	'WrittenWork': 'Q47461344',  # Q47461344 = "written work"  # (manual)
 	'Department': '',
-	'Canal': '',
+	'Canal': 'Q12284',  # Q12284 = "canal"  # (manual)  # Instances tested: Erie Canal (Q459578) => canal (Q12284) ; Mittelland Canal (Q48480) => summit level canal (Q2936105) => canal (Q12284)
 	'Reference': '',
 	'SkiResort': '',
 	'Comedian': 'Q5',  # (manual)
