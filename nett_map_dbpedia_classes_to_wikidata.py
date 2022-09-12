@@ -22,8 +22,8 @@ from WikidataItem import WikidataItem
 # * In total, there are -  82=97-15 automatic mappings, left as they were
 #                       -  15 automatic mappings generified to 'Q5' (human)
 #                       -  29 manual mappings to 'Q5' (human)
-#                       -  25 further manual mappings
-#                       - 132 DBpedia classes w/o Wikidata mappings (46.6%)
+#                       -  26 further manual mappings
+#                       - 131 DBpedia classes w/o Wikidata mappings (46.3%)
 #                   SUM = 283 DBpedia classes
 dbpediaClassesMappedToWikidata: Dict[str, str] =\
 {
@@ -89,7 +89,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Work': 'Q386724',
 	'MeanOfTransportation': 'Q29048322',  # Q29048322 = "vehicle model"  # (manual)  # Not based on any instances or any of the other main approaches; it's simply the superclass of automobile model (Q3231690), just like "MeanOfTransportation" is the superclass of "Automobile" in DBpedia!
 	'Company': 'Q4830453',  # Q4830453 = "business"  # (manual)  # Note that Wikidata distinguishes between enterprise, business and corporation! Apple, Microsoft, Tesla and Unilever are all instances of "business" however (Unilever recursively via 1 step)!
-	'Memorial': '',
+	'Memorial': 'Q5003624',  # Q5003624 = "memorial"  # (manual)  # Instances tested: Lincoln Memorial (Q213559) => National Memorial of the United States (Q1967454) => memorial (Q5003624) ; Memorial to the Murdered Jews of Europe (Q160700) => Holocaust memorial (Q20011797) => war memorial (Q575759) => memorial (Q5003624)
 	'Museum': 'Q33506',
 	'Sales': 'Q194189',
 	'Country': 'Q6256',
