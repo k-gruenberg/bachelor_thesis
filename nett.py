@@ -176,7 +176,6 @@ def main():
         (3) $ python3 nett.py --corpus test_corpus --jaccard -k 2
         (4) $ python3 nett.py Q5 --corpus test_corpus --jaccard -k 2
 		""")
-	# ToDo: put these example calls into README
 
 	parser.add_argument(
     	'entityTypes', # Narratives = "Knowing what to look for"
@@ -337,6 +336,7 @@ def main():
     	By default, it is automatically recognized for each CSV file
     	individually. So specify this only when all CSV files in the corpus
     	have a common format!
+    	THIS FEATURE IS NOT IMPLEMENTED!
     	""",
     	metavar='CSV_DELIMITER')
 
@@ -349,6 +349,7 @@ def main():
     	By default, it is automatically recognized for each CSV file
     	individually. So specify this only when all CSV files in the corpus
     	have a common format! 
+    	THIS FEATURE IS NOT IMPLEMENTED!
     	""",
     	metavar='CSV_QUOTECHAR')
 
@@ -702,7 +703,8 @@ def main():
 			# Print (annotation) progress at the top:
 			print("[" +\
 				f"{len(tables_with_classif_result_and_correct_entity_type)}"\
-				+ " tables annotated so far]")
+				+ " tables annotated so far] "\
+				+ f"[Now annotating '{table_.file_name}'...]")
 			print("")
 
 			# Pretty-print table:
