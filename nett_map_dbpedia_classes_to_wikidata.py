@@ -22,8 +22,8 @@ from WikidataItem import WikidataItem
 # * In total, there are -  82=97-15 automatic mappings, left as they were
 #                       -  15 automatic mappings generified to 'Q5' (human)
 #                       -  29 manual mappings to 'Q5' (human)
-#                       -  28 further manual mappings
-#                       - 129 DBpedia classes w/o Wikidata mappings (45.6%)
+#                       -  29 further manual mappings
+#                       - 128 DBpedia classes w/o Wikidata mappings (45.2%)
 #                   SUM = 283 DBpedia classes
 dbpediaClassesMappedToWikidata: Dict[str, str] =\
 {
@@ -279,7 +279,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Election': 'Q40231',
 	'VideoGame': 'Q7889',
 	'Mountain,Volcano': '',  # common attributes: ['firstAscent']
-	'Painting': '',
+	'Painting': 'Q3305213',  # Q3305213 = "painting"  # (manual)  # Instances tested: Mona Lisa (Q12418) => painting (Q3305213) ; American Gothic (Q464782) => painting (Q3305213)
 	'Intercommunality': 'Q3153117',
 	'MilitaryConflict_,_Attack': '',  # common attributes: ['weapon']
 	'Artery': '',
