@@ -166,8 +166,17 @@ def main():
 		(4) ENTITY_TYPE(s) supplied => main productive mode: search corpus
         for tables containing tuples of the given entity type(s)
         (and possibly use narrative knowledge)!!
+
+        Example calls:
+        (1) $ python3 nett.py --corpus test_corpus --sbert --stats
+              --stats-max-k 11
+        (2) $ python3 nett.py Q5 --corpus test_corpus_6_wdc_only --jaccard
+              --stats --co-occurring-keywords "math"
+              --attribute-cond "year > 1900"
+        (3) $ python3 nett.py --corpus test_corpus --jaccard -k 2
+        (4) $ python3 nett.py Q5 --corpus test_corpus --jaccard -k 2
 		""")
-	# ToDo: list a few example calls in this description!!
+	# ToDo: put these example calls into README
 
 	parser.add_argument(
     	'entityTypes', # Narratives = "Knowing what to look for"
@@ -670,14 +679,6 @@ def main():
 			List[Tuple[Table, ClassificationResult, WikidataItem]]\
 			= []
 
-		# Only used in mode (2):  # ToDo: populate these tables !!!!!
-		tables_filtered_using_narrative_restrictions:\
-			List[Tuple[Table, ClassificationResult, WikidataItem]]\
-			= []
-		tables_rejected_using_narrative_restrictions:\
-			List[Tuple[Table, ClassificationResult, WikidataItem]]\
-			= []
-
 		# The user specified a file containing annotations previously made:
 		if args.annotations_file != "":
 			with open(args.annotations_file, "r") as f:
@@ -688,6 +689,7 @@ def main():
 			file_extensions=file_extensions, onlyRelationalJSON=\
 			args.relational_json_tables_only,\
 			min_table_size=args.min_table_size, DEBUG=args.debug):
+
 			# Skip table if it was already annotated (this only happens
 			#   when args.annotations_file != ""):
 			if args.annotations_file != "" and table_ in [t for (t, cr, wi) in\
@@ -814,7 +816,60 @@ def main():
 				tables_with_classif_result_and_correct_entity_type,\
 				stats_max_k=args.stats_max_k,\
 				DEBUG=args.debug)
-		else:  # mode (2) (--stats with narrative knowledge):  # ToDo !!!!!
+		else:  # mode (2) (--stats with narrative knowledge):  # ToDo: test !!!!
+			print("===== Statistics (with and without narrative knowledge): " +\
+				"=====")
+
+			tables_filtered_using_narrative_restrictions:\
+				List[Tuple[Table, ClassificationResult, WikidataItem]]\
+				= []
+			tables_rejected_using_narrative_restrictions:\
+				List[Tuple[Table, ClassificationResult, WikidataItem]]\
+				= []
+
+			# Populate `tables_filtered_using_narrative_restrictions` and
+			#   `tables_rejected_using_narrative_restrictions` with the elements
+			#   in `tables_with_classif_result_and_correct_entity_type`,
+			#   depending on whether they would have been filtered out by
+			#   the narrative filters (--co-occurring-keywords and
+			#   --attribute-cond) or not:
+			for table_, classification_result, wikidata_item\
+				in tables_with_classif_result_and_correct_entity_type:
+				if entity_types != []:
+					# Check if table satisfies the narrative conditions
+					#   specified using the --co-occurring-keywords and
+					#   --attribute-cond parameters, when specified:
+					# Do the --co-occurring-keywords check first as it should be
+					#   faster (only string search, no computation of similarity
+					#   metrics needed as with --attribute-cond):
+					reject_this_table: bool = False
+					if args.co_occurring_keywords is not None\
+						and args.co_occurring_keywords != []:
+						if not table_.has_co_occurring_keywords(\
+							keywords=args.co_occurring_keywords,\
+							requireAll=args.co_occurring_keywords_all,\
+							lookInSurroundingText=True,\
+							lookInsideTable=True,\
+							caseSensitive=\
+								args.co_occurring_keywords_case_sensitive):
+							reject_this_table = True  # Reject this table.
+					if args.attribute_cond is not None\
+						and args.attribute_cond != []:
+						for attribute_condition in args.attribute_cond:
+							if not table_.fulfills_attribute_condition(\
+								attribute_cond=attribute_condition,\
+								useSBERT=args.sbert,\
+								strictness=args.attribute_cond_strictness,\
+								DEBUG=args.debug):
+								reject_this_table = True  # Reject this table.
+								break
+					if reject_this_table: # Reject this table:
+						tables_rejected_using_narrative_restrictions.append(\
+							(table_, classification_result, wikidata_item))
+					else:  # Otherwise, this table passed the narrative filters:
+						tables_filtered_using_narrative_restrictions.append(\
+							(table_, classification_result, wikidata_item))
+
 			print("Looked for tables containing one of the following " +\
 				f"entity types: {entity_types}")
 			print("...with " + \
@@ -837,39 +892,125 @@ def main():
 				f"with one of the entity types from {entity_types}.")
 			print("")
 
-			no_of_correct_rejections: int =\
+			total_no_of_correct_rejections: int =\
 				len([table for table, classification_result, wikidata_item\
 					in tables_rejected_using_narrative_restrictions\
 					if wikidata_item not in entity_types])
-			no_of_incorrect_rejections: int =\
+			total_no_of_incorrect_rejections: int =\
 				len(tables_rejected_using_narrative_restrictions) -\
-				no_of_correct_rejections
-			print(f"In total, there were {no_of_correct_rejections} " +\
-				f"correct and {no_of_incorrect_rejections} incorrect " +\
+				total_no_of_correct_rejections
+			print(f"In total, there were {total_no_of_correct_rejections} " +\
+				"(definitely) correct and " +\
+				f"{total_no_of_incorrect_rejections} (possibly) incorrect " +\
 				"rejections using the narrative restrictions.")
 			print("")
 
 			for k in range(1, args.stats_max_k+1):
 				print(f"========== k={k}: ==========")
 
-				recall_without_narratives: float = None  # ToDo !!!!!
-				recall_with_narratives: float = None  # ToDo !!!!!
-				print(f"Recall for {entity_types}, w/o narrative " +\
-					f"conditions: {recall_without_narratives}")
-				print(f"Recall for {entity_types}, with narrative " +\
-					f"conditions: {recall_with_narratives}")
-				print(f"Δ Recall (by using narrative knowledge): " +\
-					f"{recall_with_narratives-recall_without_narratives}")
+				tables_retrieved_using_fixed_k_without_narratives:\
+					List[Tuple[Table, ClassificationResult, WikidataItem]]\
+					= [(table, classification_result, wikidata_item)\
+						for table, classification_result, wikidata_item\
+						in tables_with_classif_result_and_correct_entity_type\
+						if any(entity_type in [wi for score, wi in\
+							classification_result.classify(\
+								useTextualSurroundings=\
+									not args.dont_use_textual_surroundings,\
+				 				textualSurroundingsWeighting=\
+				 					args.textual_surroundings_weight,\
+								useAttrNames=\
+									not args.dont_use_attr_names,\
+								attrNamesWeighting=\
+									args.attr_names_weight,\
+								useAttrExtensions=\
+									not args.dont_use_attr_extensions,\
+								attrExtensionsWeighting=\
+									args.attr_extensions_weight,\
+								normalizeApproaches=\
+									args.normalize,\
+								DEBUG=\
+									args.debug
+								)[:k]]\
+							for entity_type in entity_types)]
+				# => Is any of entity_types in .classify()[:k]?
+				print(f"# of tables retrieved using k={k} w/o narrative " +\
+					"conditions: " +\
+					f"{len(tables_retrieved_using_fixed_k_without_narratives)}")
+
+				tables_retrieved_using_fixed_k_with_narratives:\
+					List[Tuple[Table, ClassificationResult, WikidataItem]]\
+					= [(table, classification_result, wikidata_item)\
+						for table, classification_result, wikidata_item\
+						in tables_filtered_using_narrative_restrictions\
+						if any(entity_type in [wi for score, wi in\
+							classification_result.classify(\
+								useTextualSurroundings=\
+									not args.dont_use_textual_surroundings,\
+				 				textualSurroundingsWeighting=\
+				 					args.textual_surroundings_weight,\
+								useAttrNames=\
+									not args.dont_use_attr_names,\
+								attrNamesWeighting=\
+									args.attr_names_weight,\
+								useAttrExtensions=\
+									not args.dont_use_attr_extensions,\
+								attrExtensionsWeighting=\
+									args.attr_extensions_weight,\
+								normalizeApproaches=\
+									args.normalize,\
+								DEBUG=\
+									args.debug
+								)[:k]]\
+							for entity_type in entity_types)]
+				# => Is any of entity_types in .classify()[:k]?
+				print(f"# of tables retrieved using k={k} with narrative " +\
+					"conditions: " +\
+					f"{len(tables_retrieved_using_fixed_k_with_narratives)}")
 				print("")
 
-				precision_without_narratives: float = None  # ToDo !!!!!
-				precision_with_narratives: float = None  # ToDo !!!!!
+				true_positives_without_narratives: int =\
+					len([None for table, classification_result, wikidata_item\
+						in tables_retrieved_using_fixed_k_without_narratives\
+						if wikidata_item in entity_types])
+				true_positives_with_narratives: int =\
+					len([None for table, classification_result, wikidata_item\
+						in tables_retrieved_using_fixed_k_with_narratives\
+						if wikidata_item in entity_types])
+				print("True positives w/o narrative conditions: " +\
+					f"{true_positives_without_narratives}")
+				print("True positives with narrative conditions: " +\
+					f"{true_positives_with_narratives}")
+				print("")
+
+				# Recall = true positives / (true positives + false negatives):
+				recall_without_narratives: float =\
+					true_positives_without_narratives\
+					/ no_of_tables_annotated_with_entity_type
+				recall_with_narratives: float =\
+					true_positives_with_narratives\
+					/ no_of_tables_annotated_with_entity_type 
+				print(f"Recall for {entity_types}, w/o narrative " +\
+					f"conditions: {100*recall_without_narratives}%")
+				print(f"Recall for {entity_types}, with narrative " +\
+					f"conditions: {100*recall_with_narratives}%")
+				print(f"Δ Recall (by using narrative knowledge): " +\
+					f"{100*(recall_with_narratives-recall_without_narratives)}%")
+				print("")
+
+				# Precision = true positives / (true positives + false positives):
+				precision_without_narratives: float =\
+					true_positives_without_narratives\
+					/ len(tables_retrieved_using_fixed_k_without_narratives)
+				precision_with_narratives: float =\
+					true_positives_with_narratives\
+					/ len(tables_retrieved_using_fixed_k_with_narratives)
 				print(f"Precision for {entity_types}, w/o narrative " +\
-					f"conditions: {precision_without_narratives}")
+					f"conditions: {100*precision_without_narratives}%")
 				print(f"Precision for {entity_types}, with narrative " +\
-					f"conditions: {precision_with_narratives}")
+					f"conditions: {100*precision_with_narratives}%")
 				print(f"Δ Precision (by using narrative knowledge): " +\
-					f"{precision_with_narratives-precision_without_narratives}")
+					f"{100*(precision_with_narratives-precision_without_narratives)}%")
 				print("")
 	elif not args.stats:
 		# (3) Corpus supplied, entity-type-mappings requested
