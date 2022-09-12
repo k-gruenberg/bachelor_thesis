@@ -22,8 +22,8 @@ from WikidataItem import WikidataItem
 # * In total, there are -  82=97-15 automatic mappings, left as they were
 #                       -  15 automatic mappings generified to 'Q5' (human)
 #                       -  29 manual mappings to 'Q5' (human)
-#                       -  27 further manual mappings
-#                       - 130 DBpedia classes w/o Wikidata mappings (45.9%)
+#                       -  28 further manual mappings
+#                       - 129 DBpedia classes w/o Wikidata mappings (45.6%)
 #                   SUM = 283 DBpedia classes
 dbpediaClassesMappedToWikidata: Dict[str, str] =\
 {
@@ -161,7 +161,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Hospital': 'Q16917',
 	'University': 'Q3918',
 	'AcademicJournal': '',
-	'Beverage': '',
+	'Beverage': 'Q40050',  # Q40050 = "drink" (or "beverage")  # (manual)  # Instances tested (actually subclasses!): absinthe (Q170210) => anise drink (Q549301) => spirit drink (Q17562878) => alcoholic beverage (Q154) => drink (Q40050) ; orange juice (Q219059) => fruit juice (Q20932605) => juice (Q8492) => drink (Q40050)
 	'PublicTransitSystem': '',
 	'Man': 'Q5',  # (manual)
 	'Building': 'Q41176',
