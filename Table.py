@@ -647,16 +647,31 @@ class Table:
 		# attr_names_to_ontology_class() returns a Dict[str, float]
 		# (with the strings being names of DBpedia classes)
 		# but we need a Dict[WikidataItem, float]:
-		return { WikidataItem(\
-			get_dbpedia_classes_mapped_to_wikidata()[dbpediaClass]) : score\
-			for dbpediaClass, score\
-			in attr_names_to_ontology_class(\
+		#
+		# Note: it's also important to take into account that
+		#       get_dbpedia_classes_mapped_to_wikidata() may map different
+		#       DBpedia classes to the same WikidataItem,
+		#       "Q5" (human) for example!
+		attr_names_to_ontology_class_dict: Dict[str, float] =\
+			attr_names_to_ontology_class(\
 				inputAttrNames=cleaned_headerRow,
 				USE_BETTER_SUM_FORMULA=True,
 				USE_SBERT_INSTEAD_OF_JACCARD=useSBERT,
 				VERBOSE=False
-			).items()\
-			if get_dbpedia_classes_mapped_to_wikidata()[dbpediaClass] != ""}
+			)
+		response_dict: Dict[WikidataItem, float] = {}
+		for dbpediaClass, score in attr_names_to_ontology_class_dict.items():
+			dbpediaClass_mapped_to_wikidata: str =\
+				get_dbpedia_classes_mapped_to_wikidata()[dbpediaClass]
+			if dbpediaClass_mapped_to_wikidata != "":
+				wikidata_item: WikidataItem =\
+					WikidataItem(dbpediaClass_mapped_to_wikidata)
+				if wikidata_item not in response_dict:
+					response_dict[wikidata_item] = score
+				else:
+					response_dict[wikidata_item] =\
+						max(score, response_dict[wikidata_item])
+		return response_dict
 
 	def classifyUsingAttrExtensions(self, useBing=False, useWebIsAdb=False)\
 		 -> Dict[WikidataItem, float]:

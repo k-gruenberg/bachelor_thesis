@@ -421,16 +421,16 @@ Classify all tables in a given corpus:
 
 ```
 $ python3 nett.py --corpus test_corpus --jaccard -k 2
-test_corpus/UCI_Raisin_Dataset.xlsx: [(2.5873015873015874, 'Q17334923', 'location'), (1.2088628762541807, 'Q29048322', 'vehicle model')]
-test_corpus/UCI_bank.csv: [(2.235358002850263, 'Q17334923', 'location'), (1.5995609782374487, 'Q2133344', 'space mission')]
+test_corpus/UCI_Raisin_Dataset.xlsx: [(2.5873015873015874, 'Q17334923', 'location'), (1.7290043290043289, 'Q486972', 'human settlement')]
+test_corpus/UCI_bank.csv: [(2.7738206238206238, 'Q5', 'human'), (2.4472222222222224, 'Q486972', 'human settlement')]
 wdc_bishop.json: [(32.0, 'Q75178', 'auxiliary bishop'), (16.0, 'Q49476', 'archbishop')]
 wdc_mutations.json: [(11.0, 'Q855769', 'strain'), (6.3307692307692305, 'Q7187', 'gene')]
 test_corpus/wdc_thesis_places_in_Brown_county.json: [(8.0, 'Q1093829', 'city of the United States'), (6.0, 'Q2625603', 'population')]
-test_corpus/wdc_thesis_players.json: [(30.0, 'Q5', 'human'), (3.0, 'Q327245', 'team')]
+test_corpus/wdc_thesis_players.json: [(30.883333333333333, 'Q5', 'human'), (3.0, 'Q327245', 'team')]
 test_corpus/wdc_thesis_projects.json: [(13.57473604826546, 'Q170584', 'project'), (13.409744373560162, 'Q6256', 'country')]
 test_corpus/wdc_thesis_restaurants.json: [(3.0, 'Q161380', 'credit card'), (1.5, 'Q2995644', 'result')]
 test_corpus/wdc_thesis_songs_by_billy_squier.json: [(11.0, 'Q134556', 'single'), (8.91025641025641, 'Q482994', 'album')]
-test_corpus/wdc_thesis_students.json: [(45.285714285714285, 'Q5', 'human'), (5.0, 'Q48282', 'student')]
+test_corpus/wdc_thesis_students.json: [(46.77142857142857, 'Q5', 'human'), (5.0, 'Q48282', 'student')]
 ```
 
 ### Mode (4):
@@ -439,15 +439,16 @@ Search a given corpus for tables containing tuples of the given entity type(s)..
 
 ```
 $ python3 nett.py Q5 --corpus test_corpus --jaccard -k 2
-test_corpus/wdc_thesis_players.json: [(30.0, 'Q5', 'human'), (3.0, 'Q327245', 'team')]
-test_corpus/wdc_thesis_students.json: [(45.285714285714285, 'Q5', 'human'), (5.0, 'Q48282', 'student')]
+test_corpus/UCI_bank.csv: [(2.7738206238206238, 'Q5', 'human'), (2.4472222222222224, 'Q486972', 'human settlement')]
+test_corpus/wdc_thesis_players.json: [(30.883333333333333, 'Q5', 'human'), (3.0, 'Q327245', 'team')]
+test_corpus/wdc_thesis_students.json: [(46.77142857142857, 'Q5', 'human'), (5.0, 'Q48282', 'student')]
 ```
 
 ...possibly using some further narrative knowledge with the `--co-occurring-keywords` and/or `--attribute-cond` arguments:
 
 ```
 $ python3 nett.py Q5 --corpus test_corpus --jaccard -k 2 --co-occurring-keywords "math" --attribute-cond "year > 1900"
-test_corpus/wdc_thesis_students.json: [(45.285714285714285, 'Q5', 'human'), (5.0, 'Q48282', 'student')]
+test_corpus/wdc_thesis_students.json: [(46.77142857142857, 'Q5', 'human'), (5.0, 'Q48282', 'student')]
 ```
 
 ...yields one result while the following two calls do not yield any results:
