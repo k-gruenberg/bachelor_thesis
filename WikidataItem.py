@@ -231,6 +231,56 @@ class WikidataItem:
     def __hash__(self):
         return hash((self.entity_id))
 
+    # The comparison operators <, <=, >, >= are to be read as subset/superset
+    # operators:
+    #   * wikidata_item_1 < wikidata_item_2
+    #     iff wikidata_item_1 is a direct(!) subclass of wikidata_item_2.
+    #   * wikidata_item_1 <= wikidata_item_2
+    #     iff wikidata_item_1 == wikidata_item_2
+    #     or  wikidata_item_1 is a direct(!) subclass of wikidata_item_2.
+    #   * wikidata_item_1 > wikidata_item_2
+    #     iff wikidata_item_1 is a direct(!) superclass of wikidata_item_2.
+    #   * wikidata_item_1 >= wikidata_item_2
+    #     iff wikidata_item_1 == wikidata_item_2
+    #     or  wikidata_item_1 is a direct(!) superclass of wikidata_item_2.
+    #
+    # This means that they do NOT define a total ordering, as for most,
+    #   neither wi_1 <= wi_2 NOR wi_2 <= wi_1 will be the case!
+    #
+    # Because only direct(!) sub-/superclasses are considered,
+    #   the operators are also NOT transitive:
+    # >>> WikidataItem("Q5") <= WikidataItem("Q110551885") <= WikidataItem("Q110551902")
+    # True
+    # >>> WikidataItem("Q5") <= WikidataItem("Q110551902")
+    # False
+    #
+    # An example illustrating the difference between < and <=:
+    # >>> human = WikidataItem("Q5")
+    # >>> mammal = WikidataItem("Q110551885")
+    # >>> human < mammal
+    # True
+    # >>> human <= mammal
+    # True
+    # >>> 
+    # >>> human < human
+    # False
+    # >>> human <= human
+    # True
+
+    def __lt__(self, other):  # <  Is this WikidataItem a subclass of 'other'?
+        if isinstance(other, WikidataItem):
+            return self.is_subclass_of(other.entity_id)
+        return False
+
+    def __le__(self, other):  # <=
+        return self == other or self < other
+
+    def __gt__(self, other):  # >  Is this WikidataItem a superclass of 'other'?
+        return other < self  # self > other <=> other < self
+
+    def __ge__(self, other):  # >=
+        return self == other or self > other
+
 
     @classmethod
     def get_items_matching_search_string(cls, search_string: str)\
