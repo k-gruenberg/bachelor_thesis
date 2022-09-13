@@ -34,8 +34,8 @@ def main():
 		help="""
 		Stop after having gone through (at most) N tables in the corpus.
 		By default, this is set to -1 which means that it is deactivated.
-		When activated, this only has an effect in modes (3) and (4),
-		i.e. when the --stats flag is not specified.""",
+		When activated, the minimum value is 2 because otherwise the
+		standard deviation cannot be computed.""",
 		metavar='N')
 
 	parser.add_argument('--relational-json-tables-only',
@@ -77,6 +77,9 @@ def main():
 		file_extensions=FileExtensions(), onlyRelationalJSON=\
 		args.relational_json_tables_only,\
 		min_table_size=args.min_table_size, DEBUG=args.debug):
+
+		if total_number_of_tables == args.stop_after_n_tables:
+			break  # Stop after N tables.
 
 		total_number_of_tables += 1
 
