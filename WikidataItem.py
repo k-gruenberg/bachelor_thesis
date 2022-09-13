@@ -270,16 +270,30 @@ class WikidataItem:
     def __lt__(self, other):  # <  Is this WikidataItem a subclass of 'other'?
         if isinstance(other, WikidataItem):
             return self.is_subclass_of(other.entity_id)
-        return False
+        else:
+            raise TypeError("'x < y' where x is a WikidataItem but y isn't " +\
+                "is not supported!")
 
     def __le__(self, other):  # <=
-        return self == other or self < other
+        if isinstance(other, WikidataItem):
+            return self == other or self < other
+        else:
+            raise TypeError("'x <= y' where x is a WikidataItem but y isn't " +\
+                "is not supported!")
 
     def __gt__(self, other):  # >  Is this WikidataItem a superclass of 'other'?
-        return other < self  # self > other <=> other < self
+        if isinstance(other, WikidataItem):
+            return other < self  # self > other <=> other < self
+        else:
+            raise TypeError("'x > y' where x is a WikidataItem but y isn't " +\
+                "is not supported!")
 
     def __ge__(self, other):  # >=
-        return self == other or self > other
+        if isinstance(other, WikidataItem):
+            return self == other or self > other
+        else:
+            raise TypeError("'x >= y' where x is a WikidataItem but y isn't " +\
+                "is not supported!")
 
 
     @classmethod
