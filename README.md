@@ -421,8 +421,8 @@ Classify all tables in a given corpus:
 
 ```
 $ python3 nett.py --corpus test_corpus --jaccard -k 2
-test_corpus/UCI_Raisin_Dataset.xlsx: [(2.5873015873015874, 'Q17334923', 'location'), (1.7290043290043289, 'Q486972', 'human settlement')]
-test_corpus/UCI_bank.csv: [(2.4472222222222224, 'Q486972', 'human settlement'), (2.235358002850263, 'Q17334923', 'location')]
+test_corpus/UCI_Raisin_Dataset.xlsx: [(2.5873015873015874, 'Q17334923', 'location'), (1.2088628762541807, 'Q29048322', 'vehicle model')]
+test_corpus/UCI_bank.csv: [(2.235358002850263, 'Q17334923', 'location'), (1.5995609782374487, 'Q2133344', 'space mission')]
 wdc_bishop.json: [(32.0, 'Q75178', 'auxiliary bishop'), (16.0, 'Q49476', 'archbishop')]
 wdc_mutations.json: [(11.0, 'Q855769', 'strain'), (6.3307692307692305, 'Q7187', 'gene')]
 test_corpus/wdc_thesis_places_in_Brown_county.json: [(8.0, 'Q1093829', 'city of the United States'), (6.0, 'Q2625603', 'population')]
