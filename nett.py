@@ -51,8 +51,6 @@ from attr_extension_to_ontology_class import attr_extension_to_ontology_class
 from attr_extension_to_ontology_class_web_search import\
 	attr_extension_to_ontology_class_web_search_list_onto_as_dict
 
-from nett_map_dbpedia_classes_to_wikidata import\
-	get_dbpedia_classes_mapped_to_wikidata
 from nett_map_dbpedia_properties_to_sbert_vectors import\
 	prepare_dbpedia_properties_mapped_to_SBERT_vector
 
