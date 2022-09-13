@@ -32,7 +32,7 @@ dbpediaClassesMappedToWikidata: Dict[str, str] =\
 	'Legislature': 'Q11204',
 	'GrandPrix': 'Q1089579',  # Q1089579 = "Grand Prix motor racing"  #####
 	'Athlete': 'Q5',  # (manual)
-	'Person': 'Q5',  # replaced automatic 'Q215627' with 'Q5'
+	'Person': 'Q5',  # replaced automatic 'Q215627' with 'Q5'  (Wikidata says "use Q5 for humans" in description for person (Q215627) and according to https://dbpedia.org/ontology/Person, both Q215627 and Q5 are equivalent to dbo:Person)
 	'Settlement': 'Q486972',
 	'PopulatedPlace': 'Q486972',  # Q486972 = "human settlement"  # (manual)
 	'SpaceMission': 'Q2133344',  # Q2133344 = "space mission"  # (manual)  # Instance tested: Apollo 13 (Q182252) => human spaceflight (Q752783) => space mission (Q2133344)  # Q2133344.P1709 == "http://dbpedia.org/ontology/SpaceMission"
