@@ -510,7 +510,9 @@ class Table:
 				 useTextualSurroundings=True, textualSurroundingsWeighting=1.0,\
 				 useAttrNames=True, attrNamesWeighting=1.0,\
 				 useAttrExtensions=True, attrExtensionsWeighting=1.0,\
-				 normalizeApproaches=False,
+				 normalizeApproaches=False,\
+				 aggregateIntoSuperclasses=False,\
+				 aggregateIntoSubclasses=False,\
 				 printProgressTo=sys.stdout,\
 				 DEBUG=False)\
 				-> List[Tuple[float, WikidataItem]]:
@@ -608,7 +610,9 @@ class Table:
 			attrNamesWeighting=attrNamesWeighting,\
 			useAttrExtensions=useAttrExtensions,\
 			attrExtensionsWeighting=attrExtensionsWeighting,\
-			normalizeApproaches=normalizeApproaches,
+			normalizeApproaches=normalizeApproaches,\
+			aggregateIntoSuperclasses=aggregateIntoSuperclasses,\
+			aggregateIntoSubclasses=aggregateIntoSubclasses,\
 			DEBUG=DEBUG\
 		)
 

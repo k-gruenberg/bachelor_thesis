@@ -43,6 +43,16 @@ def normalize(dct: Dict[WikidataItem, float])\
 		return {w: (f - min_value) / (max_value - min_value)\
 				for w, f in dct.items()}
 
+def aggregate_subclasses_into_superclasses(\
+	combine3_result: List[Tuple[float, WikidataItem]])\
+	-> List[Tuple[float, WikidataItem]]:
+	return combine3_result  # ToDo
+
+def aggregate_superclasses_into_subclasses(\
+	combine3_result: List[Tuple[float, WikidataItem]])\
+	-> List[Tuple[float, WikidataItem]]:
+	return combine3_result  # ToDo
+
 def top_k_coverage(k: int, ranks: List[float]) -> float:
 	"""
 	Top-k coverage.
@@ -111,7 +121,10 @@ class ClassificationResult:
 				 useTextualSurroundings=True, textualSurroundingsWeighting=1.0,\
 				 useAttrNames=True, attrNamesWeighting=1.0,\
 				 useAttrExtensions=True, attrExtensionsWeighting=1.0,\
-				 normalizeApproaches=False, DEBUG=False)\
+				 normalizeApproaches=False,\
+				 aggregateIntoSuperclasses=False,\
+				 aggregateIntoSubclasses=False,\
+				 DEBUG=False)\
 				-> List[Tuple[float, WikidataItem]]:
 
 		resultUsingTextualSurroundings: Dict[WikidataItem, float] =\
@@ -149,6 +162,16 @@ class ClassificationResult:
 				if useAttrExtensions else {},\
 			weight3=attrExtensionsWeighting,\
 		)
+
+		if aggregateIntoSuperclasses and aggregateIntoSubclasses:
+			exit("ClassificationResult.classify(): " +\
+				"Cannot aggregate both into superclasses and subclasses!")
+		elif aggregateIntoSuperclasses:
+			combinedResult =\
+				aggregate_subclasses_into_superclasses(combinedResult)
+		elif aggregateIntoSubclasses:
+			combinedResult =\
+				aggregate_superclasses_into_subclasses(combinedResult)
 
 		return combinedResult
 

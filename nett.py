@@ -549,6 +549,25 @@ def main():
     	""",
     	metavar='ANNOTATIONS_JSON_FILE')
 
+	group2 = parser.add_mutually_exclusive_group(required=False)
+	group2.add_argument('--aggregate-into-superclasses', action='store_true',
+		help="""
+		Aggregate subclasses into their direct superclasses when they also
+		received a score >0.0.
+		(This leads to more generic result classes.)
+		THIS FEATURE IS NOT IMPLEMENTED!
+		""")
+	group2.add_argument('--aggregate-into-subclasses', action='store_true',
+		help="""
+		Aggregate superclasses into their direct subclass with the heighest
+		match score, when there is one with a score >0.0.
+		(This leads to more specific result classes, possibly incorrectly!)
+		THIS FEATURE IS NOT IMPLEMENTED!
+		""")
+	group2.add_argument('--dont-aggregate', action='store_true',
+		help="""Do no aggregation into superclasses or subclasses at all,
+		i.e. leave all mappings as they are (default).""")
+
 	# ToDo: Virtuoso URL (for speed-up; once Wikidata has been set up @ifis...)
 	# ToDo: Database Export & Import (Future Work)
 
@@ -736,6 +755,8 @@ def main():
 				 useAttrExtensions=not args.dont_use_attr_extensions,\
 				 attrExtensionsWeighting=args.attr_extensions_weight,\
 				 normalizeApproaches=args.normalize,\
+				 aggregateIntoSuperclasses=args.aggregate_into_superclasses,\
+				 aggregateIntoSubclasses=args.aggregate_into_subclasses,\
 				 DEBUG=args.debug
 				)
 			# The maximum number of classification results
@@ -929,6 +950,10 @@ def main():
 									args.attr_extensions_weight,\
 								normalizeApproaches=\
 									args.normalize,\
+								aggregateIntoSuperclasses=\
+									args.aggregate_into_superclasses,\
+				 				aggregateIntoSubclasses=\
+				 					args.aggregate_into_subclasses,\
 								DEBUG=\
 									args.debug
 								)[:k]]\
@@ -959,6 +984,10 @@ def main():
 									args.attr_extensions_weight,\
 								normalizeApproaches=\
 									args.normalize,\
+								aggregateIntoSuperclasses=\
+									args.aggregate_into_superclasses,\
+				 				aggregateIntoSubclasses=\
+				 					args.aggregate_into_subclasses,\
 								DEBUG=\
 									args.debug
 								)[:k]]\
@@ -1106,6 +1135,8 @@ def main():
 				 useAttrExtensions=not args.dont_use_attr_extensions,\
 				 attrExtensionsWeighting=args.attr_extensions_weight,\
 				 normalizeApproaches=args.normalize,\
+				 aggregateIntoSuperclasses=args.aggregate_into_superclasses,\
+				 aggregateIntoSubclasses=args.aggregate_into_subclasses,\
 				 printProgressTo=\
 				 	sys.stdout if args.verbose else open(os.devnull,"w"),\
 				 DEBUG=args.debug
