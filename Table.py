@@ -671,6 +671,12 @@ class Table:
 				else:
 					response_dict[wikidata_item] =\
 						max(score, response_dict[wikidata_item])
+					# Important note:
+					#   We're using the maximum of all the scores of all
+					#   DBpedia classes mapping to the same WikidataItem.
+					#   We might also consider taking the sum instead but
+					#   that would unfairly favor WikidataItem's like "Q5"
+					#   that are the mapping for multiple DBpedia classes!
 		return response_dict
 
 	def classifyUsingAttrExtensions(self, useBing=False, useWebIsAdb=False)\
