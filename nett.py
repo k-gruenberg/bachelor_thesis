@@ -1014,11 +1014,15 @@ def main():
 
 				# Recall = true positives / (true positives + false negatives):
 				recall_without_narratives: float =\
-					true_positives_without_narratives\
-					/ no_of_tables_annotated_with_entity_type
+					(true_positives_without_narratives\
+					/ no_of_tables_annotated_with_entity_type)\
+					if no_of_tables_annotated_with_entity_type != 0\
+					else float('inf')  # (to avoid a ZeroDivisionError)
 				recall_with_narratives: float =\
-					true_positives_with_narratives\
-					/ no_of_tables_annotated_with_entity_type 
+					(true_positives_with_narratives\
+					/ no_of_tables_annotated_with_entity_type)\
+					if no_of_tables_annotated_with_entity_type != 0\
+					else float('inf')  # (to avoid a ZeroDivisionError)
 				print(f"Recall for {entity_types}, w/o narrative " +\
 					f"conditions: {100*recall_without_narratives}%")
 				print(f"Recall for {entity_types}, with narrative " +\
@@ -1029,11 +1033,15 @@ def main():
 
 				# Precision = true positives / (true positives + false positives):
 				precision_without_narratives: float =\
-					true_positives_without_narratives\
-					/ len(tables_retrieved_using_fixed_k_without_narratives)
+					(true_positives_without_narratives\
+					/ len(tables_retrieved_using_fixed_k_without_narratives))\
+					if len(tables_retrieved_using_fixed_k_without_narratives)!=0\
+					else float('inf')  # (to avoid a ZeroDivisionError)
 				precision_with_narratives: float =\
-					true_positives_with_narratives\
-					/ len(tables_retrieved_using_fixed_k_with_narratives)
+					(true_positives_with_narratives\
+					/ len(tables_retrieved_using_fixed_k_with_narratives))\
+					if len(tables_retrieved_using_fixed_k_with_narratives) != 0\
+					else float('inf')  # (to avoid a ZeroDivisionError)
 				print(f"Precision for {entity_types}, w/o narrative " +\
 					f"conditions: {100*precision_without_narratives}%")
 				print(f"Precision for {entity_types}, with narrative " +\
