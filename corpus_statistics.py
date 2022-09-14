@@ -143,6 +143,21 @@ def main():
 		f"({100*(number_of_mixed_numerical_and_textual_tables/total_number_of_tables)}%)")
 	print(f"Number of columns - average: {number_of_colums_average}")
 	print(f"Number of columns - standard deviation: {number_of_colums_stdev}")
+	
+	big_N: int = 30  # should be a 2-digit number, otherwise increase "{i:3d}" below
+
+	for i in range(0, big_N+1):
+		tables_with_i_columns: int =\
+			len([n for n in number_of_colums_per_table if n == i])
+		print(f"Tables with {i:3d} columns: " +\
+			f"{tables_with_i_columns} " +\
+			f"({100*(tables_with_i_columns/total_number_of_tables)}%)")
+
+	tables_with_more_than_N_columns: int =\
+			len([n for n in number_of_colums_per_table if n > big_N])
+	print(f"Tables with >{big_N} columns: " +\
+			f"{tables_with_more_than_N_columns} " +\
+			f"({100*(tables_with_more_than_N_columns/total_number_of_tables)}%)")
 
 if __name__ == "__main__":
 	main()
