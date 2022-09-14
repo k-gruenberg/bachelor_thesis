@@ -1037,6 +1037,10 @@ class Table:
 					columns = transpose(j["relation"][1:]).tolist()
 				elif j["headerPosition"] == "MIXED":
 					return None  # skipping such unsure/non-relational? tables
+				elif j["headerPosition"] == "NONE":
+					print('[PARSE ERROR] "hasHeader":true and ' +\
+						'headerPosition":"NONE" at the same time!')
+					return None
 				else:
 					print("[PARSE ERROR] Unknown value for 'headerPosition'" +\
 						f""" in JSON: '{j["headerPosition"]}'""",\
