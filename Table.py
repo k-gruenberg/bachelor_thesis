@@ -1180,7 +1180,7 @@ class Table:
 					csv_dialect=csv_dialect,\
 					onlyRelationalJSON=onlyRelationalJSON, DEBUG=DEBUG))
 
-	@classmethod  # ToDo: USE !!!
+	@classmethod
 	def create2DStatisticalTable(cls,\
 		_lambda: Callable[[float, float], str],\
 		x_var_name: str = "x",\
