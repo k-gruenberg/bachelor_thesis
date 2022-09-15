@@ -330,6 +330,9 @@ def filter_nouns_with_heuristics_as_tuple_list(input_text: str,\
                     successful_dict_matches_with_ontology_links.values()]))\
             + " ontology mappings: " + str(nouns))
 
+    if len(nouns) == 0:  # No nouns found (would lead to an error below):
+        return []  # Return no results, i.e. the empty list.
+
     # Now apply various **heuristics** to reduce the number of results:
 
     # Remove other mappings for matched nouns that are synonyms:
