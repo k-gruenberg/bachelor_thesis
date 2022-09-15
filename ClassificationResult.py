@@ -273,8 +273,6 @@ class ClassificationResult:
 			in tables_with_classif_fixed_params:
 			ranks.append(\
 				index([wi for score, wi in classification], wikid_itm))
-			# Adding 1 is important to avoid a ZeroDivisionError below.
-			#   An index of 0 means a rank of 1.
 
 		# All the wikidata entity types annotated by the user
 		#   as the correct ones, i.e. the set of all (correct) entity types
@@ -394,8 +392,6 @@ class ClassificationResult:
 				in tables_with_classif_fixed_params:
 				ranks.append(\
 					index([wi for score, wi in classification], wikid_itm))
-				# Adding 1 is important to avoid a ZeroDivisionError below.
-				#   An index of 0 means a rank of 1.
 
 			return "{:3.0f}%".format(100.0 * top_k_coverage(k=k, ranks=ranks))
 
@@ -450,6 +446,52 @@ class ClassificationResult:
 			return "{:3.0f}%".format(100.0 * recall_macro_avg(k=k,\
 				ranks_per_entity_type=ranks_per_entity_type))
 
+		def mrr_w(normalize: bool, w1: float, w2: float, w3: float = None) -> str:
+			"""
+			Returns the mean reciprocal rank (MRR), for the three weightings
+			specified, as a 4-character string (e.g. '.123').
+			The `useTextualSurroundings`, `useAttrNames` and
+			`useAttrExtensions` booleans are taken from the outer function.
+			"""
+			if w3 is None:
+				w3 = 1.0-w1-w2
+
+			# Precomputations:
+
+			tables_with_classif_fixed_params:\
+				List[Tuple[Table, List[Tuple[float, WikidataItem]], WikidataItem]]\
+				= [(tab,\
+					classification_result.classify(\
+						useTextualSurroundings=useTextualSurroundings,\
+						textualSurroundingsWeighting=w1,\
+					 	useAttrNames=useAttrNames,\
+					 	attrNamesWeighting=w2,\
+					 	useAttrExtensions=useAttrExtensions,\
+					 	attrExtensionsWeighting=w3,\
+					 	normalizeApproaches=normalize,\
+					 	DEBUG=DEBUG),\
+					wikidata_item)\
+					for tab, classification_result, wikidata_item\
+					in tables_with_classif_result_and_correct_entity_type]
+
+			number_of_tables: int = len(tables_with_classif_fixed_params)
+
+			# The rank of the correct entity type for each classified table,
+			#   or infinity when none of the entity types in the list returned
+			#   by the classification was correct:
+			ranks: List[float] = []  # (floats only to allow for infinity)
+			for table, classification, wikid_itm\
+				in tables_with_classif_fixed_params:
+				ranks.append(\
+					index([wi for score, wi in classification], wikid_itm))
+			
+			mrr: float = sum(1/(1+rank) for rank in ranks) / len(ranks)
+			
+			if mrr >= 0.9995:  # (would otherwise falsely turn into '.000')
+				return "1.00"  # length = 4 characters
+			else:
+				return "{:1.3f}".format(mrr)[1:]  # [1:] turns '0.123' into '.123'
+
 		if useTextualSurroundings and useAttrNames and useAttrExtensions:
 			# Use all 3 approaches:
 			print("Top-k coverage for different weightings of the 3 approaches"+\
@@ -472,6 +514,17 @@ class ClassificationResult:
 				f"{recall_macro_avg_w(k=k, w1=w1, w2=w2, w3=2.0-w1-w2, normalize=False)}",\
 				x_var_name="w1", left_y_var_name="k", right_y_var_name="w2",\
 				left_y_range=list(range(1, stats_max_k+1))
+				).pretty_print(maxNumberOfTuples=100000000))
+
+			print("MRR for diff. weightings of the 3 approaches"+\
+				" (normalized/non-normalized; w3 such that w1+w2+w3 == 2.0):")
+			print(Table.Table.create2DStatisticalTable(\
+				_lambda=lambda w1, w2:\
+				f"{mrr_w(w1=w1, w2=w2, w3=2.0-w1-w2, normalize=True)}"\
+				" / " +\
+				f"{mrr_w(w1=w1, w2=w2, w3=2.0-w1-w2, normalize=False)}",\
+				x_var_name="w1",\
+				y_var_name="w2"\
 				).pretty_print(maxNumberOfTuples=100000000))
 		elif (useAttrNames and useAttrExtensions)\
 			or (useTextualSurroundings and useAttrExtensions)\
