@@ -19,7 +19,8 @@ fn long_list_to_short_str(lst: &Vec<f64>) -> String {
         return format!("{:?}", lst);
     } else {
         return format!("[{}, {}, ..., {}, ..., {}, {}]",
-                       lst[0], lst[1], lst[lst_len/2], lst[lst_len-2], lst[lst_len-1]);
+                       lst[0], lst[1], lst[lst_len/2],
+                       lst[lst_len-2], lst[lst_len-1]);
     }
 }
 
@@ -33,9 +34,11 @@ fn merge<'a>(sorted_list_1: &'a Vec<f64>, sorted_list_2: &'a Vec<f64>)
     let mut index1: usize = 0;
     let mut index2: usize = 0;
     let mut x: f64 = f64::NAN;
-    // cf. https://stackoverflow.com/questions/16421033/lazy-sequence-generation-in-rust:
+    /* cf.
+    https://stackoverflow.com/questions/16421033/lazy-sequence-generation-in-rust:
+    */
     return std::iter::from_fn(move || {
-        if index1 < len_sorted_list_1 || index2 < len_sorted_list_2 { // `while` in Python
+        if index1 < len_sorted_list_1 || index2 < len_sorted_list_2 { // `while`
             if index1 == len_sorted_list_1 {
                 x = sorted_list_2[index2];
             } else if index2 == len_sorted_list_2 {
@@ -85,7 +88,8 @@ fn ks(sorted_bag: &Vec<f64>, unsorted_bag: &mut Vec<f64>) -> f64 {
 
 fn parse_string_to_vector(s: &str) -> Option<Vec<f64>> {
     let mut result: Vec<f64> = Vec::new();
-    for number in s[1..s.len()-1].split(", ") { // remove the "[" and "]" at the ends
+    // `s[1..s.len()-1]` removes the "[" and "]" at the ends:
+    for number in s[1..s.len()-1].split(", ") {
         result.push(number.parse().ok()?);
     }
     return Some(result);
@@ -209,8 +213,9 @@ fn main() {
         let mut properties_ttl_content =
             String::with_capacity(fs::metadata(args_properties.clone())
                 .map(|metadata| metadata.len()).unwrap_or(0) as usize);
-        let re = Regex::new( // ToDo: shorten line below:
-                             r#"^<http://dbpedia\.org/resource/.+> <http://dbpedia\.org/property/.+> "[0-9.]+"(@en|\^\^<http://(dbpedia\.org|www\.w3\.org)/.+>) \.$"#
+        let re = Regex::new(r#"^<http://dbpedia\.org/resource/.+> \
+<http://dbpedia\.org/property/.+> \
+"[0-9.]+"(@en|\^\^<http://(dbpedia\.org|www\.w3\.org)/.+>) \.$"#
         ).expect("Parsing regex failed!");
         for line in read_lines(args_properties)
             .expect("Reading --properties .ttl file failed!") {
@@ -280,8 +285,8 @@ fn main() {
             }
         }
     } else {
-        println!("[ERROR] Please supply either the --input argument or, initially, \
-        the --types and --properties arguments!");
+        println!("[ERROR] Please supply either the --input argument \
+        or, initially, the --types and --properties arguments!");
         return;
     }
 
@@ -290,11 +295,15 @@ fn main() {
 
     if let Some(output_path) = args.output {
         println!("[INFO] Writing to --output file...");
-        let file = File::create(output_path).expect("could not create --output file");
+        let file = File::create(output_path)
+            .expect("could not create --output file");
         let mut file = LineWriter::new(file);
-        for ((dbp_type, dbp_property,), extension) in dbpedia_type_and_property_to_extension.iter() {
-            file.write_all(format!("{}\t{}\t{:?}\n", dbp_type, dbp_property, extension).as_ref())
-                .expect("could not write to --output file");
+        for ((dbp_type, dbp_property,), extension)
+        in dbpedia_type_and_property_to_extension.iter() {
+            file.write_all(
+                format!("{}\t{}\t{:?}\n", dbp_type, dbp_property, extension)
+                    .as_ref()
+            ).expect("could not write to --output file");
         }
         file.flush().expect("could not flush to --output file");
         println!("[INFO] Finished writing to --output file.");
@@ -304,7 +313,9 @@ fn main() {
     let mut bag: Vec<f64> = Vec::new();
     if let Some(csv_file) = args.csv_file {
         let csv_separator = args.csv_separator.unwrap_or("\t".to_string());
-        // cf. https://doc.rust-lang.org/rust-by-example/std_misc/file/read_lines.html:
+        /* cf.
+        https://doc.rust-lang.org/rust-by-example/std_misc/file/read_lines.html:
+        */
         let lines = read_lines(csv_file)
             .expect("cannot read given CSV file!");
         for line in lines {
@@ -333,7 +344,8 @@ fn main() {
     //   to the metric returned by the KS (Kolmogorov-Smirnov) test
     //   on the list of values taken by all DBpedia resources that are an
     //   instance of that type and the input list of numeric values:
-    let dbpedia_type_and_property_to_ks_test: HashMap<(String, String), (f64, Vec<f64>)> =
+    let dbpedia_type_and_property_to_ks_test:
+        HashMap<(String, String), (f64, Vec<f64>)> =
         HashMap::from_iter(
             dbpedia_type_and_property_to_extension
                     .into_iter()
@@ -347,7 +359,8 @@ fn main() {
         : Vec<((String, String), (f64, Vec<f64>))> =
         dbpedia_type_and_property_to_ks_test.into_iter().collect();
     dbpedia_type_and_property_to_ks_test_sorted
-        .sort_by(|((_, _), (a, _)), ((_, _), (b, _))| a.partial_cmp(b).unwrap());
+        .sort_by(|((_, _), (a, _)), ((_, _), (b, _))|
+            a.partial_cmp(b).unwrap());
     // smaller KS values == more similar
 
     println!();
@@ -414,8 +427,8 @@ fn main() {
                     }
                 }
             } else {
-                println!("[ERROR] Invalid value supplied to --compare-with: '{}' contains no ':'",
-                         compare_with);
+                println!("[ERROR] Invalid value supplied to --compare-with: \
+                    '{}' contains no ':'", compare_with);
             }
         }
     }
