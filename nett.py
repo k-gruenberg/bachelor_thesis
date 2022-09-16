@@ -642,7 +642,7 @@ def main():
 	#   preparation is not deactivated:
 	if args.sbert:
 		print("[PREPARING] Mapping DBpedia properties to SBERT vectors, " +\
-			"this may about a minute...")
+			"this may take about a minute...")
 		prepare_dbpedia_properties_mapped_to_SBERT_vector()
 		print("[PREPARING] Done.")
 	# </preparation>
