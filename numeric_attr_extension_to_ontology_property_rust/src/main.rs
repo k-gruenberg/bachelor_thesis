@@ -213,10 +213,11 @@ fn main() {
         let mut properties_ttl_content =
             String::with_capacity(fs::metadata(args_properties.clone())
                 .map(|metadata| metadata.len()).unwrap_or(0) as usize);
-        let re = Regex::new(r#"^<http://dbpedia\.org/resource/.+> \
-<http://dbpedia\.org/property/.+> \
-"[0-9.]+"(@en|\^\^<http://(dbpedia\.org|www\.w3\.org)/.+>) \.$"#
-        ).expect("Parsing regex failed!");
+        let re = Regex::new(&(
+            r#"^<http://dbpedia\.org/resource/.+> "#.to_owned() +
+            r#"<http://dbpedia\.org/property/.+> "# +
+            r#""[0-9.]+"(@en|\^\^<http://(dbpedia\.org|www\.w3\.org)/.+>) \.$"#
+        )).expect("Parsing regex failed!");
         for line in read_lines(args_properties)
             .expect("Reading --properties .ttl file failed!") {
             if let Ok(line) = line {
