@@ -446,7 +446,7 @@ class ClassificationResult:
 			return "{:3.0f}%".format(100.0 * recall_macro_avg(k=k,\
 				ranks_per_entity_type=ranks_per_entity_type))
 
-		def mrr_w(normalize: bool, w1: float, w2: float, w3: float = None) -> str:
+		def mrr_w_float(normalize: bool, w1: float, w2: float, w3: float = None) -> float:
 			"""
 			Returns the mean reciprocal rank (MRR), for the three weightings
 			specified, as a 4-character string (e.g. '.123').
@@ -486,7 +486,10 @@ class ClassificationResult:
 					index([wi for score, wi in classification], wikid_itm))
 			
 			mrr: float = sum(1/(1+rank) for rank in ranks) / len(ranks)
-			
+			return mrr
+
+		def mrr_w(normalize: bool, w1: float, w2: float, w3: float = None) -> str:
+			mrr: float = mrr_w_float(normalize=normalize, w1=w1, w2=w2, w3=w3)
 			if mrr >= 0.9995:  # (would otherwise falsely turn into '.000')
 				return "1.00"  # length = 4 characters
 			else:
@@ -526,6 +529,30 @@ class ClassificationResult:
 				x_var_name="w1",\
 				y_var_name="w2"\
 				).pretty_print(maxNumberOfTuples=100000000))
+
+			# Try out the optimal MRR:
+			optimal_mrr: float = -1.0
+			optimal_w1: float = float('nan')
+			optimal_w2: float = float('nan')
+			optimal_w3: float = float('nan')
+			optimal_normalize: bool = None
+			# Try out 2*10*10*10 = 2,000 combinations of weightings and
+			#   normalization:
+			for normalize in [True, False]:
+				for w1 in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
+					for w2 in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
+						for w3 in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
+							mrr: float =\
+								mrr_w_float(w1=w1, w2=w2, w3=w3, normalize=normalize)
+							if mrr > optimal_mrr:
+								optimal_mrr = mrr
+								optimal_w1 = w1
+								optimal_w2 = w2
+								optimal_w3 = w3
+								optimal_normalize = normalize
+			print(f"The optimal MRR of {optimal_mrr} is achieved for " +\
+				f"w1={optimal_w1}, w2={optimal_w2}, w3={optimal_w3}, " +\
+				f"normalize={optimal_normalize}!")
 		elif (useAttrNames and useAttrExtensions)\
 			or (useTextualSurroundings and useAttrExtensions)\
 			or (useTextualSurroundings and useAttrNames):
