@@ -40,6 +40,10 @@ def normalize(dct: Dict[WikidataItem, float])\
 	else:
 		min_value: float = min(dct.values())
 		max_value: float = max(dct.values())
+		if min_value == max_value:
+			# Would otherwise raise a 'ZeroDivisionError':
+			# When all values are equal, normalize them all to 1.0:
+			return {w: 1.0 for w, f in dct.items()}
 		return {w: (f - min_value) / (max_value - min_value)\
 				for w, f in dct.items()}
 
