@@ -59,7 +59,51 @@ def main():
 		action='store_true',
 		help='Print debug info prints.')
 
+	parser.add_argument('--file-extension-csv',
+    	type=str,
+    	help="""
+    	The extension(s) by which to recognize CSV files.
+    	Default: '.csv'
+    	""",
+    	nargs='*',
+    	metavar='EXTENSION_CSV')
+
+	parser.add_argument('--file-extension-xlsx',
+    	type=str,
+    	help="""
+    	The extension(s) by which to recognize Excel files.
+    	Please not that the libary used (openpyxl) does **NOT**
+    	support the old .xls format but only the new .xlsx one!
+    	Default: '.xlsx'
+    	""",
+    	nargs='*',
+    	metavar='EXTENSION_XLSX')
+
+	parser.add_argument('--file-extension-json',
+    	type=str,
+    	help="""
+    	The extension(s) by which to recognize JSON files.
+    	Default: '.json'
+    	""",
+    	nargs='*',
+    	metavar='EXTENSION_JSON')
+
+	parser.add_argument('--file-extension-tar',
+    	type=str,
+    	help="""
+    	The extension(s) by which to recognize TAR archives.
+    	Default: '.tar'
+    	""",
+    	nargs='*',
+    	metavar='EXTENSION_TAR')
+
 	args = parser.parse_args()
+
+	file_extensions: FileExtensions = FileExtensions(\
+		CSV_extensions = args.file_extension_csv,\
+		XLSX_extensions = args.file_extension_xlsx,\
+		JSON_extensions = args.file_extension_json,\
+		TAR_extensions = args.file_extension_tar)
 
 	# The total number of tables in the corpus:
 	total_number_of_tables: int = 0
@@ -74,7 +118,7 @@ def main():
 	number_of_mixed_numerical_and_textual_tables: int = 0
 
 	for table_ in Table.parseCorpus(args.corpus,\
-		file_extensions=FileExtensions(), onlyRelationalJSON=\
+		file_extensions=file_extensions, onlyRelationalJSON=\
 		args.relational_json_tables_only,\
 		min_table_size=args.min_table_size, DEBUG=args.debug):
 
