@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Dict, Any, Iterator, Set
+from typing import List, Dict, Any, Iterator, Set, Union
 import json  # https://docs.python.org/3/library/json.html
 import re
 import os
@@ -7,6 +7,7 @@ import sys
 import csv  # https://docs.python.org/3/library/csv.html
 import tarfile  # https://docs.python.org/3/library/tarfile.html
 import tempfile  # https://docs.python.org/3/library/tempfile.html
+import io
 
 from numpy import transpose
 
@@ -109,7 +110,7 @@ class Table:
 		return max(len(col) for col in self.columns) +\
 			(1 if includingHeaderRow and self.headerRow != [] else 0)
 
-	def min_dimension(self, includingHeaderRow=True) -> int:  # ToDo: USE to filter out <3x3 tables!!
+	def min_dimension(self, includingHeaderRow=True) -> int:
 		"""
 		Example: when this is a 4x10 table, returns 4.
 		"""
@@ -187,29 +188,42 @@ class Table:
 				if len(line) <= maxTotalWidth\
 				else line[:maxTotalWidth-4] + " ...", result.splitlines()))
 
+		# Replace Zero Width No-Break Spaces (\ufeff) with Spaces
+		#   to avoid misalignment of columns:
+		result = result.replace("\ufeff", " ")
+
 		return result
 
-
-	# (possible ToDo: quoting?!)
 	def as_csv(self, with_header=True, max_number_of_rows: int = -1) -> str:
 		self_min_height: int = self.min_height(includingHeaderRow=False)
 
 		if max_number_of_rows == -1:
 			max_number_of_rows = self_min_height
 
-		self_as_csv: str = ""
+		# Use csv.writer() from Python's default csv libary;
+		#   as it should also deal with quoting/escpaing for us:
+		# * https://docs.python.org/3/library/csv.html
+		# * https://stackoverflow.com/questions/9157314/
+		#     how-do-i-write-data-into-csv-format-as-string-not-file
+		self_as_csv = io.StringIO()
+		csv_writer = csv.writer(self_as_csv)
 
 		if with_header and self.headerRow != []:
-			self_as_csv += ",".join(\
-				self.headerRow[col_index]\
-				for col_index in range(0, len(self.headerRow))) + "\n"
+			csv_writer.writerow(self.headerRow)
+			##Own naive solution that does *NOT* deal with quoting/escaping:
+			#self_as_csv += ",".join(\
+			#	self.headerRow[col_index]\
+			#	for col_index in range(0, len(self.headerRow))) + "\n"
 
 		for row_index in range(0, min(max_number_of_rows, self_min_height)):
-			self_as_csv += ",".join(\
-				self.columns[col_index][row_index]\
-				for col_index in range(0, self.width())) + "\n"
+			csv_writer.writerow([self.columns[col_index][row_index]\
+				for col_index in range(0, self.width())])
+			##Own naive solution that does *NOT* deal with quoting/escaping:
+			#self_as_csv += ",".join(\
+			#	self.columns[col_index][row_index]\
+			#	for col_index in range(0, self.width())) + "\n"
 
-		return self_as_csv
+		return self_as_csv.getvalue()
 
 	def parse_header_row(self) -> bool:
 		"""
@@ -228,23 +242,26 @@ class Table:
 		calling this function is NOT necessary!!
 		"""
 		if self.headerRow == []:
-			self_as_csv_sample: str =\
-				self.as_csv(with_header=False, max_number_of_rows=20)
-			# From https://docs.python.org/3/library/csv.html,
-			# regarding csv.Sniffer.has_header(sample):
-			# "Twenty rows after the first row are sampled; if more than half
-			#  of columns + rows meet the criteria, True is returned."
-			if csv.Sniffer().has_header(self_as_csv_sample):
-				# Set the header row to the first row:
-				self.headerRow = [self.columns[col_index][0] for\
-					col_index in range(0, len(self.columns))]
-				# Delete the header row from self.columns where it
-				#   does not belong:
-				for col_index in range(0, len(self.columns)):
-					del self.columns[col_index][0]
-				return True
-			else:
-				return False  # csv.Sniffer().has_header() found no header.
+			try:
+				self_as_csv_sample: str =\
+					self.as_csv(with_header=False, max_number_of_rows=21)
+				# From https://docs.python.org/3/library/csv.html,
+				# regarding csv.Sniffer.has_header(sample):
+				# "Twenty rows after the first row are sampled; if more than
+				#  half of columns + rows meet the criteria, True is returned."
+				if csv.Sniffer().has_header(self_as_csv_sample):
+					# Set the header row to the first row:
+					self.headerRow = [self.columns[col_index][0] for\
+						col_index in range(0, len(self.columns))]
+					# Delete the header row from self.columns where it
+					#   does not belong:
+					for col_index in range(0, len(self.columns)):
+						del self.columns[col_index][0]
+					return True
+				else:
+					return False  # csv.Sniffer().has_header() found no header.
+			except: # e.g. "_csv.Error: Could not determine delimiter"
+				return False  # No header could be determined!
 		else:
 			return True  # There already is a header row (parsed).
 
@@ -926,8 +943,17 @@ class Table:
 
 
 	@classmethod
-	def identifyCSVdialect(cls, csv_str: str) -> Dialect:
-		return csv.Sniffer().sniff(csv_str)
+	def identifyCSVdialect(cls, csv_str: str) -> Union[Dialect, str]:
+		try:
+			#delimiters=None  # (default)
+			#delimiters=",;\t:| "  # en.wikipedia.org/Delimiter-separated_values
+			delimiters=",;\t| "  # colon ":" leads to misidentifications!
+			return csv.Sniffer().sniff(csv_str[:65536], delimiters=delimiters)
+			# Limit using [:65536] to avoid a hang-up/freeze!
+		except:  # probably: "_csv.Error: Could not determine delimiter"
+			return "excel"
+			# The dialect argument of the csv.reader() functions
+			#   accepts both a Dialect instance or a string!
 
 	@classmethod
 	def parseCSV(cls, csv_str: str, dialect: Dialect = None) -> Table:
@@ -947,6 +973,8 @@ class Table:
 			if columns == []:
 				columns = [[] for i in range(0, no_of_cols)]  # (initialize)
 			for col_index in range(0, no_of_cols):
+				while col_index >= len(columns):  # uneven number of columns:
+					columns.append([])  # prevents an IndexError in line below:
 				columns[col_index].append(row[col_index])
 
 		result = Table(surroundingText="", headerRow=[],\
@@ -983,7 +1011,7 @@ class Table:
 	@classmethod
 	def parseJSON(cls, json_str: str, onlyRelational=False,\
 		onlyWithHeader=True, useAdditionalHeuristics=False,\
-		DEBUG=False) -> Optional[Table]: # ToDo: set onlyRelational according to cmd line flag!!
+		DEBUG=False) -> Optional[Table]:
 		"""
 		Parses a .JSON file of the format that's used in the
 		WDC Web Table Corpus (http://webdatacommons.org/webtables/2015/
