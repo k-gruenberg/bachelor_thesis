@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import List, Dict, Any, Iterator, Set
+import math
 
 from WikidataItem import WikidataItem
 import Table
@@ -95,6 +96,60 @@ def index(lst, element) -> float:
 	index(["a", "b", "c"], "d") == float('inf')
 	"""
 	return lst.index(element) if element in lst else float('inf')
+
+def entity_type_specific_precision(k: int,\
+	ranks_per_entity_type: Dict[WikidataItem, List[float]],\
+	tables_with_classif:\
+			List[Tuple[Table, List[Tuple[float, WikidataItem]], WikidataItem]],\
+	entity_type: WikidataItem) -> float:
+	"""
+	This function computes the (k-)precision for one specific entity type.
+	With k-precision, we mean how many of the results are actually of that
+	entity type when drawing all results where the entity type is within
+	the top-k candidates.
+	"""
+	# Compute true positives (correct_ranks):
+	correct_ranks: List[float] = ranks_per_entity_type[entity_type]
+
+	# Compute false positives (incorrect_ranks):
+	incorrect_ranks: List[float] =\
+		[index([wi for score, wi in classif], entity_type)\
+		for table, classif, correct_wi in tables_with_classif\
+		if correct_wi != entity_type]
+	# ...computes the rank of `entity_type` everywhere where it is INCORRECT!
+
+	# Apply the k parameter:
+	correct_ranks = [rank for rank in correct_ranks if rank < k]
+	incorrect_ranks = [rank for rank in incorrect_ranks if rank < k]
+
+	# Compute and return precision; which is defined as:
+	#   true positives / (true positives + false positives)
+	if len(correct_ranks) + len(incorrect_ranks) == 0:
+		return float('nan')
+	else:
+		return len(correct_ranks) / (len(correct_ranks) + len(incorrect_ranks))
+
+def precision_macro_avg(k: int,\
+	ranks_per_entity_type: Dict[WikidataItem, List[float]],\
+	tables_with_classif:\
+			List[Tuple[Table, List[Tuple[float, WikidataItem]], WikidataItem]]\
+	) -> float:
+	"""
+	The macro-average computes the precision first for each entity type
+	independently and then returns the average over all of those precisions.
+	"""
+	entity_type_specific_precisions: List[float] =\
+		[entity_type_specific_precision(\
+			k=k,\
+			ranks_per_entity_type=ranks_per_entity_type,\
+			tables_with_classif=tables_with_classif,\
+			entity_type=entity_type)\
+		for entity_type in ranks_per_entity_type.keys()]
+	entity_type_specific_precisions =\
+		[precision for precision in entity_type_specific_precisions\
+		if not math.isnan(precision)]  # != float('nan') doesn't work!!!
+	return sum(entity_type_specific_precisions)\
+		/ len(entity_type_specific_precisions)
 
 class ClassificationResult:
 	"""
@@ -329,7 +384,8 @@ class ClassificationResult:
 			headerRow=[\
 			"k",\
 			"Top-k coverage (%)",\
-			"Recall (%), macro-average"\
+			"Recall (%), macro-average",\
+			"Precision (%), macro-avg."\
 			],columns=[\
 			[str(k)\
 			 for k in range(1, stats_max_k+1)],\
@@ -337,6 +393,10 @@ class ClassificationResult:
 			 for k in range(1, stats_max_k+1)],\
 			["{:8.4f}".format(100.0 * recall_macro_avg(k=k,\
 				ranks_per_entity_type=ranks_per_entity_type))\
+			 for k in range(1, stats_max_k+1)],\
+			["{:8.4f}".format(100.0 * precision_macro_avg(k=k,\
+				ranks_per_entity_type=ranks_per_entity_type,\
+				tables_with_classif=tables_with_classif_fixed_params))\
 			 for k in range(1, stats_max_k+1)]\
 			]).pretty_print(maxNumberOfTuples=stats_max_k))
 
@@ -659,6 +719,29 @@ class ClassificationResult:
 			 for entityType in all_correct_wikidata_types]] +\
 			[["{:8.4f}%".format(100.0 * entity_type_specific_recall(k=k,\
 						ranks_per_entity_type=ranks_per_entity_type,\
+						entity_type=entityType))\
+			  for entityType in all_correct_wikidata_types]\
+			 for k in range(1, stats_max_k+1)]\
+			).pretty_print(maxNumberOfTuples=\
+				len(all_correct_wikidata_types)))
+
+		print("===== Entity type-specific precisions " +\
+			f"(using {'' if useTextualSurroundings else 'no '}text. surr., " +\
+			f"{'' if useAttrNames else 'no '}attr. names and " +\
+			f"{'' if useAttrExtensions else 'no '}attr. ext.): =====")
+
+		print(Table.Table(surroundingText="",\
+			headerRow=["Entity type", "# of occurrences"] +\
+				[f"k={k}" for k in range(1, stats_max_k+1)],\
+			columns=[[f"{entityType.entity_id} ({entityType.get_label()})"\
+			for entityType in all_correct_wikidata_types]] +\
+			[[str(len([None for tab, cl_res, corr_ent_type\
+				in tables_with_classif_result_and_correct_entity_type\
+				if corr_ent_type == entityType]))\
+			 for entityType in all_correct_wikidata_types]] +\
+			[["{:8.4f}%".format(100.0 * entity_type_specific_precision(k=k,\
+						ranks_per_entity_type=ranks_per_entity_type,\
+						tables_with_classif=tables_with_classif_fixed_params,\
 						entity_type=entityType))\
 			  for entityType in all_correct_wikidata_types]\
 			 for k in range(1, stats_max_k+1)]\
