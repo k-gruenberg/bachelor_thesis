@@ -1176,6 +1176,7 @@ class Table:
 				# Skip files with any other filetype/extension.
 			elif recursive:
 				for table in Table.parseFolder(folderPath=folder_item,\
+					file_extensions=file_extensions,\
 					recursive=True, csv_dialect=csv_dialect,\
 					onlyRelationalJSON=onlyRelationalJSON, DEBUG=DEBUG):
 					yield table
