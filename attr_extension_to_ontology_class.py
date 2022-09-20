@@ -136,7 +136,7 @@ def attr_extension_to_ontology_class(cell_labels: List[str])\
     return set_of_all_types_of_all_cells_with_frequency
 
 
-def main():  # ToDo
+def main():
     cell_labels: List[str] = sys.argv[1:]  # input values = cell labels
 
     set_of_all_types_of_all_cells_with_frequency: Dict[WikidataItem, int] =\

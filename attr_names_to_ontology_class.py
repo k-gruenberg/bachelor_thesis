@@ -316,7 +316,7 @@ def attr_names_to_ontology_class(inputAttrNames: List[str],\
 	return dbpediaClassesWithMatchScore
 
 
-def main():  # ToDo: argparse
+def main():
 	parser = argparse.ArgumentParser(
 		description="""
 		Map a list of attribute names to an ordered list of ontology classes,
