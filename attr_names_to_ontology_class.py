@@ -328,6 +328,10 @@ def main():  # ToDo: argparse
     	type=str,
     	help="""
     	The input attribute names.
+    	When not using the --sbert flag
+    	(i.e. when using Jaccard trigram similarity),
+    	all input attribute names have to be at least 3 characters long,
+    	otherwise a ZeroDivisionError will be raised!
     	""",
     	nargs='*',
     	metavar='ATTR_NAME')
