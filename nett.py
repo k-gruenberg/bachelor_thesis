@@ -536,12 +536,12 @@ def main():
 
 	parser.add_argument('--annotations-file',
     	type=str,
-    	default='',
     	help="""
     	Import your manual annotations again.
     	When you previously exported your annotations as a .json file,
     	you may re-import it using this argument to avoid having to manually
     	reclassify all those tables again.
+    	You may also specify multiple annotation files!
     	BEWARE: The --jaccard, --sbert, --bing & --webisadb flags had an impact
     	on the exported data but they don't have one on the data imported with
     	this argument! When you exported your data with the --jaccard flag
@@ -549,6 +549,7 @@ def main():
     	you shall **NOT** specify --annotations-file. You instead have to
     	re-annotate your data again!!!
     	""",
+    	nargs='*',
     	metavar='ANNOTATIONS_JSON_FILE')
 
 	group2 = parser.add_mutually_exclusive_group(required=False)
@@ -699,11 +700,13 @@ def main():
 			List[Tuple[Table, ClassificationResult, WikidataItem]]\
 			= []
 
-		# The user specified a file containing annotations previously made:
-		if args.annotations_file != "":
-			with open(args.annotations_file, "r") as f:
-				tables_with_classif_result_and_correct_entity_type =\
-					json_to_annotations(f.read())
+		# The user specified a file (or multiple files)
+		#   containing annotations previously made:
+		if args.annotations_file is not None and args.annotations_file != []:
+			for annotations_file in args.annotations_file:
+				with open(annotations_file, "r") as f:
+					tables_with_classif_result_and_correct_entity_type +=\
+						json_to_annotations(f.read())
 
 		for table_ in Table.parseCorpus(args.corpus,\
 			file_extensions=file_extensions, onlyRelationalJSON=\
@@ -711,8 +714,10 @@ def main():
 			min_table_size=args.min_table_size, DEBUG=args.debug):
 
 			# Skip table if it was already annotated (this only happens
-			#   when args.annotations_file != ""):
-			if args.annotations_file != "" and table_ in [t for (t, cr, wi) in\
+			#   when args.annotations_file was specifed):
+			if args.annotations_file is not None\
+				and args.annotations_file != []\
+				and table_ in [t for (t, cr, wi) in\
 				tables_with_classif_result_and_correct_entity_type]:
 				continue  # Skip table, it's already annotated.
 
