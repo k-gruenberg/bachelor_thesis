@@ -76,7 +76,8 @@ def main():
 
 		counter += 1
 
-		print(f"===== ===== ===== Table no. {counter}: ===== ===== =====")
+		print(f"===== ===== ===== Table no. {counter} " +\
+			f"({table_.file_name.split('/')[-1]}): ===== ===== =====")
 		print(table_.pretty_print())
 		print("")
 		print("")
