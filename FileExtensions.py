@@ -11,7 +11,13 @@ class FileExtensions:
 			else [".csv"]
 		self.XLSX_extensions = XLSX_extensions\
 			if XLSX_extensions is not None and XLSX_extensions != []\
-			else [".xlsx", ".xls"]
+			else [".xlsx"]  # wrong: [".xlsx", ".xls"]
+		"""
+		openpyxl.utils.exceptions.InvalidFileException:
+		openpyxl does not support the old .xls file format,
+		please use xlrd to read this file,
+		or convert it to the more recent .xlsx file format.
+		"""
 		self.JSON_extensions = JSON_extensions\
 			if JSON_extensions is not None and JSON_extensions != []\
 			else [".json"]

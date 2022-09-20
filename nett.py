@@ -488,7 +488,9 @@ def main():
     	type=str,
     	help="""
     	The extension(s) by which to recognize Excel files.
-    	Default: '.xlsx' and '.xls'
+    	Please not that the libary used (openpyxl) does **NOT**
+    	support the old .xls format but only the new .xlsx one!
+    	Default: '.xlsx'
     	""",
     	nargs='*',
     	metavar='EXTENSION_XLSX')
