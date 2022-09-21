@@ -173,8 +173,14 @@ def precision_macro_avg(k: int,\
 	entity_type_specific_precisions =\
 		[precision for precision in entity_type_specific_precisions\
 		if not math.isnan(precision)]  # != float('nan') doesn't work!!!
-	return sum(entity_type_specific_precisions)\
-		/ len(entity_type_specific_precisions)
+	if entity_type_specific_precisions == []:
+		# When we could not compute the precision for **any** entity type,
+		#   we also cannot compute an average.
+		# This happens when NETT never returned any correct result as 1st place.
+		return float('nan')
+	else:
+		return sum(entity_type_specific_precisions)\
+			/ len(entity_type_specific_precisions)
 
 # https://en.wikipedia.org/wiki/F-score#Extension_to_multi-class_classification
 # or https://arxiv.org/abs/1911.03347 (Juri Opitz, Sebastian Burst) say that
@@ -274,11 +280,15 @@ def f_score_macro_avg__mean_of_class_wise_f_scores(\
 	
 	class_wise_f_scores =\
 		[score for score in class_wise_f_scores if not math.isnan(score)]
-	
-	mean_of_class_wise_f_scores: float =\
-		sum(class_wise_f_scores) / len(class_wise_f_scores)
 
-	return mean_of_class_wise_f_scores
+	if class_wise_f_scores == []:
+		# All NaN's => return NaN (cf. precision_macro_avg() function):
+		return float('nan')
+	else:
+		mean_of_class_wise_f_scores: float =\
+			sum(class_wise_f_scores) / len(class_wise_f_scores)
+
+		return mean_of_class_wise_f_scores
 
 class ClassificationResult:
 	"""
