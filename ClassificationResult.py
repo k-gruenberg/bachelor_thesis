@@ -125,7 +125,32 @@ def entity_type_specific_precision(k: int,\
 	# Compute and return precision; which is defined as:
 	#   true positives / (true positives + false positives)
 	if len(correct_ranks) + len(incorrect_ranks) == 0:
+		"""
+		How to define a precision of 0/0 ("zero divided by zero")?!:
+		Disadvantage of NaN:
+		  The inequality: F1 of averages >= Averaged F1 (over all classes)
+		  described by Juri Opitz & Sebastian Burst
+		  (https://arxiv.org/pdf/1911.03347.pdf) does not hold anymore,
+		  in fact it's reversed!
+		  I believe this is because for precision, we only consider a subset of
+		  the classes that we consider for recall:
+		  * For recall, we consider all the classes that were annotated as the
+		    correct ones for all the tables.
+		  * For precision, we only consider the subset of those that were
+		    returned by the classifier (NETT), whether correctly or incorrectly.
+		Disadvantage of 0.0:
+		  It's incorrect (https://stats.stackexchange.com/questions/8025/
+		  what-are-correct-values-for-precision-and-recall-when-the-denominators
+		  -equal-0).
+		  It will lead to way too small precision values because all the classes
+		  that are the correct classification for at least one table but that
+		  were never assigned to *any* table by NETT (correctly or incorrectly!)
+		  will contribute to the overall precision with 0.0 although precision
+		  cannot be meaningfully defined for classes that were never returned by
+		  the classifier (NETT).
+		"""
 		return float('nan')
+		#return 0.0  # (incorrect, see comment above)
 	else:
 		return len(correct_ranks) / (len(correct_ranks) + len(incorrect_ranks))
 
@@ -150,6 +175,110 @@ def precision_macro_avg(k: int,\
 		if not math.isnan(precision)]  # != float('nan') doesn't work!!!
 	return sum(entity_type_specific_precisions)\
 		/ len(entity_type_specific_precisions)
+
+# https://en.wikipedia.org/wiki/F-score#Extension_to_multi-class_classification
+# or https://arxiv.org/abs/1911.03347 (Juri Opitz, Sebastian Burst) say that
+# there are two formulas for macro-averaging F-score:
+#   * "the F-score of (arithmetic) class-wise precision and recall means"
+#   * "or the arithmetic mean of class-wise F-scores,
+#      where the latter exhibits more desirable properties"
+
+def f_score(precision: float, recall: float, beta: float = 1.0) -> float:
+	#print(f"f_score(precision={precision}, recall={recall}, beta={beta})")
+
+	# https://towardsdatascience.com/
+	#   a-look-at-precision-recall-and-f1-score-36b5fd0dd3ec:
+	# "[...], the Precision and Recall both become 0, and F1-score cannot be
+	#  calculated (division by 0). Such cases can be scored as F1-score = 0,
+	#  or generally marking the classifier as useless.
+	#  Because the classifier cannot predict any correct positive result."
+	#
+	# Also:
+	#   (2 * p * r) / (p + r)
+	# = 2 / (1/r + 1/p)
+	# ...which tends towards 0.0 as p and r tend towards 0.0.
+	if precision == 0.0 and recall == 0.0:  # (would cause a ZeroDivisionError)
+		return 0.0  # (classifier is useless => F-score = 0.0)
+		#return float('nan')  # Further increases Avg. of class-wise F1 scores.
+
+	# https://en.wikipedia.org/wiki/F-score#F%CE%B2_score
+	return (1 + (beta**2)) * ((precision * recall) /\
+		(((beta**2) * precision) + recall))
+
+def f_score_macro_avg__f_score_of_precision_and_recall_means(\
+	k: int,\
+	ranks_per_entity_type: Dict[WikidataItem, List[float]],\
+	tables_with_classif:\
+			List[Tuple[Table, List[Tuple[float, WikidataItem]], WikidataItem]],\
+	beta: float = 1.0) -> float:
+	"""
+	"the F-score of (arithmetic) class-wise precision and recall means"
+	(https://en.wikipedia.org/wiki/F-score#
+	 Extension_to_multi-class_classification)
+
+	"F1 of averages: harmonic mean over arithmetic means
+	The harmonic mean is computed over the arithmetic means of
+	precision and recall"
+	(https://arxiv.org/pdf/1911.03347.pdf, Juri Opitz & Sebastian Burst)
+
+	Formula (Juri Opitz & Sebastian Burst)):
+	F1 = (2 * avg_precision * avg_recall) / (avg_precision + avg_recall)
+	"""
+	avg_precision = precision_macro_avg(k=k,\
+		ranks_per_entity_type=ranks_per_entity_type,\
+		tables_with_classif=tables_with_classif)
+	avg_recall = recall_macro_avg(k=k,\
+		ranks_per_entity_type=ranks_per_entity_type)
+
+	return f_score(precision=avg_precision, recall=avg_recall, beta=beta)
+
+def f_score_macro_avg__mean_of_class_wise_f_scores(\
+	k: int,\
+	ranks_per_entity_type: Dict[WikidataItem, List[float]],\
+	tables_with_classif:\
+			List[Tuple[Table, List[Tuple[float, WikidataItem]], WikidataItem]],\
+	beta: float = 1.0) -> float:
+	"""
+	"the arithmetic mean of class-wise F-scores,
+	 [...] exhibits more desirable properties" !!!!!
+	(https://en.wikipedia.org/wiki/F-score#
+	 Extension_to_multi-class_classification)
+
+	"Averaged F1: arithmetic mean over harmonic means
+	F1 scores are computed for each class and then averaged via arithmetic mean"
+	(https://arxiv.org/pdf/1911.03347.pdf, Juri Opitz & Sebastian Burst)
+
+	Formula (Juri Opitz & Sebastian Burst)):
+	F1 = (1/n) * SUM_x(F1_x)
+	   = (1/n) * SUM_x((2 * precision_x * recall_x) / (precision_x + recall_x))
+	"""
+	classes = ranks_per_entity_type.keys()
+
+	class_wise_f_scores: List[float] =\
+		[f_score(\
+			precision=\
+				entity_type_specific_precision(\
+					k=k,\
+					ranks_per_entity_type=ranks_per_entity_type,\
+					tables_with_classif=tables_with_classif,\
+					entity_type=class_\
+				),\
+			recall=\
+				entity_type_specific_recall(\
+					k=k,\
+					ranks_per_entity_type=ranks_per_entity_type,\
+					entity_type=class_\
+				),\
+			beta=beta\
+		) for class_ in classes]
+	
+	class_wise_f_scores =\
+		[score for score in class_wise_f_scores if not math.isnan(score)]
+	
+	mean_of_class_wise_f_scores: float =\
+		sum(class_wise_f_scores) / len(class_wise_f_scores)
+
+	return mean_of_class_wise_f_scores
 
 class ClassificationResult:
 	"""
@@ -385,7 +514,9 @@ class ClassificationResult:
 			"k",\
 			"Top-k coverage (%)",\
 			"Recall (%), macro-average",\
-			"Precision (%), macro-avg."\
+			"Precision (%), macro-avg.",\
+			"F1 score (F1 of avg. prec. & avg. rec.)",\
+			"F1 score (Avg. of class-wise F1 scores)"
 			],columns=[\
 			[str(k)\
 			 for k in range(1, stats_max_k+1)],\
@@ -397,8 +528,18 @@ class ClassificationResult:
 			["{:8.4f}".format(100.0 * precision_macro_avg(k=k,\
 				ranks_per_entity_type=ranks_per_entity_type,\
 				tables_with_classif=tables_with_classif_fixed_params))\
+			 for k in range(1, stats_max_k+1)],\
+			["{:1.6f}".format(\
+				f_score_macro_avg__f_score_of_precision_and_recall_means(k=k,\
+				ranks_per_entity_type=ranks_per_entity_type,\
+				tables_with_classif=tables_with_classif_fixed_params))\
+			 for k in range(1, stats_max_k+1)],\
+			["{:1.6f}".format(\
+				f_score_macro_avg__mean_of_class_wise_f_scores(k=k,\
+				ranks_per_entity_type=ranks_per_entity_type,\
+				tables_with_classif=tables_with_classif_fixed_params))\
 			 for k in range(1, stats_max_k+1)]\
-			]).pretty_print(maxNumberOfTuples=stats_max_k))
+			]).pretty_print(maxNumberOfTuples=stats_max_k, maxColWidth=39))
 
 		# At last, print tables showing the effects of varying the
 		# weightings (with and without normalization):
