@@ -322,9 +322,6 @@ def main():
     	help='How to weight the attribute extensions approach. Default: 1.0',
     	metavar='WEIGHTING')
 
-	# (Advanced) ToDo: if all weights are set to 0.0 try out ("learn") which
-	#   weights lead to the best results!
-
 	parser.add_argument('--csv-delimiter',  # ToDo: csv_dialect
     	type=str,
     	default='',
