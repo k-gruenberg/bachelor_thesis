@@ -866,7 +866,16 @@ class Table:
 				attrName1=attrName1, attrName2=attrName2, USE_SBERT=useSBERT)
 
 		# (1) Extract the attribute name from the given attribute condition:
-		attribute_name: str = attribute_cond.split()[0]
+		attribute_name: str = None
+		if attribute_cond.startswith("re.fullmatch(")\
+			and attribute_cond.endswith(")")\
+			and "," in attribute_cond:
+			# e.g. --attribute-cond
+			#          "re.fullmatch('[a-zA-Z\. ]+,? [a-zA-Z\. ]+', name)"
+			attribute_name = attribute_cond.split(",")[-1].strip(" )")
+			# ...should now equal "name"
+		else:
+			attribute_name = attribute_cond.split()[0]
 
 		# (2) Turn the condition into a Python lambda (for individual cells):
 		attribute_cond_lambda =\
