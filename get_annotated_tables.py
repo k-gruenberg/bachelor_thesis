@@ -1,6 +1,7 @@
 from __future__ import annotations
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import argparse
+from collections import defaultdict
 
 from WikidataItem import WikidataItem
 from Table import Table
@@ -60,10 +61,33 @@ def main():
 
 	counter: int = 1
 
+	most_common_column_headings: Dict[str, int] =\
+		defaultdict(int)
+	most_common_co_occurring_keywords: Dict[str, int] =\
+		defaultdict(int)
+	most_common_co_occurring_keywords_textual_surr_only: Dict[str, int] =\
+		defaultdict(int)
+	most_common_co_occurring_keywords_inside_table_only: Dict[str, int] =\
+		defaultdict(int)
+
 	for table, classif_result, wikidata_item\
 		in tables_with_classif_result_and_correct_entity_type:
 		if any(entityType == wikidata_item.entity_id\
 			for entityType in args.entityTypes):
+
+			# Update the most common column headings & co-occurring keywords:
+			for column_heading in table.headerRow:
+				most_common_column_headings[column_heading] += 1
+			for word in table.surroundingText.split():
+				most_common_co_occurring_keywords[word] += 1
+				most_common_co_occurring_keywords_textual_surr_only[word] += 1
+			for column in table.columns:
+				for cell in column:
+					for word in cell.split():
+						most_common_co_occurring_keywords[word] += 1
+						most_common_co_occurring_keywords_inside_table_only\
+							[word] += 1
+
 			# Print table file name & manual annotation (correct WikidataItem):
 			print("===== ===== ===== " +\
 				f"Table #{counter} '{table.file_name[-80:]}'' " +\
@@ -74,6 +98,19 @@ def main():
 			print("")  # (cf. corpus_print.py)
 			print("")
 			counter += 1
+
+	print("Most common column headings:")
+	print(f"{sorted(most_common_column_headings.items(), key=lambda tuple: tuple[1], reverse=True)[:10]}")
+	print("")
+	print("Most common co-occurring keywords:")
+	print(f"{sorted(most_common_co_occurring_keywords.items(), key=lambda tuple: tuple[1], reverse=True)[:10]}")
+	print("")
+	print("Most common co-occurring keywords (textual surr. only):")
+	print(f"{sorted(most_common_co_occurring_keywords_textual_surr_only.items(), key=lambda tuple: tuple[1], reverse=True)[:10]}")
+	print("")
+	print("Most common co-occurring keywords (inside table only):")
+	print(f"{sorted(most_common_co_occurring_keywords_inside_table_only.items(), key=lambda tuple: tuple[1], reverse=True)[:10]}")
+	print("")
 
 if __name__ == "__main__":
 	main()
