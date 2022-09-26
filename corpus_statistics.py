@@ -171,6 +171,15 @@ def main():
 		statistics.mean(number_of_colums_per_table)
 	number_of_colums_stdev: float =\
 		statistics.stdev(number_of_colums_per_table)
+	# Additional statistics:
+	number_of_colums_geometric_mean: float =\
+		statistics.geometric_mean(number_of_colums_per_table)
+	number_of_colums_harmonic_mean: float =\
+		statistics.harmonic_mean(number_of_colums_per_table)
+	number_of_colums_median: float =\
+		statistics.median(number_of_colums_per_table)
+	number_of_colums_mode: float =\
+		statistics.mode(number_of_colums_per_table)
 
 	#print(f"Debug: {number_of_colums_per_table}")
 
@@ -187,6 +196,11 @@ def main():
 		f"({100*(number_of_mixed_numerical_and_textual_tables/total_number_of_tables)}%)")
 	print(f"Number of columns - average: {number_of_colums_average}")
 	print(f"Number of columns - standard deviation: {number_of_colums_stdev}")
+	# Additional statistics:
+	print(f"Number of columns - geometric mean: {number_of_colums_geometric_mean}")
+	print(f"Number of columns - harmonic mean: {number_of_colums_harmonic_mean}")
+	print(f"Number of columns - median: {number_of_colums_median}")
+	print(f"Number of columns - mode: {number_of_colums_mode}")
 	
 	big_N: int = 30  # should be a 2-digit number, otherwise increase "{i:3d}" below
 
