@@ -82,6 +82,24 @@ Trey Watts: Q7839622: ['Q5']
 
 ```
 $ python3 attr_extension_to_ontology_class.py "chevrolet chevelle malibu" "buick skylark 320" "plymouth satellite" "amc rebel sst" "ford torino" "ford galaxie 500"
+
+##### Finished Step 1 - Cell entity annotation: #####
+chevrolet chevelle malibu: []
+buick skylark 320: []
+plymouth satellite: ['Q1808628 (Plymouth Satellite)']
+amc rebel sst: []
+ford torino: ['Q1361017 (Ford Torino)', 'Q1437002 (Ford Torino)', 'Q5467973 (Ford Torino Talladega)', 'Q90924026 (Ford Torino GT)', 'Q5467971 (Ford Torino Engine Specifications)']
+ford galaxie 500: []
+
+##### Finished Step 2 - Entity-type resolution: #####
+plymouth satellite: Q1808628: ['Q3231690']
+ford torino: Q1361017: ['Q3231690']
+ford torino: Q1437002: ['Q3231690']
+ford torino: Q5467973: ['Q3231690']
+ford torino: Q90924026: ['Q3231690', 'Q1361017']
+ford torino: Q5467971: None
+
+##### Finished Step 3 - Type aggregation: #####
 (5) Q3231690 (automobile model)
 (1) Q1361017 (Ford Torino)
 ```
