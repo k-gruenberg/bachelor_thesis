@@ -97,6 +97,12 @@ def main():
     	nargs='*',
     	metavar='EXTENSION_TAR')
 
+	parser.add_argument('--plot',
+		action='store_true',
+		help="""
+		Plot a histogram using matplotlib.
+		""")
+
 	args = parser.parse_args()
 
 	file_extensions: FileExtensions = FileExtensions(\
@@ -216,6 +222,23 @@ def main():
 	print(f"Tables with >{big_N} columns: " +\
 			f"{tables_with_more_than_N_columns} " +\
 			f"({100*(tables_with_more_than_N_columns/total_number_of_tables)}%)")
+
+	if args.plot:
+		import matplotlib.pyplot as plt
+		import numpy as np
+		# https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.hist.html:
+		plt.hist(number_of_colums_per_table,\
+			bins=[i for i in range(0,15+2)],\
+			range=(0, 15+1),\
+			rwidth=1/3,\
+			align="left")  # {'left', 'mid', 'right'}, default: 'mid'
+		# https://stackoverflow.com/questions/55174937/
+		#   change-x-axis-step-in-python-matplotlib
+		# and
+		# https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.axis.html:
+		plt.axis(xmin=0, xmax=15+1)
+		plt.xticks(np.arange(0,15+1,1))
+		plt.show()
 
 if __name__ == "__main__":
 	main()
